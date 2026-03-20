@@ -1,0 +1,188 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-backend:
+    name: Lint Backend (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Check linting
+        run: ruff check services/ packages/
+
+      - name: Check formatting
+        run: ruff format --check services/ packages/
+
+  lint-frontend:
+    name: Lint Frontend (eslint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+
+  test-backend:
+    name: Test Backend (pytest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sentinel
+          POSTGRES_PASSWORD: sentinel
+          POSTGRES_DB: sentinel_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U sentinel"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinel_test
+      ENVIRONMENT: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            packages/shared/pyproject.toml
+            services/*/requirements.txt
+
+      - name: Install shared package
+        run: pip install -e packages/shared
+
+      - name: Install pytest
+        run: pip install pytest pytest-asyncio httpx
+
+      - name: Test auth-service
+        working-directory: services/auth-service
+        run: |
+          pip install -r requirements.txt
+          python -m pytest tests/ -v --tb=short --junitxml=../../test-results/auth-service.xml
+
+      - name: Test analytics-service
+        working-directory: services/analytics-service
+        run: |
+          pip install -r requirements.txt
+          python -m pytest tests/ -v --tb=short --junitxml=../../test-results/analytics-service.xml
+
+      - name: Test notification-service
+        working-directory: services/notification-service
+        run: |
+          pip install -r requirements.txt
+          python -m pytest tests/ -v --tb=short --junitxml=../../test-results/notification-service.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: test-results/*.xml
+
+  test-frontend:
+    name: Test Frontend (vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm test
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+
+  build-backend-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - api-gateway
+          - auth-service
+          - tenant-service
+          - ingestion-service
+          - ingestion-worker
+          - ai-pipeline-service
+          - analytics-service
+          - campaign-service
+          - notification-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.service }}
+        run: |
+          docker build \
+            -f services/${{ matrix.service }}/Dockerfile \
+            -t sentinel-${{ matrix.service }}:ci \
+            .
+
+  build-frontend-image:
+    name: Build Frontend Docker Image
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            -f frontend/Dockerfile \
+            -t sentinel-frontend:ci \
+            frontend/

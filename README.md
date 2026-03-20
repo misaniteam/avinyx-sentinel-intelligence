@@ -228,7 +228,7 @@ See `.env.example` for the complete list.
 - [x] **Phase 2** — Core Features (campaigns, voters, media feeds, ingestion, dashboard pages)
 - [x] **Phase 3** — AI & Analytics (Recharts charts, dashboard widgets, Google Maps heatmap, PDF/PNG export, report generation)
 - [x] **Phase 4** — Real-time & Admin (Firebase live updates, notification bell, admin CRUD forms, tenant settings, worker monitoring)
-- [ ] **Phase 5** — Production (Terraform, GitHub Actions CI/CD, load testing)
+- [x] **Phase 5** — Production (Terraform IaC, GitHub Actions CI/CD, Dependabot)
 
 ## License
 

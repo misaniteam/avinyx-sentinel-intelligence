@@ -46,7 +46,10 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │       └── types/            # TypeScript interfaces
 │
 ├── migrations/               # Alembic (env.py imports sentinel_shared models)
-└── infrastructure/           # Terraform (TODO), scripts (localstack-init, seed)
+├── infrastructure/
+│   ├── terraform/            # 8 modules (vpc, ecr, ecs, rds, sqs, s3, alb, cloudfront)
+│   └── scripts/              # localstack-init, init-db, seed-superadmin
+└── .github/workflows/        # CI, deploy, terraform, dependabot
 ```
 
 ## Key Commands
@@ -254,10 +257,45 @@ Copy `.env.example` to `.env` for local dev. LocalStack provides SQS/SNS/S3 at `
 Required for heatmap: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
 Required for Firebase: `NEXT_PUBLIC_FIREBASE_CONFIG` (JSON string with apiKey, authDomain, projectId, databaseURL)
 
+## Terraform Infrastructure
+
+8 modules in `infrastructure/terraform/modules/`:
+- **vpc** — VPC, 2 public + 2 private subnets, NAT Gateway, security groups (ALB, ECS, RDS)
+- **ecr** — 10 ECR repos (immutable tags, scan-on-push, 10-image lifecycle)
+- **ecs** — Fargate cluster, Cloud Map discovery, task defs for 7 HTTP + 2 worker services, IAM roles, auto-scaling for workers
+- **rds** — PostgreSQL 16, Multi-AZ, encrypted, auto-backups (7 days), Secrets Manager password
+- **sqs** — 3 queues with DLQs, SSE encryption, 300s visibility timeout
+- **s3** — Reports bucket (versioned, IA lifecycle) + Frontend bucket (CloudFront OAC)
+- **alb** — Internet-facing, HTTPS with ACM cert, health checks
+- **cloudfront** — S3 origin with OAC, SPA routing, security response headers (HSTS, X-Frame-Options, etc.)
+
+Secrets (DATABASE_URL, JWT_SECRET) injected via Secrets Manager references in ECS container `secrets` block — never plaintext.
+
+### Deploying
+```bash
+cd infrastructure/terraform
+cp terraform.tfvars.example terraform.tfvars  # Edit with your values
+terraform init
+terraform plan
+terraform apply  # Or via GitHub Actions workflow_dispatch
+```
+
+## CI/CD (GitHub Actions)
+
+- **ci.yml** — Lint (ruff + eslint) + test (pytest + vitest) + build on push/PR to main
+- **deploy.yml** — Build & push to ECR → run migrations → deploy to ECS (OIDC auth, environment protection)
+- **terraform.yml** — Plan on push, apply only via manual dispatch (OIDC auth)
+- **dependabot.yml** — Weekly updates for npm, pip, GitHub Actions; monthly for Terraform
+
+### Required GitHub configuration:
+- **Secrets:** `AWS_ROLE_ARN` (OIDC), `AWS_ACCOUNT_ID`
+- **Variables:** `AWS_REGION`, `PRIVATE_SUBNETS`, `SECURITY_GROUPS`
+- **Environments:** `staging` and `production` (configure protection rules with required reviewers for production)
+
 ## Implementation Status
 
 - [x] Phase 1 — Foundation (monorepo, shared package, auth, gateway, tenants, frontend shell)
 - [x] Phase 2 — Core Features (campaigns, voters, media feeds, ingestion, dashboard pages)
 - [x] Phase 3 — AI & Analytics (Recharts charts, dashboard widgets, Google Maps heatmap, client-side PDF/PNG export, report generation)
 - [x] Phase 4 — Real-time & Admin (Firebase live updates, notification bell, admin CRUD forms, tenant settings, worker monitoring, infrastructure page)
-- [ ] Phase 5 — Production (Terraform, GitHub Actions CI/CD, load testing)
+- [x] Phase 5 — Production (Terraform IaC, GitHub Actions CI/CD, Dependabot)

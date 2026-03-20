@@ -1,0 +1,316 @@
+# ============================================================================
+# Deploy Workflow — Avinyx Sentinel Intelligence
+# ============================================================================
+#
+# IMPORTANT: GitHub Environment Protection Rules MUST be configured:
+#   1. Create "staging" and "production" environments in repo Settings > Environments
+#   2. For "production": enable "Required reviewers" with at least one approver
+#   3. For "production": optionally restrict to the "main" branch
+#   4. Both environments must have the AWS_ROLE_ARN secret configured for OIDC
+#
+# Required GitHub Secrets (per environment):
+#   AWS_ROLE_ARN           — IAM role ARN for OIDC federation (no static keys)
+#   AWS_ACCOUNT_ID         — AWS account ID for ECR registry
+#
+# Required GitHub Variables:
+#   AWS_REGION             — AWS region (defaults to us-east-1)
+# ============================================================================
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION || 'us-east-1' }}.amazonaws.com
+  ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+  ECS_CLUSTER: sentinel-${{ github.event.inputs.environment || 'staging' }}
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Stage 1: Lint & Test
+  # ──────────────────────────────────────────────
+  lint-backend:
+    name: Lint Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check services/ packages/
+      - run: ruff format --check services/ packages/
+
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sentinel
+          POSTGRES_PASSWORD: sentinel
+          POSTGRES_DB: sentinel_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U sentinel"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinel_test
+      ENVIRONMENT: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            packages/shared/pyproject.toml
+            services/*/requirements.txt
+      - run: pip install -e packages/shared
+      - run: pip install pytest pytest-asyncio httpx
+
+      - name: Test auth-service
+        working-directory: services/auth-service
+        run: |
+          pip install -r requirements.txt
+          python -m pytest tests/ -v --tb=short
+
+      - name: Test analytics-service
+        working-directory: services/analytics-service
+        run: |
+          pip install -r requirements.txt
+          python -m pytest tests/ -v --tb=short
+
+      - name: Test notification-service
+        working-directory: services/notification-service
+        run: |
+          pip install -r requirements.txt
+          python -m pytest tests/ -v --tb=short
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  # ──────────────────────────────────────────────
+  # Stage 2: Build & Push Docker Images to ECR
+  # ──────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push — ${{ matrix.service }}
+    needs: [lint-backend, lint-frontend, test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api-gateway
+            context: .
+            dockerfile: services/api-gateway/Dockerfile
+          - service: auth-service
+            context: .
+            dockerfile: services/auth-service/Dockerfile
+          - service: tenant-service
+            context: .
+            dockerfile: services/tenant-service/Dockerfile
+          - service: ingestion-service
+            context: .
+            dockerfile: services/ingestion-service/Dockerfile
+          - service: ingestion-worker
+            context: .
+            dockerfile: services/ingestion-worker/Dockerfile
+          - service: ai-pipeline-service
+            context: .
+            dockerfile: services/ai-pipeline-service/Dockerfile
+          - service: analytics-service
+            context: .
+            dockerfile: services/analytics-service/Dockerfile
+          - service: campaign-service
+            context: .
+            dockerfile: services/campaign-service/Dockerfile
+          - service: notification-service
+            context: .
+            dockerfile: services/notification-service/Dockerfile
+          - service: frontend
+            context: frontend
+            dockerfile: frontend/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/sentinel-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/sentinel-${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ──────────────────────────────────────────────
+  # Stage 3: Run Database Migrations
+  # ──────────────────────────────────────────────
+  migrate:
+    name: Run Migrations
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run Alembic migrations via ECS task
+        run: |
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --task-definition "sentinel-migrate-${{ env.ENVIRONMENT }}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=${{ vars.PRIVATE_SUBNETS }},securityGroups=${{ vars.SECURITY_GROUPS }},assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"migrate","command":["alembic","upgrade","head"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "Migration task: $TASK_ARN"
+
+          aws ecs wait tasks-stopped \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+
+          echo "Migrations completed successfully"
+
+  # ──────────────────────────────────────────────
+  # Stage 4: Deploy to ECS
+  # ──────────────────────────────────────────────
+  deploy-ecs:
+    name: Deploy — ${{ matrix.service }}
+    needs: [migrate]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        service:
+          - api-gateway
+          - auth-service
+          - tenant-service
+          - ingestion-service
+          - ingestion-worker
+          - ai-pipeline-service
+          - analytics-service
+          - campaign-service
+          - notification-service
+          - frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "sentinel-${{ matrix.service }}-${{ env.ENVIRONMENT }}" \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Update image in task definition
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        id: render
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ matrix.service }}
+          image: ${{ env.ECR_REGISTRY }}/sentinel-${{ matrix.service }}:${{ github.sha }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: sentinel-${{ matrix.service }}-${{ env.ENVIRONMENT }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-for-minutes: 10
