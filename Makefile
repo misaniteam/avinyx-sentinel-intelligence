@@ -1,16 +1,16 @@
 .PHONY: up down build logs test test-backend test-frontend migrate migrate-create seed lint format clean
 
 up:
-	docker-compose up -d
+	docker compose up -d
 
 down:
-	docker-compose down
+	docker compose down
 
 build:
-	docker-compose build
+	docker compose build
 
 logs:
-	docker-compose logs -f
+	docker compose logs -f
 
 test: test-backend test-frontend
 

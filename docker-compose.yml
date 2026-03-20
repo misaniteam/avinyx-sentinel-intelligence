@@ -29,7 +29,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7
+    image: docker.io/library/redis:7
     ports:
       - "6379:6379"
     volumes:
@@ -51,7 +51,8 @@ services:
   api-gateway:
     <<: *backend-common
     build:
-      context: ./services/api-gateway
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
     ports:
       - "8000:8000"
     depends_on:
@@ -65,21 +66,24 @@ services:
   auth-service:
     <<: *backend-common
     build:
-      context: ./services/auth-service
+      context: .
+      dockerfile: services/auth-service/Dockerfile
     ports:
       - "8001:8001"
 
   tenant-service:
     <<: *backend-common
     build:
-      context: ./services/tenant-service
+      context: .
+      dockerfile: services/tenant-service/Dockerfile
     ports:
       - "8002:8002"
 
   ingestion-service:
     <<: *backend-common
     build:
-      context: ./services/ingestion-service
+      context: .
+      dockerfile: services/ingestion-service/Dockerfile
     ports:
       - "8003:8003"
     depends_on:
@@ -93,7 +97,8 @@ services:
   ingestion-worker:
     <<: *backend-common
     build:
-      context: ./services/ingestion-service
+      context: .
+      dockerfile: services/ingestion-worker/Dockerfile
     command: python -m worker
     depends_on:
       postgres:
@@ -106,7 +111,8 @@ services:
   ai-pipeline-service:
     <<: *backend-common
     build:
-      context: ./services/ai-pipeline-service
+      context: .
+      dockerfile: services/ai-pipeline-service/Dockerfile
     command: python -m worker
     depends_on:
       postgres:
@@ -119,21 +125,24 @@ services:
   analytics-service:
     <<: *backend-common
     build:
-      context: ./services/analytics-service
+      context: .
+      dockerfile: services/analytics-service/Dockerfile
     ports:
       - "8005:8005"
 
   campaign-service:
     <<: *backend-common
     build:
-      context: ./services/campaign-service
+      context: .
+      dockerfile: services/campaign-service/Dockerfile
     ports:
       - "8006:8006"
 
   notification-service:
     <<: *backend-common
     build:
-      context: ./services/notification-service
+      context: .
+      dockerfile: services/notification-service/Dockerfile
     ports:
       - "8007:8007"
     depends_on:
