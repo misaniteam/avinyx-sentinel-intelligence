@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import { queryKeys } from "./query-keys";
-import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role } from "@/types";
+import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role, TenantOnboardRequest } from "@/types";
 
 // Dashboard
 export function useDashboardSummary() {
@@ -115,5 +115,116 @@ export function useRoles() {
   return useQuery({
     queryKey: queryKeys.roles.all,
     queryFn: () => api.get("api/auth/roles").json<Role[]>(),
+  });
+}
+
+// Users CRUD
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { email: string; password: string; full_name: string; role_ids?: string[] }) =>
+      api.post("api/auth/users", { json: data }).json<User>(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.all }),
+  });
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; full_name?: string; is_active?: boolean; role_ids?: string[] }) =>
+      api.patch(`api/auth/users/${id}`, { json: data }).json<User>(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.all }),
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`api/auth/users/${id}`).json(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.all }),
+  });
+}
+
+// Roles CRUD
+export function useCreateRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; description?: string; permissions: string[] }) =>
+      api.post("api/auth/roles", { json: data }).json<Role>(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.roles.all }),
+  });
+}
+
+export function useUpdateRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; description?: string; permissions?: string[] }) =>
+      api.patch(`api/auth/roles/${id}`, { json: data }).json<Role>(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.roles.all }),
+  });
+}
+
+export function useDeleteRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`api/auth/roles/${id}`).json(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.roles.all }),
+  });
+}
+
+// Tenants CRUD (super admin)
+export function useCreateTenant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: TenantOnboardRequest) =>
+      api.post("api/tenants/tenants", { json: data }).json(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.tenants.all }),
+  });
+}
+
+export function useUpdateTenant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; status?: string; settings?: Record<string, unknown> }) =>
+      api.patch(`api/tenants/tenants/${id}`, { json: data }).json(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.tenants.all }),
+  });
+}
+
+export function useDeleteTenant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`api/tenants/tenants/${id}`).json(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.tenants.all }),
+  });
+}
+
+// Notifications
+export function useMarkNotificationRead() {
+  return useMutation({
+    mutationFn: (id: string) => api.patch(`api/notifications/notifications/${id}/read`).json(),
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  return useMutation({
+    mutationFn: () => api.post("api/notifications/notifications/mark-all-read").json(),
+  });
+}
+
+// Tenant Settings
+export function useTenantSettings() {
+  return useQuery({
+    queryKey: ["settings", "tenant"],
+    queryFn: () => api.get("api/auth/tenant-settings").json<{ settings: Record<string, unknown> }>(),
+  });
+}
+
+export function useUpdateTenantSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { settings: Record<string, unknown> }) =>
+      api.patch("api/auth/tenant-settings", { json: data }).json(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["settings"] }),
   });
 }

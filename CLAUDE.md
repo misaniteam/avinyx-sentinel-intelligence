@@ -27,22 +27,22 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │
 ├── services/
 │   ├── api-gateway/          # Port 8000 — CORS, rate limiting, reverse proxy
-│   ├── auth-service/         # Port 8001 — Login, JWT, setup wizard, user/role CRUD
+│   ├── auth-service/         # Port 8001 — Login, JWT, setup wizard, user/role CRUD, tenant settings
 │   ├── tenant-service/       # Port 8002 — Tenant CRUD, onboarding
 │   ├── ingestion-service/    # Port 8003 — Data source CRUD, scheduler
 │   ├── ingestion-worker/     # SQS consumer — connector plugin pattern
 │   ├── ai-pipeline-service/  # SQS consumer — sentiment/topic/entity analysis
 │   ├── analytics-service/    # Port 8005 — Dashboard, heatmap, reports, platforms, topics
 │   ├── campaign-service/     # Port 8006 — Campaigns, voters, media feeds
-│   └── notification-service/ # Port 8007 — Firebase notifications
+│   └── notification-service/ # Port 8007 — Firebase notifications, list/mark-read
 │
 ├── frontend/                 # Next.js App Router
 │   └── src/
 │       ├── app/(auth)/       # Login, setup, forgot-password
 │       ├── app/(platform)/   # Authenticated shell — all main pages
 │       ├── app/api/export/   # Server-side PDF export route (Puppeteer)
-│       ├── components/       # ui/ (Shadcn), layout/, shared/, charts/, dashboard/, heatmap/
-│       ├── lib/              # api/ (ky + hooks), auth/, tenant/, rbac/, export/
+│       ├── components/       # ui/ (Shadcn), layout/, shared/, charts/, dashboard/, heatmap/, admin/
+│       ├── lib/              # api/ (ky + hooks), auth/, tenant/, rbac/, export/, firebase/
 │       └── types/            # TypeScript interfaces
 │
 ├── migrations/               # Alembic (env.py imports sentinel_shared models)
@@ -134,6 +134,7 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 
 - **Server state:** TanStack Query v5 — all API data flows through `lib/api/hooks.ts` and `lib/api/hooks-analytics.ts`
 - **Client state:** 3 React contexts composed in root: AuthProvider → TenantProvider → RBACProvider
+- **Real-time:** Firebase RTDB hooks (`lib/firebase/hooks.ts`) for worker status and notifications
 - **Query keys:** Centralized in `lib/api/query-keys.ts`
 - **HTTP client:** `ky` with auto Bearer token injection and 401 redirect (`lib/api/client.ts`)
 - **Access token:** Held in memory (never localStorage); refresh token via httpOnly cookie (TODO)
@@ -144,6 +145,7 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - `<AuthGuard>` — Redirects to /login if unauthenticated (used in platform layout)
 - `<AppShell>` — Sidebar + Topbar + main content area
 - `<ExportableContainer title="...">` — Wraps content with PDF/PNG export buttons
+- `<DeleteConfirmDialog>` — Reusable confirmation dialog for delete actions
 - Sidebar items auto-filtered by user permissions
 
 ## Charts & Visualizations
@@ -190,6 +192,53 @@ Beyond the original dashboard/heatmap/reports routers:
 
 All analytics endpoints require `analytics:read` or `reports:read/write` permissions and use `get_current_tenant_required` (rejects tenant_id=None).
 
+## Firebase Integration
+
+- **Backend:** `sentinel_shared/firebase/client.py` — Admin SDK singleton, `update_worker_status()`, `push_notification()`
+- **Frontend:** `lib/firebase/config.ts` — Client SDK init from `NEXT_PUBLIC_FIREBASE_CONFIG` env var (JSON string)
+- **Hooks:** `lib/firebase/hooks.ts` — `useWorkerStatus()`, `useNotifications()`, `useNotificationCount()`
+- **RTDB paths:** `/sentinel/workers/{tenant_id}/{worker_run_id}`, `/sentinel/notifications/{tenant_id}/{push_id}`
+- **Security rules:** `database.rules.json` — deny-all; all access via backend admin SDK (bypasses rules)
+- Graceful degradation: hooks return empty data when Firebase is not configured
+
+## Notification System
+
+- **Backend endpoints** (`notification-service`):
+  - `POST /notifications/send` — Push to Firebase RTDB (requires `notifications:write`)
+  - `GET /notifications/` — List recent notifications from RTDB
+  - `PATCH /notifications/{id}/read` — Mark single notification read (validated against path traversal)
+  - `POST /notifications/mark-all-read` — Mark all tenant notifications read
+- **Frontend:** `NotificationPanel` in topbar popover, bell icon with unread count badge
+- Notification types: `alert`, `info`, `warning` (enforced via Literal type)
+- Input limits: title max 200 chars, message max 2000 chars
+
+## Admin CRUD Pattern
+
+All admin forms follow the same dialog-based pattern:
+1. Page manages state: `dialogOpen`, `dialogMode` ("create"/"edit"), `selectedItem`
+2. Dialog component receives mode + item, uses react-hook-form + zod validation
+3. On submit: calls mutation hook (e.g., `useCreateUser()`, `useUpdateRole()`)
+4. On success: toast via sonner, close dialog, TanStack Query auto-invalidates list
+5. Delete: `DeleteConfirmDialog` with confirmation before calling delete mutation
+
+### Admin pages with full CRUD:
+- `/admin/users` — UserDialog (create/edit), role assignment, active toggle
+- `/admin/roles` — RoleDialog (create/edit), PermissionSelect checkbox grid
+- `/admin/settings` — AI provider form, notification prefs, general settings
+- `/admin/workers` — Live worker status cards via Firebase RTDB
+- `/super-admin/tenants` — TenantDialog (onboard/edit), suspend/activate
+- `/super-admin/infrastructure` — Service health cards, queue metrics
+
+### Permissions constant
+`lib/rbac/permissions.ts` — `PERMISSION_GROUPS` defines all resources and actions (12 resources). Used by `PermissionSelect` and role creation.
+
+## Tenant Settings
+
+- Stored in `tenant.settings` JSONB column, scoped by whitelisted keys: `ai`, `notifications`, `general`
+- Backend: `PATCH /api/auth/tenant-settings` (requires `settings:write`), `GET /api/auth/tenant-settings` (requires `settings:read`)
+- API key in `settings.ai.api_key` is masked to `"****"` in all GET/PATCH responses
+- Frontend forms: `SettingsAIForm`, `SettingsNotificationsForm`, `SettingsGeneralForm`
+
 ## Auth Dependencies
 
 - `get_current_user` — Extracts user from JWT Bearer token
@@ -203,11 +252,12 @@ All analytics endpoints require `analytics:read` or `reports:read/write` permiss
 Copy `.env.example` to `.env` for local dev. LocalStack provides SQS/SNS/S3 at `localhost:4566`.
 
 Required for heatmap: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+Required for Firebase: `NEXT_PUBLIC_FIREBASE_CONFIG` (JSON string with apiKey, authDomain, projectId, databaseURL)
 
 ## Implementation Status
 
 - [x] Phase 1 — Foundation (monorepo, shared package, auth, gateway, tenants, frontend shell)
 - [x] Phase 2 — Core Features (campaigns, voters, media feeds, ingestion, dashboard pages)
 - [x] Phase 3 — AI & Analytics (Recharts charts, dashboard widgets, Google Maps heatmap, client-side PDF/PNG export, report generation)
-- [ ] Phase 4 — Real-time & Admin (Firebase live updates, notification bell, admin forms)
+- [x] Phase 4 — Real-time & Admin (Firebase live updates, notification bell, admin CRUD forms, tenant settings, worker monitoring, infrastructure page)
 - [ ] Phase 5 — Production (Terraform, GitHub Actions CI/CD, load testing)

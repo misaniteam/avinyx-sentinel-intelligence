@@ -1,18 +1,67 @@
 "use client";
 
-import { useUsers } from "@/lib/api/hooks";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { useUsers, useDeleteUser } from "@/lib/api/hooks";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { UserDialog } from "@/components/admin/user-dialog";
+import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
+import type { User } from "@/types";
 
 export default function AdminUsersPage() {
   const { data: users, isLoading } = useUsers();
+  const deleteUser = useDeleteUser();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [selectedUser, setSelectedUser] = useState<User | undefined>();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | undefined>();
+
+  function handleAdd() {
+    setDialogMode("create");
+    setSelectedUser(undefined);
+    setDialogOpen(true);
+  }
+
+  function handleEdit(user: User) {
+    setDialogMode("edit");
+    setSelectedUser(user);
+    setDialogOpen(true);
+  }
+
+  function handleDeleteClick(user: User) {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  }
+
+  async function handleDeleteConfirm() {
+    if (!userToDelete) return;
+    try {
+      await deleteUser.mutateAsync(userToDelete.id);
+      toast.success("User deleted successfully");
+      setDeleteDialogOpen(false);
+      setUserToDelete(undefined);
+    } catch {
+      toast.error("Failed to delete user");
+    }
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Users</h1>
-        <Button><Plus className="mr-2 h-4 w-4" /> Add User</Button>
+        <Button onClick={handleAdd}>
+          <Plus className="mr-2 h-4 w-4" /> Add User
+        </Button>
       </div>
       <Card>
         <CardContent className="p-0">
@@ -23,6 +72,7 @@ export default function AdminUsersPage() {
                 <th className="p-3 text-left font-medium">Email</th>
                 <th className="p-3 text-left font-medium">Roles</th>
                 <th className="p-3 text-left font-medium">Status</th>
+                <th className="p-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -30,21 +80,74 @@ export default function AdminUsersPage() {
                 <tr key={user.id} className="border-b">
                   <td className="p-3">{user.full_name}</td>
                   <td className="p-3">{user.email}</td>
-                  <td className="p-3">{user.roles.map((r) => r.name).join(", ") || "—"}</td>
                   <td className="p-3">
-                    <span className={`rounded-full px-2 py-1 text-xs ${user.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                    {user.roles.map((r) => r.name).join(", ") || "\u2014"}
+                  </td>
+                  <td className="p-3">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs ${
+                        user.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
                       {user.is_active ? "Active" : "Inactive"}
                     </span>
+                  </td>
+                  <td className="p-3 text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(user)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteClick(user)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </td>
                 </tr>
               ))}
               {(!users || users.length === 0) && (
-                <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">No users found</td></tr>
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="p-6 text-center text-muted-foreground"
+                  >
+                    No users found
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
         </CardContent>
       </Card>
+
+      <UserDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        mode={dialogMode}
+        user={selectedUser}
+      />
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete User"
+        description={`Are you sure you want to delete "${userToDelete?.full_name}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        isPending={deleteUser.isPending}
+      />
     </div>
   );
 }

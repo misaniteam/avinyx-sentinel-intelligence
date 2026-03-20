@@ -2,7 +2,7 @@ import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sentinel_shared.config import get_settings
-from routers import auth_router, users_router, roles_router
+from routers import auth_router, users_router, roles_router, settings_router
 
 logger = structlog.get_logger()
 
@@ -16,6 +16,7 @@ app = FastAPI(title="Auth Service", lifespan=lifespan)
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(roles_router, prefix="/roles", tags=["roles"])
+app.include_router(settings_router, prefix="/auth/tenant-settings", tags=["settings"])
 
 @app.get("/health")
 async def health():

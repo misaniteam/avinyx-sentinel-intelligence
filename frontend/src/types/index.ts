@@ -133,3 +133,36 @@ export interface ReportDownloadResponse {
   download_url: string;
   expires_in: number;
 }
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  metadata: Record<string, unknown>;
+  read: boolean;
+  created_at: string;
+  created_by: string;
+}
+
+export interface WorkerStatus {
+  worker_run_id: string;
+  tenant_id: string;
+  platform: string;
+  status: "running" | "completed" | "failed";
+  items_fetched: number;
+  started_at: string;
+  updated_at: string;
+  error?: string;
+}
+
+export interface TenantOnboardRequest {
+  tenant: {
+    name: string;
+    slug: string;
+    settings?: Record<string, unknown>;
+  };
+  admin_email: string;
+  admin_password: string;
+  admin_name: string;
+}

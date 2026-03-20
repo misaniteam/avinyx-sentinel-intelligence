@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "sentinel": {
+      "workers": {
+        "$tenant_id": {
+          ".read": false,
+          ".write": false
+        }
+      },
+      "notifications": {
+        "$tenant_id": {
+          ".read": false,
+          ".write": false
+        }
+      }
+    },
+    ".read": false,
+    ".write": false
+  }
+}

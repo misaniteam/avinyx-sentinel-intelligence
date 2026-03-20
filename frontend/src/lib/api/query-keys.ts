@@ -46,4 +46,10 @@ export const queryKeys = {
     topTopics: (limit?: number, dateFrom?: string, dateTo?: string) => ['analytics', 'top-topics', limit, dateFrom, dateTo] as const,
     engagement: (period?: string, dateFrom?: string, dateTo?: string) => ['analytics', 'engagement', period, dateFrom, dateTo] as const,
   },
+  notifications: {
+    all: ["notifications"] as const,
+  },
+  settings: {
+    tenant: (tenantId: string) => ["settings", tenantId] as const,
+  },
 };
