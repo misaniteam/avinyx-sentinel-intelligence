@@ -18,7 +18,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │   └── sentinel_shared/
 │       ├── models/           # SQLAlchemy models (10 models)
 │       ├── schemas/          # Pydantic request/response schemas
-│       ├── auth/             # JWT, password hashing, FastAPI RBAC dependencies
+│       ├── auth/             # JWT, bcrypt password hashing, FastAPI RBAC dependencies
 │       ├── database/         # Async session, tenant context filtering
 │       ├── messaging/        # SQS client
 │       ├── ai/               # Provider factory + Claude/OpenAI implementations
@@ -61,7 +61,7 @@ make build                 # Build Docker images
 make logs                  # Tail all service logs
 make migrate               # Run alembic upgrade head
 make migrate-create m="x"  # Generate new Alembic migration
-make seed                  # Create default super admin
+make seed                  # Create default super admin (admin@sentinel.dev / changeme123)
 make test                  # Run backend + frontend tests
 make lint                  # ruff + eslint
 make format                # ruff format + prettier
@@ -109,6 +109,8 @@ All frontend requests go through `api-gateway` at `/api/*`:
 - `/api/campaigns/*` → campaign-service
 - `/api/notifications/*` → notification-service
 
+**Proxy path formula:** The gateway strips `/api` from the prefix and concatenates `{service_prefix}{remaining_path}`. For example, `/api/analytics/dashboard/summary` → `http://analytics-service:8005/analytics/dashboard/summary`. Each service's router prefixes must include the service namespace (e.g., analytics-service mounts routers at `/analytics/dashboard`, `/analytics/platforms`, etc.).
+
 Public (no auth): `/api/auth/login`, `/api/auth/setup`, `/api/auth/setup-status`, `/api/auth/refresh`
 
 ## Async Pipeline
@@ -140,7 +142,7 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - **Real-time:** Firebase RTDB hooks (`lib/firebase/hooks.ts`) for worker status and notifications
 - **Query keys:** Centralized in `lib/api/query-keys.ts`
 - **HTTP client:** `ky` with auto Bearer token injection and 401 redirect (`lib/api/client.ts`)
-- **Access token:** Held in memory (never localStorage); refresh token via httpOnly cookie (TODO)
+- **Access token:** Held in memory + `sessionStorage` (key: `sentinel_access_token`) for persistence across page reloads; refresh token via httpOnly cookie (TODO)
 
 ## Component Patterns
 
@@ -186,12 +188,12 @@ All chart components live in `components/charts/` and are **pure presentational*
 
 ## Analytics Service Endpoints
 
-Beyond the original dashboard/heatmap/reports routers:
-- `GET /platforms/breakdown` — Media item count grouped by platform
-- `GET /platforms/engagement-over-time` — Likes/shares/comments aggregated by period
-- `GET /topics/top` — Top N topics via `jsonb_array_elements_text` SQL aggregation
-- `POST /reports/{id}/generate` — Triggers report generation (409 if already generating)
-- `GET /reports/{id}/download` — Returns presigned S3 URL (10-minute expiry)
+Beyond the original dashboard/heatmap/reports routers (all prefixed with `/analytics`):
+- `GET /analytics/platforms/breakdown` — Media item count grouped by platform
+- `GET /analytics/platforms/engagement-over-time` — Likes/shares/comments aggregated by period
+- `GET /analytics/topics/top` — Top N topics via `jsonb_array_elements_text` SQL aggregation
+- `POST /analytics/reports/{id}/generate` — Triggers report generation (409 if already generating)
+- `GET /analytics/reports/{id}/download` — Returns presigned S3 URL (10-minute expiry)
 
 All analytics endpoints require `analytics:read` or `reports:read/write` permissions and use `get_current_tenant_required` (rejects tenant_id=None).
 
@@ -209,8 +211,8 @@ All analytics endpoints require `analytics:read` or `reports:read/write` permiss
 - **Backend endpoints** (`notification-service`):
   - `POST /notifications/send` — Push to Firebase RTDB (requires `notifications:write`)
   - `GET /notifications/` — List recent notifications from RTDB
-  - `PATCH /notifications/{id}/read` — Mark single notification read (validated against path traversal)
-  - `POST /notifications/mark-all-read` — Mark all tenant notifications read
+  - `PATCH /notifications/notifications/{id}/read` — Mark single notification read (validated against path traversal)
+  - `POST /notifications/notifications/mark-all-read` — Mark all tenant notifications read
 - **Frontend:** `NotificationPanel` in topbar popover, bell icon with unread count badge
 - Notification types: `alert`, `info`, `warning` (enforced via Literal type)
 - Input limits: title max 200 chars, message max 2000 chars

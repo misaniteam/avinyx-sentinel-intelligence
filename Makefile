@@ -1,5 +1,8 @@
-.PHONY: up down build logs test test-backend test-frontend migrate migrate-create seed lint format clean
+.PHONY: up down build logs up-prod down-prod build-prod logs-prod test test-backend test-frontend migrate migrate-create seed lint format clean
 
+COMPOSE_PROD := docker compose -f docker-compose.yml -f docker-compose.prod.yml
+
+# Development (uses docker-compose.override.yml automatically)
 up:
 	docker compose up -d
 
@@ -11,6 +14,19 @@ build:
 
 logs:
 	docker compose logs -f
+
+# Production
+up-prod:
+	$(COMPOSE_PROD) up -d
+
+down-prod:
+	$(COMPOSE_PROD) down
+
+build-prod:
+	$(COMPOSE_PROD) build
+
+logs-prod:
+	$(COMPOSE_PROD) logs -f
 
 test: test-backend test-frontend
 
@@ -29,14 +45,14 @@ test-frontend:
 	cd frontend && npm test
 
 migrate:
-	alembic upgrade head
+	docker compose exec -e DATABASE_URL_SYNC=postgresql://sentinel:sentinel@postgres:5432/sentinel auth-service alembic -c /app/alembic.ini upgrade head
 
 migrate-create:
 	@read -p "Migration message: " msg; \
-	alembic revision --autogenerate -m "$$msg"
+	docker compose exec -e DATABASE_URL_SYNC=postgresql://sentinel:sentinel@postgres:5432/sentinel auth-service alembic -c /app/alembic.ini revision --autogenerate -m "$$msg"
 
-seed:
-	python infrastructure/scripts/seed-superadmin.py
+seed: migrate
+	docker compose exec -e DATABASE_URL=postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinel auth-service python /app/infrastructure/scripts/seed-superadmin.py
 
 lint:
 	ruff check packages/ services/

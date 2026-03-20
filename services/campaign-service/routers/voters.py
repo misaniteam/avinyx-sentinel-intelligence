@@ -172,7 +172,7 @@ async def create_voter_interaction(
         campaign_id=request.campaign_id,
         interaction_type=request.interaction_type,
         notes=request.notes,
-        metadata=request.metadata,
+        interaction_metadata=request.metadata,
         tenant_id=tenant_id,
     )
     db.add(interaction)

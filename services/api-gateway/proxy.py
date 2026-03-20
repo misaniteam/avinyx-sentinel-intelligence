@@ -35,7 +35,7 @@ PUBLIC_PATHS = {
     retry=retry_if_exception_type(httpx.ConnectError),
 )
 async def proxy_request(method: str, url: str, headers: dict, content: bytes, params: dict) -> httpx.Response:
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
         return await client.request(
             method=method,
             url=url,

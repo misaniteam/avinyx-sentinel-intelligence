@@ -12,9 +12,9 @@ async def lifespan(app: FastAPI):
     logger.info("campaign-service shutting down")
 
 app = FastAPI(title="Campaign Service", lifespan=lifespan)
-app.include_router(campaigns_router, prefix="/campaigns", tags=["campaigns"])
-app.include_router(voters_router, prefix="/voters", tags=["voters"])
-app.include_router(media_feeds_router, prefix="/media-feeds", tags=["media-feeds"])
+app.include_router(campaigns_router, prefix="/campaigns/campaigns", tags=["campaigns"])
+app.include_router(voters_router, prefix="/campaigns/voters", tags=["voters"])
+app.include_router(media_feeds_router, prefix="/campaigns/media-feeds", tags=["media-feeds"])
 
 @app.get("/health")
 async def health():

@@ -113,7 +113,7 @@ ingestion-service → SQS → ingestion-worker → SQS → ai-pipeline → SQS �
 
    ```bash
    make seed
-   # Creates admin@sentinel.local / changeme123
+   # Creates admin@sentinel.dev / changeme123
    ```
 
 6. **Open the app**
@@ -168,7 +168,7 @@ avinyx-sentinel-intelligence/
 │       └── types/            # TypeScript interfaces
 │
 ├── migrations/               # Alembic database migrations
-├── infrastructure/           # Terraform (TODO), LocalStack init, seed scripts
+├── infrastructure/           # Terraform IaC, LocalStack init, seed scripts
 ├── database.rules.json       # Firebase RTDB security rules
 ├── docker-compose.yml        # Local dev (12 containers)
 └── Makefile                  # Dev workflow commands

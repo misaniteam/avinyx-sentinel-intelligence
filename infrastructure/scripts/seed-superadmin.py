@@ -5,6 +5,8 @@ import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages", "shared"))
+# Also check /packages/shared (Docker container layout)
+sys.path.insert(0, "/packages/shared")
 
 from sentinel_shared.database.session import get_engine, get_session_factory
 from sentinel_shared.models.user import User
@@ -23,7 +25,7 @@ async def seed():
             return
 
         user = User(
-            email="admin@sentinel.local",
+            email="admin@sentinel.dev",
             password_hash=hash_password("changeme123"),
             full_name="Super Admin",
             is_super_admin=True,
@@ -31,7 +33,7 @@ async def seed():
         )
         session.add(user)
         await session.commit()
-        print(f"Super admin created: admin@sentinel.local")
+        print(f"Super admin created: admin@sentinel.dev")
 
 
 if __name__ == "__main__":

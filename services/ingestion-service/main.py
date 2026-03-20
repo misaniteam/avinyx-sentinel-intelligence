@@ -13,7 +13,7 @@ async def lifespan(app: FastAPI):
     logger.info("ingestion-service shutting down")
 
 app = FastAPI(title="Ingestion Service", lifespan=lifespan)
-app.include_router(data_sources_router, prefix="/data-sources", tags=["data-sources"])
+app.include_router(data_sources_router, prefix="/ingestion/data-sources", tags=["data-sources"])
 
 @app.get("/health")
 async def health():

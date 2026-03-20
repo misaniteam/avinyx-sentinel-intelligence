@@ -12,11 +12,11 @@ async def lifespan(app: FastAPI):
     logger.info("analytics-service shutting down")
 
 app = FastAPI(title="Analytics Service", lifespan=lifespan)
-app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
-app.include_router(heatmap_router, prefix="/heatmap", tags=["heatmap"])
-app.include_router(reports_router, prefix="/reports", tags=["reports"])
-app.include_router(platforms_router, prefix="/platforms", tags=["platforms"])
-app.include_router(topics_router, prefix="/topics", tags=["topics"])
+app.include_router(dashboard_router, prefix="/analytics/dashboard", tags=["dashboard"])
+app.include_router(heatmap_router, prefix="/analytics/heatmap", tags=["heatmap"])
+app.include_router(reports_router, prefix="/analytics/reports", tags=["reports"])
+app.include_router(platforms_router, prefix="/analytics/platforms", tags=["platforms"])
+app.include_router(topics_router, prefix="/analytics/topics", tags=["topics"])
 
 @app.get("/health")
 async def health():

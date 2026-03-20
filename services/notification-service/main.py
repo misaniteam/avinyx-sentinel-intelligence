@@ -75,7 +75,7 @@ async def list_notifications(
     return {"notifications": notifications}
 
 
-@app.patch("/notifications/{notification_id}/read", dependencies=[Depends(require_permissions("dashboard:view"))])
+@app.patch("/notifications/notifications/{notification_id}/read", dependencies=[Depends(require_permissions("dashboard:view"))])
 async def mark_notification_read(
     notification_id: str,
     tenant_id: str = Depends(get_current_tenant_required),
@@ -94,7 +94,7 @@ async def mark_notification_read(
     return {"status": "ok"}
 
 
-@app.post("/notifications/mark-all-read", dependencies=[Depends(require_permissions("dashboard:view"))])
+@app.post("/notifications/notifications/mark-all-read", dependencies=[Depends(require_permissions("dashboard:view"))])
 async def mark_all_read(
     tenant_id: str = Depends(get_current_tenant_required),
 ):

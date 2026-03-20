@@ -30,4 +30,4 @@ class VoterInteraction(Base, TimestampMixin, TenantMixin):
     campaign_id = Column(UUID(as_uuid=True), ForeignKey("campaigns.id", ondelete="SET NULL"), nullable=True, index=True)
     interaction_type = Column(String(50), nullable=False)  # call, visit, email, sms, event
     notes = Column(Text, nullable=True)
-    metadata = Column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
+    interaction_metadata = Column("metadata", JSONB, default=dict, server_default=text("'{}'::jsonb"))

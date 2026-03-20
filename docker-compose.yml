@@ -1,5 +1,3 @@
-version: "3.9"
-
 x-backend-common: &backend-common
   env_file: .env
   depends_on:
@@ -7,15 +5,11 @@ x-backend-common: &backend-common
       condition: service_healthy
     redis:
       condition: service_started
-  volumes:
-    - ./packages/shared:/app/packages/shared
   restart: unless-stopped
 
 services:
   postgres:
     image: postgres:16
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_USER: sentinel
       POSTGRES_PASSWORD: sentinel
@@ -30,22 +24,8 @@ services:
 
   redis:
     image: docker.io/library/redis:7
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
-    restart: unless-stopped
-
-  localstack:
-    image: localstack/localstack
-    ports:
-      - "4566:4566"
-    environment:
-      SERVICES: sqs,sns,s3
-      DEFAULT_REGION: us-east-1
-    volumes:
-      - ./infrastructure/scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
-      - localstack_data:/var/lib/localstack
     restart: unless-stopped
 
   api-gateway:
@@ -53,111 +33,60 @@ services:
     build:
       context: .
       dockerfile: services/api-gateway/Dockerfile
-    ports:
-      - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      localstack:
-        condition: service_started
 
   auth-service:
     <<: *backend-common
     build:
       context: .
       dockerfile: services/auth-service/Dockerfile
-    ports:
-      - "8001:8001"
 
   tenant-service:
     <<: *backend-common
     build:
       context: .
       dockerfile: services/tenant-service/Dockerfile
-    ports:
-      - "8002:8002"
 
   ingestion-service:
     <<: *backend-common
     build:
       context: .
       dockerfile: services/ingestion-service/Dockerfile
-    ports:
-      - "8003:8003"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      localstack:
-        condition: service_started
 
   ingestion-worker:
     <<: *backend-common
     build:
       context: .
       dockerfile: services/ingestion-worker/Dockerfile
-    command: python -m worker
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      localstack:
-        condition: service_started
+    command: python main.py
 
   ai-pipeline-service:
     <<: *backend-common
     build:
       context: .
       dockerfile: services/ai-pipeline-service/Dockerfile
-    command: python -m worker
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      localstack:
-        condition: service_started
+    command: python main.py
 
   analytics-service:
     <<: *backend-common
     build:
       context: .
       dockerfile: services/analytics-service/Dockerfile
-    ports:
-      - "8005:8005"
 
   campaign-service:
     <<: *backend-common
     build:
       context: .
       dockerfile: services/campaign-service/Dockerfile
-    ports:
-      - "8006:8006"
 
   notification-service:
     <<: *backend-common
     build:
       context: .
       dockerfile: services/notification-service/Dockerfile
-    ports:
-      - "8007:8007"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      localstack:
-        condition: service_started
 
   frontend:
     build:
       context: ./frontend
-    ports:
-      - "3000:3000"
     env_file: .env
     depends_on:
       - api-gateway
@@ -166,4 +95,3 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  localstack_data:

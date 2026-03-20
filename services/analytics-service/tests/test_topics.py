@@ -17,7 +17,7 @@ class TestTopTopics:
                 FakeRow(topic="healthcare", count=35),
             ])
         )
-        resp = client.get("/topics/top")
+        resp = client.get("/analytics/topics/top")
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 2
@@ -26,27 +26,27 @@ class TestTopTopics:
 
     def test_returns_empty_list_when_no_data(self, client, fake_db):
         fake_db.set_execute_result(FakeDBResult(rows=[]))
-        resp = client.get("/topics/top")
+        resp = client.get("/analytics/topics/top")
         assert resp.status_code == 200
         assert resp.json() == []
 
     def test_limit_parameter_accepted(self, client, fake_db):
         fake_db.set_execute_result(FakeDBResult(rows=[]))
-        resp = client.get("/topics/top", params={"limit": 5})
+        resp = client.get("/analytics/topics/top", params={"limit": 5})
         assert resp.status_code == 200
 
     def test_limit_validation_min(self, client, fake_db):
-        resp = client.get("/topics/top", params={"limit": 0})
+        resp = client.get("/analytics/topics/top", params={"limit": 0})
         assert resp.status_code == 422
 
     def test_limit_validation_max(self, client, fake_db):
-        resp = client.get("/topics/top", params={"limit": 200})
+        resp = client.get("/analytics/topics/top", params={"limit": 200})
         assert resp.status_code == 422
 
     def test_accepts_date_filters(self, client, fake_db):
         fake_db.set_execute_result(FakeDBResult(rows=[]))
         resp = client.get(
-            "/topics/top",
+            "/analytics/topics/top",
             params={"date_from": "2025-06-01T00:00:00", "date_to": "2025-06-30T23:59:59"},
         )
         assert resp.status_code == 200

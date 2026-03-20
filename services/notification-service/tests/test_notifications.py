@@ -70,7 +70,7 @@ class TestMarkNotificationRead:
     """PATCH /notifications/{notification_id}/read"""
 
     def test_rejects_ids_with_slash(self, client):
-        resp = client.patch("/notifications/../../etc/passwd/read")
+        resp = client.patch("/notifications/notifications/../../etc/passwd/read")
         # FastAPI might match this differently; the key is that
         # the regex check in the handler rejects path-traversal IDs.
         # Depending on routing, this could be 400 or 404.
@@ -79,19 +79,19 @@ class TestMarkNotificationRead:
     def test_rejects_ids_with_dots(self, client):
         with patch("main.get_firebase_app") as mock_app:
             mock_app.return_value = None
-            resp = client.patch("/notifications/some..bad..id/read")
+            resp = client.patch("/notifications/notifications/some..bad..id/read")
             # The handler regex only allows [-A-Za-z0-9_]
             assert resp.status_code == 400
 
     def test_accepts_valid_firebase_push_key(self, client):
         with patch("main.get_firebase_app") as mock_app:
             mock_app.return_value = None
-            resp = client.patch("/notifications/-NxAbC123_def/read")
+            resp = client.patch("/notifications/notifications/-NxAbC123_def/read")
             # Firebase not configured returns 503, but ID validation passed
             assert resp.status_code == 503
 
     def test_accepts_alphanumeric_id(self, client):
         with patch("main.get_firebase_app") as mock_app:
             mock_app.return_value = None
-            resp = client.patch("/notifications/abc123/read")
+            resp = client.patch("/notifications/notifications/abc123/read")
             assert resp.status_code == 503
