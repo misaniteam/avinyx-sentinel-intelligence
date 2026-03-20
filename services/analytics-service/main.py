@@ -1,7 +1,7 @@
 import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from routers import dashboard_router, heatmap_router, reports_router
+from routers import dashboard_router, heatmap_router, reports_router, platforms_router, topics_router
 
 logger = structlog.get_logger()
 
@@ -15,6 +15,8 @@ app = FastAPI(title="Analytics Service", lifespan=lifespan)
 app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(heatmap_router, prefix="/heatmap", tags=["heatmap"])
 app.include_router(reports_router, prefix="/reports", tags=["reports"])
+app.include_router(platforms_router, prefix="/platforms", tags=["platforms"])
+app.include_router(topics_router, prefix="/topics", tags=["topics"])
 
 @app.get("/health")
 async def health():

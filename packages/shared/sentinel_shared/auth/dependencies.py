@@ -32,7 +32,20 @@ def require_super_admin(user: dict = Depends(get_current_user)) -> dict:
 def require_permissions(*permissions: str):
     def checker(user: dict = Depends(get_current_user)) -> dict:
         user_permissions = set(user.get("permissions", []))
+        if "*" in user_permissions:
+            return user
         if not all(p in user_permissions for p in permissions):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return user
     return checker
+
+
+async def get_current_tenant_required(
+    tenant_id: str | None = Depends(get_current_tenant),
+) -> str:
+    if tenant_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Tenant context required. Super admins must specify a tenant.",
+        )
+    return tenant_id

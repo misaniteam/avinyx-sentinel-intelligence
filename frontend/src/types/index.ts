@@ -93,6 +93,23 @@ export interface SentimentTrend {
   total_count: number;
 }
 
+export interface PlatformBreakdown {
+  platform: string;
+  count: number;
+}
+
+export interface TopicCount {
+  topic: string;
+  count: number;
+}
+
+export interface EngagementPoint {
+  period_start: string;
+  likes: number;
+  shares: number;
+  comments: number;
+}
+
 export interface HeatmapPoint {
   lat: number;
   lng: number;
@@ -106,4 +123,13 @@ export interface Report {
   format: string;
   status: string;
   generated_file: string | null;
+}
+
+export interface ReportGenerateResponse {
+  status: string;
+}
+
+export interface ReportDownloadResponse {
+  download_url: string;
+  expires_in: number;
 }

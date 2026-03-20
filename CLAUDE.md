@@ -32,7 +32,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │   ├── ingestion-service/    # Port 8003 — Data source CRUD, scheduler
 │   ├── ingestion-worker/     # SQS consumer — connector plugin pattern
 │   ├── ai-pipeline-service/  # SQS consumer — sentiment/topic/entity analysis
-│   ├── analytics-service/    # Port 8005 — Dashboard, heatmap, reports
+│   ├── analytics-service/    # Port 8005 — Dashboard, heatmap, reports, platforms, topics
 │   ├── campaign-service/     # Port 8006 — Campaigns, voters, media feeds
 │   └── notification-service/ # Port 8007 — Firebase notifications
 │
@@ -40,8 +40,9 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │   └── src/
 │       ├── app/(auth)/       # Login, setup, forgot-password
 │       ├── app/(platform)/   # Authenticated shell — all main pages
-│       ├── components/       # ui/ (Shadcn), layout/, shared/, admin/
-│       ├── lib/              # api/ (ky + hooks), auth/, tenant/, rbac/
+│       ├── app/api/export/   # Server-side PDF export route (Puppeteer)
+│       ├── components/       # ui/ (Shadcn), layout/, shared/, charts/, dashboard/, heatmap/
+│       ├── lib/              # api/ (ky + hooks), auth/, tenant/, rbac/, export/
 │       └── types/            # TypeScript interfaces
 │
 ├── migrations/               # Alembic (env.py imports sentinel_shared models)
@@ -131,7 +132,7 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 
 ## Frontend State Management
 
-- **Server state:** TanStack Query v5 — all API data flows through `lib/api/hooks.ts`
+- **Server state:** TanStack Query v5 — all API data flows through `lib/api/hooks.ts` and `lib/api/hooks-analytics.ts`
 - **Client state:** 3 React contexts composed in root: AuthProvider → TenantProvider → RBACProvider
 - **Query keys:** Centralized in `lib/api/query-keys.ts`
 - **HTTP client:** `ky` with auto Bearer token injection and 401 redirect (`lib/api/client.ts`)
@@ -142,16 +143,71 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - `<PermissionGate permission="voters:write">` — RBAC component-level gating
 - `<AuthGuard>` — Redirects to /login if unauthenticated (used in platform layout)
 - `<AppShell>` — Sidebar + Topbar + main content area
+- `<ExportableContainer title="...">` — Wraps content with PDF/PNG export buttons
 - Sidebar items auto-filtered by user permissions
+
+## Charts & Visualizations
+
+All chart components live in `components/charts/` and are **pure presentational** — they accept typed data props, never call hooks internally. Data fetching happens at the page or widget level.
+
+- `SentimentLineChart` — Multi-platform line chart, Y-axis [-1, 1]
+- `PlatformPieChart` — Media item counts per platform
+- `TopTopicsBarChart` — Horizontal bar chart, sorted desc
+- `EngagementAreaChart` — Stacked area (likes/shares/comments)
+- `SentimentDistributionPie` — Donut chart (positive/negative/neutral)
+- Shared colors and styles in `chart-theme.ts`
+
+## Dashboard Widget System
+
+- `react-grid-layout` (`<ResponsiveGridLayout>`) for drag-drop/resize
+- Widget registry in `components/dashboard/widget-registry.ts` maps type strings to lazy-loaded components
+- Layout persisted to `localStorage` per user (key: `sentinel-dashboard-layout`)
+- Default layout: 6 widgets (summary stats, sentiment trend, platform breakdown, top topics, engagement, sentiment distribution)
+- Each widget wrapped in `WidgetContainer` with Suspense, ErrorBoundary, drag handle, and remove button
+- Add/remove/reset widgets via UI controls
+
+## Google Maps Heatmap
+
+- Uses `@vis.gl/react-google-maps` with `visualization` library
+- Requires `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` env var (shows warning if missing)
+- Components: `MapProvider` (APIProvider wrapper), `SentimentHeatmap` (map + heatmap layer), `HeatmapControls` (sentiment filter, date range)
+- Default center: India (20.59, 78.96), zoom 5
+
+## Export System
+
+- **Client-side:** `html2canvas-pro` + `jsPDF` via `useExport()` hook — captures DOM to PDF/PNG
+- `ExportableContainer` component wraps content with export buttons (auto-hidden during capture via `data-export-hide`)
+- Pure utilities in `lib/export/client-export.ts`: `captureElement`, `canvasToPdf`, `canvasToPng`, `downloadBlob`
+
+## Analytics Service Endpoints
+
+Beyond the original dashboard/heatmap/reports routers:
+- `GET /platforms/breakdown` — Media item count grouped by platform
+- `GET /platforms/engagement-over-time` — Likes/shares/comments aggregated by period
+- `GET /topics/top` — Top N topics via `jsonb_array_elements_text` SQL aggregation
+- `POST /reports/{id}/generate` — Triggers report generation (409 if already generating)
+- `GET /reports/{id}/download` — Returns presigned S3 URL (10-minute expiry)
+
+All analytics endpoints require `analytics:read` or `reports:read/write` permissions and use `get_current_tenant_required` (rejects tenant_id=None).
+
+## Auth Dependencies
+
+- `get_current_user` — Extracts user from JWT Bearer token
+- `get_current_tenant` — Returns tenant_id from JWT (None for super admin)
+- `get_current_tenant_required` — Like `get_current_tenant` but raises 400 if None (use for tenant-scoped endpoints)
+- `require_super_admin` — Rejects non-super-admin users
+- `require_permissions("perm1", "perm2")` — Checks user has all listed permissions; wildcard `*` grants all
 
 ## Environment
 
 Copy `.env.example` to `.env` for local dev. LocalStack provides SQS/SNS/S3 at `localhost:4566`.
 
+Required for heatmap: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+
 ## Implementation Status
 
 - [x] Phase 1 — Foundation (monorepo, shared package, auth, gateway, tenants, frontend shell)
 - [x] Phase 2 — Core Features (campaigns, voters, media feeds, ingestion, dashboard pages)
-- [ ] Phase 3 — AI & Analytics (Recharts charts, Google Maps heatmap, PDF export)
+- [x] Phase 3 — AI & Analytics (Recharts charts, dashboard widgets, Google Maps heatmap, client-side PDF/PNG export, report generation)
 - [ ] Phase 4 — Real-time & Admin (Firebase live updates, notification bell, admin forms)
 - [ ] Phase 5 — Production (Terraform, GitHub Actions CI/CD, load testing)

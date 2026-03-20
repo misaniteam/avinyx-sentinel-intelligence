@@ -19,10 +19,17 @@ export function useSentimentTrends(period: string = "daily") {
 }
 
 // Heatmap
-export function useHeatmapData(filter?: string) {
+export function useHeatmapData(filter?: string, dateFrom?: string, dateTo?: string) {
   return useQuery({
-    queryKey: queryKeys.heatmap.data(filter),
-    queryFn: () => api.get(`api/analytics/heatmap/data${filter ? `?sentiment_filter=${filter}` : ""}`).json<HeatmapPoint[]>(),
+    queryKey: queryKeys.heatmap.data(filter, dateFrom, dateTo),
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (filter) params.set("sentiment_filter", filter);
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
+      const qs = params.toString();
+      return api.get(`api/analytics/heatmap/data${qs ? `?${qs}` : ""}`).json<HeatmapPoint[]>();
+    },
   });
 }
 

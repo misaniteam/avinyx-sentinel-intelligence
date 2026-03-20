@@ -31,7 +31,7 @@ export const queryKeys = {
     trends: (period: string) => ["dashboard", "trends", period] as const,
   },
   heatmap: {
-    data: (filter?: string) => ["heatmap", filter] as const,
+    data: (filter?: string, dateFrom?: string, dateTo?: string) => ["heatmap", filter, dateFrom, dateTo] as const,
   },
   dataSources: {
     all: ["data-sources"] as const,
@@ -40,5 +40,10 @@ export const queryKeys = {
   reports: {
     all: ["reports"] as const,
     detail: (id: string) => ["reports", id] as const,
+  },
+  analytics: {
+    platformBreakdown: (dateFrom?: string, dateTo?: string) => ['analytics', 'platform-breakdown', dateFrom, dateTo] as const,
+    topTopics: (limit?: number, dateFrom?: string, dateTo?: string) => ['analytics', 'top-topics', limit, dateFrom, dateTo] as const,
+    engagement: (period?: string, dateFrom?: string, dateTo?: string) => ['analytics', 'engagement', period, dateFrom, dateTo] as const,
   },
 };
