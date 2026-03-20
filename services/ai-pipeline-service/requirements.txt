@@ -1,0 +1,1 @@
+sentinel-shared @ file:///${PWD}/../../packages/shared

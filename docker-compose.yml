@@ -1,0 +1,160 @@
+version: "3.9"
+
+x-backend-common: &backend-common
+  env_file: .env
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_started
+  volumes:
+    - ./packages/shared:/app/packages/shared
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinel
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: sqs,sns,s3
+      DEFAULT_REGION: us-east-1
+    volumes:
+      - ./infrastructure/scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
+      - localstack_data:/var/lib/localstack
+    restart: unless-stopped
+
+  api-gateway:
+    <<: *backend-common
+    build:
+      context: ./services/api-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      localstack:
+        condition: service_started
+
+  auth-service:
+    <<: *backend-common
+    build:
+      context: ./services/auth-service
+    ports:
+      - "8001:8001"
+
+  tenant-service:
+    <<: *backend-common
+    build:
+      context: ./services/tenant-service
+    ports:
+      - "8002:8002"
+
+  ingestion-service:
+    <<: *backend-common
+    build:
+      context: ./services/ingestion-service
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      localstack:
+        condition: service_started
+
+  ingestion-worker:
+    <<: *backend-common
+    build:
+      context: ./services/ingestion-service
+    command: python -m worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      localstack:
+        condition: service_started
+
+  ai-pipeline-service:
+    <<: *backend-common
+    build:
+      context: ./services/ai-pipeline-service
+    command: python -m worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      localstack:
+        condition: service_started
+
+  analytics-service:
+    <<: *backend-common
+    build:
+      context: ./services/analytics-service
+    ports:
+      - "8005:8005"
+
+  campaign-service:
+    <<: *backend-common
+    build:
+      context: ./services/campaign-service
+    ports:
+      - "8006:8006"
+
+  notification-service:
+    <<: *backend-common
+    build:
+      context: ./services/notification-service
+    ports:
+      - "8007:8007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      localstack:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    env_file: .env
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  localstack_data:
