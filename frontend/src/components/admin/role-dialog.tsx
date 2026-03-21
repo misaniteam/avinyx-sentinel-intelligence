@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -78,8 +79,13 @@ export function RoleDialog({ open, onOpenChange, mode, role }: RoleDialogProps) 
         toast.success("Role updated successfully");
       }
       onOpenChange(false);
-    } catch {
-      toast.error(isCreate ? "Failed to create role" : "Failed to update role");
+    } catch (error: unknown) {
+      const detail = (error as { response?: { status?: number } })?.response?.status;
+      if (detail === 409) {
+        toast.error("A role with this name already exists");
+      } else {
+        toast.error(isCreate ? "Failed to create role" : "Failed to update role");
+      }
     }
   }
 
@@ -90,6 +96,11 @@ export function RoleDialog({ open, onOpenChange, mode, role }: RoleDialogProps) 
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isCreate ? "Create Role" : "Edit Role"}</DialogTitle>
+          <DialogDescription>
+            {isCreate
+              ? "Create a new role with specific permissions for your team."
+              : "Update the role name, description, or permissions."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">

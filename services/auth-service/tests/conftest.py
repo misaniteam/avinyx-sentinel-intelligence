@@ -109,6 +109,9 @@ class FakeDBResult:
     def scalar_one_or_none(self):
         return self._scalar
 
+    def scalar_one(self):
+        return self._scalar
+
 
 class FakeDB:
     """Async mock for SQLAlchemy AsyncSession."""
@@ -127,6 +130,9 @@ class FakeDB:
         pass
 
     async def refresh(self, obj):
+        pass
+
+    async def delete(self, obj):
         pass
 
     def set_execute_result(self, result: FakeDBResult):

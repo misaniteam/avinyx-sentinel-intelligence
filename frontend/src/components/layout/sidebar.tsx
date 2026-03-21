@@ -13,6 +13,7 @@ import {
   BarChart3,
   FileText,
   Megaphone,
+  Database,
   Settings,
   Shield,
   Building2,
@@ -34,6 +35,7 @@ const tenantNavItems: NavItem[] = [
   { title: "Analytics", href: "/analytics", icon: BarChart3, permission: "analytics:read" },
   { title: "Reports", href: "/reports", icon: FileText, permission: "reports:read" },
   { title: "Campaigns", href: "/campaigns", icon: Megaphone, permission: "campaigns:read" },
+  { title: "Data Sources", href: "/admin/data-sources", icon: Database, permission: "data_sources:read" },
   { title: "Admin", href: "/admin/users", icon: Settings, permission: "users:read" },
 ];
 

@@ -127,7 +127,18 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 1. Create `services/ingestion-worker/handlers/{platform}_handler.py`
 2. Implement `BaseConnectorHandler.fetch(config, since) -> list[RawMediaItem]`
 3. Register in `handlers/__init__.py` registry dict
-4. No changes needed to the worker orchestrator
+4. Add platform to `ALLOWED_PLATFORMS` and `PLATFORM_CONFIG_SCHEMA` in `services/ingestion-service/routers/data_sources.py`
+5. Add platform entry in frontend `PLATFORMS` array and `getConfigFieldsForPlatform()` in `components/admin/data-source-dialog.tsx`
+6. Add platform icon/color in `platformConfig` in `app/(platform)/admin/data-sources/page.tsx`
+7. No changes needed to the worker orchestrator
+
+### Existing connectors (registered in `handlers/__init__.py`):
+- `brand24` — Brand24 API (config: `api_key`, `project_id`)
+- `youtube` — YouTube Data API v3 (config: `api_key`, `channel_ids`, `search_queries`)
+- `twitter` — Twitter/X API (config: `api_key`, `api_secret`, `bearer_token`, `search_queries`)
+- `news_rss` — RSS feed ingestion (config: `feed_urls`)
+- `news_api` — News API (config: `api_key`, `keywords`, `sources`, `language`)
+- `reddit` — Reddit API (config: `client_id`, `client_secret`, `subreddits`)
 
 ## Adding a New AI Provider
 
@@ -228,7 +239,8 @@ All admin forms follow the same dialog-based pattern:
 
 ### Admin pages with full CRUD:
 - `/admin/users` — UserDialog (create/edit), role assignment, active toggle
-- `/admin/roles` — RoleDialog (create/edit), PermissionSelect checkbox grid
+- `/admin/roles` — Table view with search, RoleDialog (create/edit), PermissionSelect with per-module select all/deselect all + global select all + "X of Y selected" counter
+- `/admin/data-sources` — Table view with platform badges/icons, DataSourceDialog (create/edit) with General + Credentials sections, per-platform config forms (password inputs for secrets, textareas for lists), active/inactive toggle, SSRF-safe URL validation
 - `/admin/settings` — AI provider form, notification prefs, general settings
 - `/admin/workers` — Live worker status cards via Firebase RTDB
 - `/super-admin/tenants` — TenantDialog (onboard/edit), suspend/activate
@@ -237,6 +249,17 @@ All admin forms follow the same dialog-based pattern:
 ### Permissions constant
 `lib/rbac/permissions.ts` — `PERMISSION_GROUPS` defines all resources and actions (12 resources). Used by `PermissionSelect` and role creation.
 
+### Backend validation patterns (established in roles + data sources):
+- **Permission allowlist:** `VALID_PERMISSIONS` frozenset in `schemas/user.py` — roles can only contain known permission strings, wildcard `*` rejected
+- **Platform allowlist:** `ALLOWED_PLATFORMS` tuple in ingestion router — data sources can only use registered platforms
+- **Config schema validation:** Per-platform required/optional key definitions in `PLATFORM_CONFIG_SCHEMA` dict — unknown keys stripped, required keys enforced on create
+- **Credential masking:** Sensitive config values (keys matching "key", "secret", "token", "password") masked to `"****"` in all GET/PATCH responses (recursive)
+- **Config merge on update:** PATCH merges incoming config with existing values, preserving credentials not included in the update
+- **SSRF protection:** Feed URLs validated for scheme (http/https only), blocked internal IPs/hostnames (localhost, 169.254.x.x, private ranges)
+- **Tenant isolation:** All tenant-scoped endpoints use `get_current_tenant_required` (rejects super admin without tenant context)
+- **Unique constraints:** Role names unique per tenant (`uq_roles_tenant_name`), data source names unique per tenant (checked in application layer)
+- **Pydantic `extra="forbid"`:** Used on create/update schemas to reject unexpected fields (mass assignment prevention)
+
 ## Tenant Settings
 
 - Stored in `tenant.settings` JSONB column, scoped by whitelisted keys: `ai`, `notifications`, `general`
@@ -244,11 +267,20 @@ All admin forms follow the same dialog-based pattern:
 - API key in `settings.ai.api_key` is masked to `"****"` in all GET/PATCH responses
 - Frontend forms: `SettingsAIForm`, `SettingsNotificationsForm`, `SettingsGeneralForm`
 
+## Data Source Management
+
+- **Backend:** `services/ingestion-service/routers/data_sources.py` — CRUD with platform validation, config schema validation, credential masking, SSRF protection
+- **Frontend page:** `/admin/data-sources` — Table view with platform badges (Brand24, YouTube, Twitter/X, News RSS, News API, Reddit), search, active/inactive status
+- **Frontend dialog:** `components/admin/data-source-dialog.tsx` — Two-section form: General (name, platform select, poll interval, active toggle) + Credentials (platform-specific fields rendered conditionally)
+- **Config handling:** API keys stored in JSONB `config` column, masked in responses, merged (not replaced) on update
+- **Supported platforms:** brand24, youtube, twitter, news_rss, news_api, reddit
+- **Adding a platform:** Update backend `ALLOWED_PLATFORMS` + `PLATFORM_CONFIG_SCHEMA`, frontend dialog `PLATFORMS` + `getConfigFieldsForPlatform()`, page `platformConfig`, and worker handler registry
+
 ## Auth Dependencies
 
 - `get_current_user` — Extracts user from JWT Bearer token
 - `get_current_tenant` — Returns tenant_id from JWT (None for super admin)
-- `get_current_tenant_required` — Like `get_current_tenant` but raises 400 if None (use for tenant-scoped endpoints)
+- `get_current_tenant_required` — Like `get_current_tenant` but raises 400 if None (use for all tenant-scoped endpoints)
 - `require_super_admin` — Rejects non-super-admin users
 - `require_permissions("perm1", "perm2")` — Checks user has all listed permissions; wildcard `*` grants all
 
@@ -294,6 +326,16 @@ terraform apply  # Or via GitHub Actions workflow_dispatch
 - **Variables:** `AWS_REGION`, `PRIVATE_SUBNETS`, `SECURITY_GROUPS`
 - **Environments:** `staging` and `production` (configure protection rules with required reviewers for production)
 
+## Alembic Migrations
+
+Migrations are baked into Docker images at build time (no volume mounts). After creating a new migration on the host:
+1. Rebuild the service: `docker compose up -d --build auth-service`
+2. Run migration: `make migrate`
+
+Current migrations:
+- `1c3a7f6385e7` — Initial schema (all tables)
+- `6e74ac702418` — Add unique constraint on `roles(tenant_id, name)`
+
 ## Implementation Status
 
 - [x] Phase 1 — Foundation (monorepo, shared package, auth, gateway, tenants, frontend shell)
@@ -301,3 +343,4 @@ terraform apply  # Or via GitHub Actions workflow_dispatch
 - [x] Phase 3 — AI & Analytics (Recharts charts, dashboard widgets, Google Maps heatmap, client-side PDF/PNG export, report generation)
 - [x] Phase 4 — Real-time & Admin (Firebase live updates, notification bell, admin CRUD forms, tenant settings, worker monitoring, infrastructure page)
 - [x] Phase 5 — Production (Terraform IaC, GitHub Actions CI/CD, Dependabot)
+- [x] Phase 6 — Admin Enhancements (roles table view with enhanced PermissionSelect, data source management page with per-platform credential forms, backend security hardening with permission/config allowlist validation, SSRF protection, credential masking)

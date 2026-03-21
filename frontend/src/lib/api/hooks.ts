@@ -86,6 +86,32 @@ export function useDataSources() {
   });
 }
 
+export function useCreateDataSource() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { platform: string; name: string; config: Record<string, unknown>; poll_interval_minutes: number }) =>
+      api.post("api/ingestion/data-sources", { json: data }).json<DataSource>(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.dataSources.all }),
+  });
+}
+
+export function useUpdateDataSource() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; config?: Record<string, unknown>; poll_interval_minutes?: number; is_active?: boolean }) =>
+      api.patch(`api/ingestion/data-sources/${id}`, { json: data }).json<DataSource>(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.dataSources.all }),
+  });
+}
+
+export function useDeleteDataSource() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`api/ingestion/data-sources/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.dataSources.all }),
+  });
+}
+
 // Reports
 export function useReports() {
   return useQuery({
