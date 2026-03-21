@@ -13,6 +13,7 @@ import {
 import { Plus, MoreHorizontal, Pencil, Ban, CheckCircle, Trash2 } from "lucide-react";
 import { TenantDialog } from "@/components/admin/tenant-dialog";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
+import { WB_CONSTITUENCY_MAP } from "@/lib/data/wb-constituencies";
 import { toast } from "sonner";
 import type { Tenant } from "@/types";
 
@@ -80,6 +81,7 @@ export default function SuperAdminTenantsPage() {
               <tr className="border-b bg-muted/50">
                 <th className="p-3 text-left font-medium">Name</th>
                 <th className="p-3 text-left font-medium">Slug</th>
+                <th className="p-3 text-left font-medium">Constituency</th>
                 <th className="p-3 text-left font-medium">Status</th>
                 <th className="p-3 text-left font-medium">Created</th>
                 <th className="p-3 text-right font-medium">Actions</th>
@@ -90,6 +92,11 @@ export default function SuperAdminTenantsPage() {
                 <tr key={tenant.id} className="border-b">
                   <td className="p-3 font-medium">{tenant.name}</td>
                   <td className="p-3">{tenant.slug}</td>
+                  <td className="p-3 text-muted-foreground">
+                    {tenant.constituency_code
+                      ? WB_CONSTITUENCY_MAP.get(tenant.constituency_code)?.name ?? tenant.constituency_code
+                      : "-"}
+                  </td>
                   <td className="p-3">
                     <span
                       className={`rounded-full px-2 py-1 text-xs ${
@@ -141,7 +148,7 @@ export default function SuperAdminTenantsPage() {
               ))}
               {(!tenants || tenants.length === 0) && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={6} className="p-6 text-center text-muted-foreground">
                     No tenants yet
                   </td>
                 </tr>

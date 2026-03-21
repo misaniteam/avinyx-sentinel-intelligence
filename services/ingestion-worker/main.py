@@ -1,9 +1,13 @@
 import asyncio
 import json
 import structlog
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sentinel_shared.config import get_settings
 from sentinel_shared.messaging.sqs import SQSClient
 from sentinel_shared.database.session import get_session_factory, tenant_context
+from sentinel_shared.models.tenant import Tenant
+from sentinel_shared.data.wb_constituencies import WB_CONSTITUENCY_BY_CODE
 from handlers import get_handler
 
 logger = structlog.get_logger()
@@ -23,20 +27,57 @@ async def process_message(message: dict):
         return
 
     try:
-        items = await handler.fetch(config, since)
-        logger.info("fetched_items", platform=platform, count=len(items), tenant_id=tenant_id)
-
-        # Store items and publish to AI pipeline
+        # Look up tenant's constituency for location context
+        location_context = None
         factory = get_session_factory()
         async with factory() as session:
+            result = await session.execute(
+                select(Tenant.constituency_code).where(Tenant.id == tenant_id)
+            )
+            constituency_code = result.scalar_one_or_none()
+            if constituency_code:
+                constituency = WB_CONSTITUENCY_BY_CODE.get(constituency_code)
+                if constituency:
+                    location_context = {
+                        "constituency_code": constituency["code"],
+                        "constituency_name": constituency["name"],
+                        "district": constituency["district"],
+                        "keywords": constituency["keywords"],
+                        "lat": constituency["lat"],
+                        "lng": constituency["lng"],
+                    }
+
+        items = await handler.fetch(config, since, location_context=location_context)
+        logger.info("fetched_items", platform=platform, count=len(items), tenant_id=tenant_id)
+
+        # Set geo data on items that lack it
+        if location_context:
             for item in items:
-                session.add(item)
+                if not item.geo_lat:
+                    item.geo_lat = location_context["lat"]
+                if not item.geo_lng:
+                    item.geo_lng = location_context["lng"]
+                if not item.geo_region:
+                    item.geo_region = location_context["constituency_name"]
+
+        # Store items with duplicate handling (skip on conflict)
+        saved_items = []
+        async with factory() as session:
+            for item in items:
+                try:
+                    async with session.begin_nested():
+                        session.add(item)
+                    saved_items.append(item)
+                except IntegrityError:
+                    logger.debug("duplicate_item_skipped", external_id=item.external_id, platform=platform)
             await session.commit()
 
-        # Publish to AI pipeline queue
+        logger.info("saved_items", platform=platform, saved=len(saved_items), skipped=len(items) - len(saved_items), tenant_id=tenant_id)
+
+        # Publish saved items to AI pipeline queue
         sqs = SQSClient()
         settings = get_settings()
-        item_ids = [str(item.id) for item in items]
+        item_ids = [str(item.id) for item in saved_items]
         if item_ids:
             await sqs.send_message(settings.sqs_ai_pipeline_queue, {
                 "tenant_id": tenant_id,

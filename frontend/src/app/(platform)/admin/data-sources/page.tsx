@@ -20,26 +20,13 @@ import {
   Search,
   Database,
   Globe,
-  Youtube,
-  Twitter,
-  Rss,
-  Newspaper,
-  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DataSourceDialog } from "@/components/admin/data-source-dialog";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { platformConfig } from "@/lib/constants/platforms";
 import type { DataSource } from "@/types";
-
-const platformConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  brand24: { label: "Brand24", icon: Globe, color: "bg-blue-100 text-blue-800" },
-  youtube: { label: "YouTube", icon: Youtube, color: "bg-red-100 text-red-800" },
-  twitter: { label: "Twitter", icon: Twitter, color: "bg-sky-100 text-sky-800" },
-  news_rss: { label: "News RSS", icon: Rss, color: "bg-orange-100 text-orange-800" },
-  news_api: { label: "News API", icon: Newspaper, color: "bg-purple-100 text-purple-800" },
-  reddit: { label: "Reddit", icon: MessageCircle, color: "bg-amber-100 text-amber-800" },
-};
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return "Never";

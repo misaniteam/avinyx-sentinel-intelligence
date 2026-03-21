@@ -4,6 +4,7 @@ export interface Tenant {
   slug: string;
   status: string;
   settings: Record<string, unknown>;
+  constituency_code: string | null;
   created_at: string;
 }
 
@@ -156,10 +157,29 @@ export interface WorkerStatus {
   error?: string;
 }
 
+export interface IngestedDataItem {
+  id: string;
+  platform: string;
+  external_id: string;
+  content: string | null;
+  author: string | null;
+  published_at: string | null;
+  url: string | null;
+  geo_region: string | null;
+  engagement: Record<string, number>;
+  created_at: string;
+}
+
+export interface IngestedDataResponse {
+  items: IngestedDataItem[];
+  total: number;
+}
+
 export interface TenantOnboardRequest {
   tenant: {
     name: string;
     slug: string;
+    constituency_code: string;
     settings?: Record<string, unknown>;
   };
   admin_email: string;

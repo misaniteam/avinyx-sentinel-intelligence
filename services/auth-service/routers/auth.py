@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.user import User
 from sentinel_shared.models.role import Role
+from sentinel_shared.models.tenant import Tenant
 from sentinel_shared.auth.jwt_handler import create_access_token, create_refresh_token, decode_token
 from sentinel_shared.auth.password import hash_password, verify_password
 from sentinel_shared.schemas.auth import LoginRequest, TokenResponse, SetupRequest, RefreshRequest
@@ -62,12 +63,21 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     if user.is_super_admin:
         permissions = {"*"}
 
+    # Look up constituency_code from tenant
+    constituency_code = None
+    if user.tenant_id:
+        tenant_result = await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
+        tenant = tenant_result.scalar_one_or_none()
+        if tenant:
+            constituency_code = tenant.constituency_code
+
     token_data = {
         "sub": str(user.id),
         "tenant_id": str(user.tenant_id) if user.tenant_id else None,
         "is_super_admin": user.is_super_admin,
         "roles": role_names,
         "permissions": list(permissions),
+        "constituency_code": constituency_code,
     }
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
@@ -94,11 +104,20 @@ async def refresh(request: RefreshRequest, db: AsyncSession = Depends(get_db)):
     if user.is_super_admin:
         permissions = {"*"}
 
+    # Look up constituency_code from tenant
+    constituency_code = None
+    if user.tenant_id:
+        tenant_result = await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
+        tenant = tenant_result.scalar_one_or_none()
+        if tenant:
+            constituency_code = tenant.constituency_code
+
     token_data = {
         "sub": str(user.id),
         "tenant_id": str(user.tenant_id) if user.tenant_id else None,
         "is_super_admin": user.is_super_admin,
         "roles": role_names,
         "permissions": list(permissions),
+        "constituency_code": constituency_code,
     }
     return TokenResponse(access_token=create_access_token(token_data))

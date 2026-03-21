@@ -20,3 +20,4 @@ class Tenant(Base, TimestampMixin):
     slug = Column(String(100), unique=True, nullable=False, index=True)
     status = Column(SAEnum(TenantStatus), default=TenantStatus.ACTIVE, nullable=False)
     settings = Column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
+    constituency_code = Column(String(10), unique=True, nullable=True, index=True)

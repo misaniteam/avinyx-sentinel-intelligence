@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { TagInput } from "@/components/ui/tag-input";
 import { useCreateDataSource, useUpdateDataSource } from "@/lib/api/hooks";
 import type { DataSource } from "@/types";
 
@@ -63,19 +64,20 @@ const baseSchema = z.object({
 const brand24ConfigSchema = z.object({
   api_key: z.string().min(1, "API key is required"),
   project_id: z.string().min(1, "Project ID is required"),
+  search_queries: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
 const youtubeConfigSchema = z.object({
   api_key: z.string().min(1, "API key is required"),
   channel_ids: z.string().optional(),
-  search_queries: z.string().optional(),
+  search_queries: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
 const twitterConfigSchema = z.object({
   api_key: z.string().min(1, "API key is required"),
   api_secret: z.string().min(1, "API secret is required"),
   bearer_token: z.string().min(1, "Bearer token is required"),
-  search_queries: z.string().optional(),
+  search_queries: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
 const newsRssConfigSchema = z.object({
@@ -95,7 +97,7 @@ const redditConfigSchema = z.object({
   subreddits: z.string().optional(),
 });
 
-type FormData = z.infer<typeof baseSchema> & Record<string, string | boolean | number>;
+type FormData = z.infer<typeof baseSchema> & Record<string, string | boolean | number | string[]>;
 
 function getConfigSchema(platform: string) {
   switch (platform) {
@@ -121,7 +123,9 @@ function buildConfigFromForm(platform: string, formData: Record<string, unknown>
   for (const field of fields) {
     const val = formData[field.name];
     if (val !== undefined && val !== "" && !isMasked(val)) {
-      if (field.type === "textarea" && typeof val === "string") {
+      if (field.type === "tags" && Array.isArray(val)) {
+        if (val.length > 0) config[field.name] = val;
+      } else if (field.type === "textarea" && typeof val === "string") {
         // Convert comma/newline-separated strings to arrays
         const separator = field.name === "feed_urls" ? "\n" : ",";
         config[field.name] = val.split(separator).map((s: string) => s.trim()).filter(Boolean);
@@ -136,7 +140,7 @@ function buildConfigFromForm(platform: string, formData: Record<string, unknown>
 interface ConfigField {
   name: string;
   label: string;
-  type: "password" | "text" | "textarea" | "select";
+  type: "password" | "text" | "textarea" | "select" | "tags";
   placeholder?: string;
   required?: boolean;
   options?: { value: string; label: string }[];
@@ -148,19 +152,20 @@ function getConfigFieldsForPlatform(platform: string): ConfigField[] {
       return [
         { name: "api_key", label: "API Key", type: "password", required: true },
         { name: "project_id", label: "Project ID", type: "text", required: true },
+        { name: "search_queries", label: "Hashtags / Topics", type: "tags", placeholder: "Type a hashtag or topic and press Enter" },
       ];
     case "youtube":
       return [
         { name: "api_key", label: "API Key", type: "password", required: true },
         { name: "channel_ids", label: "Channel IDs", type: "textarea", placeholder: "Comma-separated channel IDs" },
-        { name: "search_queries", label: "Search Queries", type: "textarea", placeholder: "Comma-separated search queries" },
+        { name: "search_queries", label: "Hashtags / Topics", type: "tags", placeholder: "Type a hashtag or topic and press Enter" },
       ];
     case "twitter":
       return [
         { name: "api_key", label: "API Key", type: "password", required: true },
         { name: "api_secret", label: "API Secret", type: "password", required: true },
         { name: "bearer_token", label: "Bearer Token", type: "password", required: true },
-        { name: "search_queries", label: "Search Queries", type: "textarea", placeholder: "Comma-separated search queries" },
+        { name: "search_queries", label: "Hashtags / Topics", type: "tags", placeholder: "Type a hashtag or topic and press Enter" },
       ];
     case "news_rss":
       return [
@@ -184,12 +189,14 @@ function getConfigFieldsForPlatform(platform: string): ConfigField[] {
   }
 }
 
-function extractConfigValues(config: Record<string, unknown>, platform: string): Record<string, string> {
-  const values: Record<string, string> = {};
+function extractConfigValues(config: Record<string, unknown>, platform: string): Record<string, string | string[]> {
+  const values: Record<string, string | string[]> = {};
   const fields = getConfigFieldsForPlatform(platform);
   for (const field of fields) {
     const val = config[field.name];
-    if (val === undefined || val === null) {
+    if (field.type === "tags") {
+      values[field.name] = Array.isArray(val) ? val : [];
+    } else if (val === undefined || val === null) {
       values[field.name] = "";
     } else if (Array.isArray(val)) {
       const separator = field.name === "feed_urls" ? "\n" : ", ";
@@ -439,6 +446,19 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
                         rows={3}
                         placeholder={field.placeholder}
                         {...form.register(field.name as keyof FormData)}
+                      />
+                    )}
+                    {field.type === "tags" && (
+                      <Controller
+                        control={form.control}
+                        name={field.name as keyof FormData}
+                        render={({ field: controllerField }) => (
+                          <TagInput
+                            value={Array.isArray(controllerField.value) ? controllerField.value as string[] : []}
+                            onChange={controllerField.onChange}
+                            placeholder={field.placeholder}
+                          />
+                        )}
                       />
                     )}
                     {field.type === "select" && field.options && (

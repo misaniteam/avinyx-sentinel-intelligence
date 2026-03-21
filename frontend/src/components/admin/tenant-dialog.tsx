@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { useCreateTenant, useUpdateTenant } from "@/lib/api/hooks";
 import { toast } from "sonner";
+import { ConstituencyCombobox } from "@/components/admin/constituency-combobox";
+import { WB_CONSTITUENCY_MAP } from "@/lib/data/wb-constituencies";
 import type { Tenant } from "@/types";
 
 const createSchema = z.object({
@@ -31,6 +33,7 @@ const createSchema = z.object({
     .string()
     .min(1, "Slug is required")
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Lowercase alphanumeric and hyphens only"),
+  constituency_code: z.string().min(1, "Constituency is required"),
   admin_email: z.string().email("Valid email required"),
   admin_password: z.string().min(8, "Minimum 8 characters"),
   admin_name: z.string().min(1, "Admin name is required"),
@@ -82,10 +85,18 @@ function CreateTenantForm({
     formState: { errors },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
-    defaultValues: { name: "", slug: "", admin_email: "", admin_password: "", admin_name: "" },
+    defaultValues: {
+      name: "",
+      slug: "",
+      constituency_code: "",
+      admin_email: "",
+      admin_password: "",
+      admin_name: "",
+    },
   });
 
   const nameValue = watch("name");
+  const constituencyValue = watch("constituency_code");
 
   useEffect(() => {
     setValue("slug", slugify(nameValue));
@@ -98,15 +109,23 @@ function CreateTenantForm({
   const onSubmit = async (values: CreateFormValues) => {
     try {
       await createTenant.mutateAsync({
-        tenant: { name: values.name, slug: values.slug },
+        tenant: {
+          name: values.name,
+          slug: values.slug,
+          constituency_code: values.constituency_code,
+        },
         admin_email: values.admin_email,
         admin_password: values.admin_password,
         admin_name: values.admin_name,
       });
       toast.success("Tenant onboarded successfully");
       onOpenChange(false);
-    } catch {
-      toast.error("Failed to onboard tenant");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error && err.message.includes("409")
+          ? "Constituency is already assigned to another tenant"
+          : "Failed to onboard tenant";
+      toast.error(message);
     }
   };
 
@@ -126,6 +145,16 @@ function CreateTenantForm({
             <Label htmlFor="slug">Slug</Label>
             <Input id="slug" {...register("slug")} />
             {errors.slug && <p className="text-sm text-destructive">{errors.slug.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label>Constituency</Label>
+            <ConstituencyCombobox
+              value={constituencyValue}
+              onValueChange={(code) => setValue("constituency_code", code, { shouldValidate: true })}
+            />
+            {errors.constituency_code && (
+              <p className="text-sm text-destructive">{errors.constituency_code.message}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="admin_name">Admin Full Name</Label>
@@ -206,6 +235,10 @@ function EditTenantForm({
     }
   };
 
+  const constituencyName = tenant?.constituency_code
+    ? WB_CONSTITUENCY_MAP.get(tenant.constituency_code)?.name
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -218,6 +251,12 @@ function EditTenantForm({
             <Input id="edit-name" {...register("name")} />
             {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
           </div>
+          {constituencyName && (
+            <div className="space-y-2">
+              <Label>Constituency</Label>
+              <p className="text-sm text-muted-foreground">{constituencyName}</p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="edit-status">Status</Label>
             <Select value={statusValue} onValueChange={(val) => setValue("status", val as "active" | "inactive" | "suspended")}>

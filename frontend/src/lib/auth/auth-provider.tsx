@@ -10,6 +10,7 @@ interface AuthUser {
   is_super_admin: boolean;
   roles: string[];
   permissions: string[];
+  constituency_code: string | null;
 }
 
 interface AuthContextType {
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         is_super_admin: payload.is_super_admin || false,
         roles: payload.roles || [],
         permissions: payload.permissions || [],
+        constituency_code: payload.constituency_code || null,
       };
     } catch {
       return null;

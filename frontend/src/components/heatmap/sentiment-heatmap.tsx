@@ -7,6 +7,8 @@ import type { HeatmapPoint } from '@/types';
 interface SentimentHeatmapProps {
   data: HeatmapPoint[];
   radius?: number;
+  center?: { lat: number; lng: number };
+  zoom?: number;
 }
 
 function HeatmapLayer({ data, radius = 30 }: { data: HeatmapPoint[]; radius?: number }) {
@@ -46,11 +48,11 @@ function HeatmapLayer({ data, radius = 30 }: { data: HeatmapPoint[]; radius?: nu
   return null;
 }
 
-export default function SentimentHeatmap({ data, radius = 30 }: SentimentHeatmapProps) {
+export default function SentimentHeatmap({ data, radius = 30, center, zoom }: SentimentHeatmapProps) {
   return (
     <Map
-      defaultCenter={{ lat: 20.5937, lng: 78.9629 }}
-      defaultZoom={5}
+      defaultCenter={center ?? { lat: 20.5937, lng: 78.9629 }}
+      defaultZoom={zoom ?? 5}
       gestureHandling="greedy"
       disableDefaultUI={false}
       style={{ width: '100%', height: '100%' }}

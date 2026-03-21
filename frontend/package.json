@@ -28,6 +28,7 @@
     "@vis.gl/react-google-maps": "^1.7.1",
     "class-variance-authority": "^0.7",
     "clsx": "^2.1",
+    "cmdk": "^1.1.1",
     "date-fns": "^4.1",
     "firebase": "^12.11.0",
     "html2canvas-pro": "^2.0.2",

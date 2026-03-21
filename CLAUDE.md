@@ -23,6 +23,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │       ├── messaging/        # SQS client
 │       ├── ai/               # Provider factory + Claude/OpenAI implementations
 │       ├── firebase/         # RTDB client
+│       ├── data/             # Static data (wb_constituencies.py — 294 WB assembly constituencies)
 │       └── config.py         # Pydantic Settings (reads from .env)
 │
 ├── services/
@@ -42,7 +43,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │       ├── app/(platform)/   # Authenticated shell — all main pages
 │       ├── app/api/export/   # Server-side PDF export route (Puppeteer)
 │       ├── components/       # ui/ (Shadcn), layout/, shared/, charts/, dashboard/, heatmap/, admin/
-│       ├── lib/              # api/ (ky + hooks), auth/, tenant/, rbac/, export/, firebase/
+│       ├── lib/              # api/ (ky + hooks), auth/, tenant/, rbac/, export/, firebase/, data/
 │       └── types/            # TypeScript interfaces
 │
 ├── migrations/               # Alembic (env.py imports sentinel_shared models)
@@ -83,6 +84,7 @@ npm test                   # Vitest
 - Tenant ID sourced from JWT claims, set in Python `contextvars` (`tenant_context`)
 - `TenantMixin` base class adds `tenant_id` column to models
 - Super admin has `tenant_id=NULL` and `is_super_admin=True`
+- **Constituency binding:** Each tenant optionally maps to a geographic constituency via `constituency_code` (unique, indexed) — used for location-aware data ingestion
 
 ## Auth Hierarchy
 
@@ -90,7 +92,7 @@ npm test                   # Vitest
 2. **Tenant Admin** — Auto-created on tenant onboarding, has all tenant permissions
 3. **Custom Roles** — RBAC with permission strings (e.g., `dashboard:view`, `voters:write`)
 
-JWT claims: `sub`, `tenant_id`, `is_super_admin`, `roles`, `permissions`
+JWT claims: `sub`, `tenant_id`, `is_super_admin`, `roles`, `permissions`, `constituency_code`
 
 ## First Deploy Flow
 
@@ -116,7 +118,7 @@ Public (no auth): `/api/auth/login`, `/api/auth/setup`, `/api/auth/setup-status`
 ## Async Pipeline
 
 ```
-ingestion-service (scheduler) → SQS:sentinel-ingestion-jobs → ingestion-worker
+ingestion-service (APScheduler, 60s poll) → SQS:sentinel-ingestion-jobs → ingestion-worker (with location_context)
   → SQS:sentinel-ai-pipeline → ai-pipeline-service → SQS:sentinel-notifications → notification-service
 ```
 
@@ -125,20 +127,20 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 ## Adding a New Data Source Connector
 
 1. Create `services/ingestion-worker/handlers/{platform}_handler.py`
-2. Implement `BaseConnectorHandler.fetch(config, since) -> list[RawMediaItem]`
+2. Implement `BaseConnectorHandler.fetch(config, since, location_context=None) -> list[RawMediaItem]`
 3. Register in `handlers/__init__.py` registry dict
 4. Add platform to `ALLOWED_PLATFORMS` and `PLATFORM_CONFIG_SCHEMA` in `services/ingestion-service/routers/data_sources.py`
 5. Add platform entry in frontend `PLATFORMS` array and `getConfigFieldsForPlatform()` in `components/admin/data-source-dialog.tsx`
-6. Add platform icon/color in `platformConfig` in `app/(platform)/admin/data-sources/page.tsx`
+6. Add platform icon/color in `platformConfig` in `lib/constants/platforms.ts`
 7. No changes needed to the worker orchestrator
 
 ### Existing connectors (registered in `handlers/__init__.py`):
-- `brand24` — Brand24 API (config: `api_key`, `project_id`)
+- `brand24` — Brand24 API for Facebook/Instagram (config: `api_key`, `project_id`, `search_queries`)
 - `youtube` — YouTube Data API v3 (config: `api_key`, `channel_ids`, `search_queries`)
-- `twitter` — Twitter/X API (config: `api_key`, `api_secret`, `bearer_token`, `search_queries`)
+- `twitter` — Twitter/X API v2 (config: `api_key`, `api_secret`, `bearer_token`, `search_queries`)
 - `news_rss` — RSS feed ingestion (config: `feed_urls`)
 - `news_api` — News API (config: `api_key`, `keywords`, `sources`, `language`)
-- `reddit` — Reddit API (config: `client_id`, `client_secret`, `subreddits`)
+- `reddit` — Reddit API with OAuth2 client credentials (config: `client_id`, `client_secret`, `subreddits`)
 
 ## Adding a New AI Provider
 
@@ -162,6 +164,7 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - `<AppShell>` — Sidebar + Topbar + main content area
 - `<ExportableContainer title="...">` — Wraps content with PDF/PNG export buttons
 - `<DeleteConfirmDialog>` — Reusable confirmation dialog for delete actions
+- `<TagInput>` — Pill-style tag input (Enter/comma to add, Backspace/X to remove) used for hashtag/topic entry
 - Sidebar items auto-filtered by user permissions
 
 ## Charts & Visualizations
@@ -240,10 +243,11 @@ All admin forms follow the same dialog-based pattern:
 ### Admin pages with full CRUD:
 - `/admin/users` — UserDialog (create/edit), role assignment, active toggle
 - `/admin/roles` — Table view with search, RoleDialog (create/edit), PermissionSelect with per-module select all/deselect all + global select all + "X of Y selected" counter
-- `/admin/data-sources` — Table view with platform badges/icons, DataSourceDialog (create/edit) with General + Credentials sections, per-platform config forms (password inputs for secrets, textareas for lists), active/inactive toggle, SSRF-safe URL validation
+- `/admin/data-sources` — Table view with platform badges/icons, DataSourceDialog (create/edit) with General + Credentials sections, per-platform config forms (password inputs for secrets, tag inputs for hashtags/topics), active/inactive toggle, SSRF-safe URL validation
+- `/admin/ingested-data` — Read-only table of raw ingested items with platform filter, content search, date range, pagination, expandable row details
 - `/admin/settings` — AI provider form, notification prefs, general settings
 - `/admin/workers` — Live worker status cards via Firebase RTDB
-- `/super-admin/tenants` — TenantDialog (onboard/edit), suspend/activate
+- `/super-admin/tenants` — TenantDialog (onboard/edit), suspend/activate, constituency assignment
 - `/super-admin/infrastructure` — Service health cards, queue metrics
 
 ### Permissions constant
@@ -272,9 +276,49 @@ All admin forms follow the same dialog-based pattern:
 - **Backend:** `services/ingestion-service/routers/data_sources.py` — CRUD with platform validation, config schema validation, credential masking, SSRF protection
 - **Frontend page:** `/admin/data-sources` — Table view with platform badges (Brand24, YouTube, Twitter/X, News RSS, News API, Reddit), search, active/inactive status
 - **Frontend dialog:** `components/admin/data-source-dialog.tsx` — Two-section form: General (name, platform select, poll interval, active toggle) + Credentials (platform-specific fields rendered conditionally)
+- **Hashtag/topic entry:** Brand24, YouTube, and Twitter use `TagInput` component (`type: "tags"`) for `search_queries` — admin enters hashtags/topics as pill-style tags instead of free-text
+- **Config field types:** `password`, `text`, `textarea`, `select`, `tags` — each rendered with appropriate UI component
 - **Config handling:** API keys stored in JSONB `config` column, masked in responses, merged (not replaced) on update
+- **Platform config:** Shared in `lib/constants/platforms.ts` (icon, label, color per platform) — imported by data-sources and ingested-data pages
 - **Supported platforms:** brand24, youtube, twitter, news_rss, news_api, reddit
-- **Adding a platform:** Update backend `ALLOWED_PLATFORMS` + `PLATFORM_CONFIG_SCHEMA`, frontend dialog `PLATFORMS` + `getConfigFieldsForPlatform()`, page `platformConfig`, and worker handler registry
+- **Adding a platform:** Update backend `ALLOWED_PLATFORMS` + `PLATFORM_CONFIG_SCHEMA`, frontend dialog `PLATFORMS` + `getConfigFieldsForPlatform()`, `lib/constants/platforms.ts`, and worker handler registry
+
+## Constituency System
+
+- **294 West Bengal assembly constituencies** with code, name, district, lat/lng, and bilingual search keywords (English + Bengali)
+- **Dual data files:** Python (`sentinel_shared/data/wb_constituencies.py`) + TypeScript (`lib/data/wb-constituencies.ts`)
+- **Frontend:** `ConstituencyCombobox` (`components/admin/constituency-combobox.tsx`) — searchable dropdown grouped by district, uses `cmdk` command component
+- **Tenant binding:** One-to-one — each tenant maps to at most one constituency (`constituency_code` unique constraint)
+- **Backend endpoints:**
+  - `GET /api/tenants/tenants/constituencies` — All 294 constituencies
+  - `GET /api/tenants/tenants/constituencies/available` — Unassigned constituencies only
+- **Onboarding:** `TenantDialog` includes constituency selection on create; read-only on edit
+
+## Automated Ingestion Scheduler
+
+- **APScheduler** (async) runs `check_and_dispatch_polls()` every 60 seconds in `services/ingestion-service/scheduler.py`
+- Queries active data sources where `last_polled_at + poll_interval` is overdue
+- Dispatches SQS messages to `sentinel-ingestion-jobs` queue
+- Updates `last_polled_at` to prevent double-dispatch
+- Integrated into ingestion-service startup via `services/ingestion-service/main.py`
+
+## Location-Aware Ingestion
+
+- Worker resolves tenant's `constituency_code` → constituency data → `location_context` dict containing `{code, name, district, lat, lng, keywords}`
+- All 6 connector handlers accept optional `location_context` parameter in `fetch()`
+- Handlers use constituency keywords to augment/filter search queries for location-relevant content
+- Flow: tenant `constituency_code` (from DB) → worker lookup → handler receives location context → location-filtered results
+
+## Ingested Data
+
+- **Backend:** `GET /ingestion/ingested-data` (`services/ingestion-service/routers/ingested_data.py`)
+  - Filters: `platform`, `content` (search), `start_date`, `end_date`
+  - Pagination: `skip`/`limit` (default 50, max 100)
+  - Returns: `IngestedDataResponse` with items (id, platform, external_id, content, author, published_at, url, geo_region, engagement, created_at) + total count
+- **Frontend page:** `/admin/ingested-data` — Read-only table view with platform filter dropdown, content search, date range, pagination, and expandable row details (full content, URL link, engagement breakdown)
+- **Frontend hook:** `useIngestedData()` in `lib/api/hooks.ts`, query key `ingestedData`
+- **Sidebar:** "Ingested Data" link with `FileSearch` icon, gated by `data_sources:read`
+- **Permission:** `data_sources:read`
 
 ## Auth Dependencies
 
@@ -335,6 +379,7 @@ Migrations are baked into Docker images at build time (no volume mounts). After 
 Current migrations:
 - `1c3a7f6385e7` — Initial schema (all tables)
 - `6e74ac702418` — Add unique constraint on `roles(tenant_id, name)`
+- `a3b1c2d4e5f6` — Add `constituency_code` column to tenants (unique, indexed, nullable)
 
 ## Implementation Status
 
@@ -344,3 +389,5 @@ Current migrations:
 - [x] Phase 4 — Real-time & Admin (Firebase live updates, notification bell, admin CRUD forms, tenant settings, worker monitoring, infrastructure page)
 - [x] Phase 5 — Production (Terraform IaC, GitHub Actions CI/CD, Dependabot)
 - [x] Phase 6 — Admin Enhancements (roles table view with enhanced PermissionSelect, data source management page with per-platform credential forms, backend security hardening with permission/config allowlist validation, SSRF protection, credential masking)
+- [x] Phase 7 — Constituency & Ingestion (WB constituency system with tenant binding, automated APScheduler polling, location-aware connector handlers, ingested data browsing endpoint)
+- [x] Phase 8 — Ingestion Completion (ingested data admin page with filters/pagination/expandable rows, tag input for hashtag/topic entry on Brand24/YouTube/Twitter, Reddit handler implementation, shared platform config extraction)

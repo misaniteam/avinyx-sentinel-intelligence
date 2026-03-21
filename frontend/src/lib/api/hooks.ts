@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import { queryKeys } from "./query-keys";
-import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role, TenantOnboardRequest } from "@/types";
+import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse } from "@/types";
 
 // Dashboard
 export function useDashboardSummary() {
@@ -75,6 +75,29 @@ export function useMediaFeeds(platform?: string) {
   return useQuery({
     queryKey: [...queryKeys.mediaFeeds.all, platform],
     queryFn: () => api.get(`api/campaigns/media-feeds${platform ? `?platform=${platform}` : ""}`).json<MediaFeedItem[]>(),
+  });
+}
+
+// Ingested Data
+export function useIngestedData(params?: {
+  platform?: string;
+  search?: string;
+  date_from?: string;
+  date_to?: string;
+  skip?: number;
+  limit?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params?.platform) searchParams.set("platform", params.platform);
+  if (params?.search) searchParams.set("search", params.search);
+  if (params?.date_from) searchParams.set("date_from", params.date_from);
+  if (params?.date_to) searchParams.set("date_to", params.date_to);
+  if (params?.skip) searchParams.set("skip", String(params.skip));
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return useQuery({
+    queryKey: [...queryKeys.ingestedData.all, params],
+    queryFn: () => api.get(`api/ingestion/ingested-data${qs ? `?${qs}` : ""}`).json<IngestedDataResponse>(),
   });
 }
 

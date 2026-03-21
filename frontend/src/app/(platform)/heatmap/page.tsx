@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useHeatmapData } from '@/lib/api/hooks';
+import { useTenant } from '@/lib/tenant/tenant-provider';
 import MapProvider from '@/components/heatmap/map-provider';
 import SentimentHeatmap from '@/components/heatmap/sentiment-heatmap';
 import HeatmapControls from '@/components/heatmap/heatmap-controls';
@@ -11,12 +12,17 @@ export default function HeatmapPage() {
   const [sentimentFilter, setSentimentFilter] = useState<string | undefined>(undefined);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const { constituency } = useTenant();
 
   const { data, isLoading } = useHeatmapData(
     sentimentFilter,
     dateFrom || undefined,
     dateTo || undefined,
   );
+
+  const center = constituency
+    ? { lat: constituency.lat, lng: constituency.lng }
+    : undefined;
 
   return (
     <div className="space-y-6">
@@ -42,7 +48,11 @@ export default function HeatmapPage() {
             </div>
           ) : (
             <MapProvider>
-              <SentimentHeatmap data={data ?? []} />
+              <SentimentHeatmap
+                data={data ?? []}
+                center={center}
+                zoom={constituency ? 12 : undefined}
+              />
             </MapProvider>
           )}
         </CardContent>

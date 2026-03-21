@@ -9,6 +9,7 @@ from sentinel_shared.models.user import User
 from sentinel_shared.auth.dependencies import require_super_admin
 from sentinel_shared.auth.password import hash_password
 from sentinel_shared.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse
+from sentinel_shared.data.wb_constituencies import WB_CONSTITUENCIES, WB_CONSTITUENCY_BY_CODE
 from pydantic import BaseModel, EmailStr
 
 router = APIRouter()
@@ -22,6 +23,23 @@ class TenantOnboardRequest(BaseModel):
 class TenantOnboardResponse(BaseModel):
     tenant: TenantResponse
     admin_user_id: UUID
+
+@router.get("/constituencies")
+async def list_constituencies(
+    user: dict = Depends(require_super_admin),
+):
+    return WB_CONSTITUENCIES
+
+@router.get("/constituencies/available")
+async def list_available_constituencies(
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_super_admin),
+):
+    result = await db.execute(
+        select(Tenant.constituency_code).where(Tenant.constituency_code.isnot(None))
+    )
+    assigned_codes = {row[0] for row in result.all()}
+    return [c for c in WB_CONSTITUENCIES if c["code"] not in assigned_codes]
 
 @router.get("/", response_model=list[TenantResponse])
 async def list_tenants(
@@ -44,10 +62,22 @@ async def create_tenant(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Tenant slug already exists")
 
+    # Check constituency uniqueness
+    if request.tenant.constituency_code:
+        existing_constituency = await db.execute(
+            select(Tenant).where(Tenant.constituency_code == request.tenant.constituency_code)
+        )
+        if existing_constituency.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Constituency is already assigned to another tenant",
+            )
+
     # Create tenant
     tenant = Tenant(
         name=request.tenant.name,
         slug=request.tenant.slug,
+        constituency_code=request.tenant.constituency_code,
         settings=request.tenant.settings,
     )
     db.add(tenant)
@@ -117,8 +147,30 @@ async def update_tenant(
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
 
-    for key, value in request.model_dump(exclude_unset=True).items():
-        setattr(tenant, key, value)
+    update_data = request.model_dump(exclude_unset=True)
+
+    # Check constituency uniqueness if changing
+    if "constituency_code" in update_data and update_data["constituency_code"] is not None:
+        existing = await db.execute(
+            select(Tenant).where(
+                Tenant.constituency_code == update_data["constituency_code"],
+                Tenant.id != tenant_id,
+            )
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Constituency is already assigned to another tenant",
+            )
+
+    if "name" in update_data:
+        tenant.name = update_data["name"]
+    if "status" in update_data:
+        tenant.status = update_data["status"]
+    if "settings" in update_data:
+        tenant.settings = update_data["settings"]
+    if "constituency_code" in update_data:
+        tenant.constituency_code = update_data["constituency_code"]
 
     await db.commit()
     await db.refresh(tenant)

@@ -33,6 +33,9 @@ export const queryKeys = {
   heatmap: {
     data: (filter?: string, dateFrom?: string, dateTo?: string) => ["heatmap", filter, dateFrom, dateTo] as const,
   },
+  ingestedData: {
+    all: ["ingested-data"] as const,
+  },
   dataSources: {
     all: ["data-sources"] as const,
     detail: (id: string) => ["data-sources", id] as const,
