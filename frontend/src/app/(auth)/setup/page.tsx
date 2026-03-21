@@ -39,7 +39,7 @@ export default function SetupPage() {
     try {
       await setupAdmin(email, password, fullName);
       toast.success("Super admin created successfully");
-      router.push("/dashboard");
+      router.push("/super-admin/tenants");
     } catch {
       toast.error("Setup failed");
     } finally {

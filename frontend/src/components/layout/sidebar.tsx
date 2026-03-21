@@ -16,6 +16,7 @@ import {
   Settings,
   Shield,
   Building2,
+  Server,
 } from "lucide-react";
 
 interface NavItem {
@@ -23,10 +24,9 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   permission?: string;
-  superAdminOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
+const tenantNavItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
   { title: "Voters", href: "/voters", icon: Users, permission: "voters:read" },
   { title: "Heatmap", href: "/heatmap", icon: Map, permission: "heatmap:view" },
@@ -35,7 +35,11 @@ const navItems: NavItem[] = [
   { title: "Reports", href: "/reports", icon: FileText, permission: "reports:read" },
   { title: "Campaigns", href: "/campaigns", icon: Megaphone, permission: "campaigns:read" },
   { title: "Admin", href: "/admin/users", icon: Settings, permission: "users:read" },
-  { title: "Super Admin", href: "/super-admin/tenants", icon: Shield, superAdminOnly: true },
+];
+
+const superAdminNavItems: NavItem[] = [
+  { title: "Tenants", href: "/super-admin/tenants", icon: Shield },
+  { title: "Infrastructure", href: "/super-admin/infrastructure", icon: Server },
 ];
 
 export function Sidebar() {
@@ -43,11 +47,12 @@ export function Sidebar() {
   const { hasPermission } = usePermission();
   const { isSuperAdmin } = useTenant();
 
-  const visibleItems = navItems.filter((item) => {
-    if (item.superAdminOnly) return isSuperAdmin;
-    if (item.permission) return hasPermission(item.permission);
-    return true;
-  });
+  const visibleItems = isSuperAdmin
+    ? superAdminNavItems
+    : tenantNavItems.filter((item) => {
+        if (item.permission) return hasPermission(item.permission);
+        return true;
+      });
 
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-sidebar">
