@@ -13,6 +13,7 @@ import {
 import { NotificationPanel } from "@/components/layout/notification-panel";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { LogOut, Bell } from "lucide-react";
+import { ModeToggle } from "../shared/mode-toggle";
 
 export function Topbar() {
   const { user, logout } = useAuth();
@@ -24,7 +25,10 @@ export function Topbar() {
     <header className="flex h-16 items-center justify-between border-b px-6">
       <div />
       <div className="flex items-center gap-4">
+        
+        <ModeToggle />
         <LocaleSwitcher />
+
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">

@@ -1,4 +1,4 @@
-import { Inter, Noto_Sans_Bengali } from "next/font/google";
+import { Inter, Noto_Sans_Bengali, Noto_Sans_Devanagari } from "next/font/google";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -11,6 +11,11 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const notoSansBengali = Noto_Sans_Bengali({
   subsets: ["bengali"],
   variable: "--font-noto-bengali",
+  display: "swap",
+});
+const notoSansDevanagari = Noto_Sans_Devanagari({
+  subsets: ["devanagari"],
+  variable: "--font-noto-devanagari",
   display: "swap",
 });
 
@@ -43,7 +48,7 @@ const {locale} = await params;
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={`${inter.variable} ${notoSansBengali.variable} font-sans`}>
+      <body className={`${inter.variable} ${notoSansBengali.variable} ${notoSansDevanagari.variable} font-sans`}>
         <Providers locale={locale} messages={messages}>
           {children}
         </Providers>

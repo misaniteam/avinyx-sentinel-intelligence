@@ -1,0 +1,16 @@
+{
+  "title": "इंजेस्टेड डेटा",
+  "searchPlaceholder": "सामग्री खोजें...",
+  "allPlatforms": "सभी प्लेटफ़ॉर्म",
+  "noResultsFound": "कोई परिणाम नहीं मिला",
+  "noIngestedDataYet": "अभी तक कोई इंजेस्टेड डेटा नहीं",
+  "tryAdjustingFilters": "अपने फ़िल्टर समायोजित करने का प्रयास करें।",
+  "configureDataSources": "सामग्री इंजेस्ट करने के लिए डेटा स्रोत कॉन्फ़िगर करें।",
+  "content": "सामग्री",
+  "author": "लेखक",
+  "published": "प्रकाशित",
+  "ingestedAt": "इंजेस्ट किया गया",
+  "externalId": "बाहरी ID",
+  "url": "URL",
+  "engagement": "सहभागिता"
+}

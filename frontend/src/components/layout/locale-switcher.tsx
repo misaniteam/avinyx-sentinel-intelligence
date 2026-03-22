@@ -16,6 +16,7 @@ import { locales, type Locale } from "@/i18n/config";
 const localeLabels: Record<Locale, string> = {
   en: "English",
   bn: "বাংলা",
+  hi: "हिन्दी",
 };
 
 export function LocaleSwitcher() {

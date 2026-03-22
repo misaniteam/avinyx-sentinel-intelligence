@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/auth/auth-provider";
 import { TenantProvider } from "@/lib/tenant/tenant-provider";
 import { RBACProvider } from "@/lib/rbac/rbac-provider";
 import { Toaster } from "sonner";
+import { ThemeProvider } from './theme-provider';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -27,15 +28,24 @@ export function Providers({ children, locale, messages }: ProvidersProps) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TenantProvider>
-          <RBACProvider>
-            <NextIntlClientProvider locale={locale} messages={messages}>{children}</NextIntlClientProvider>
-            <Toaster position="top-right" />
-          </RBACProvider>
-        </TenantProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TenantProvider>
+              <RBACProvider>
+                {children}
+                <Toaster position="top-right" />
+              </RBACProvider>
+            </TenantProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </NextIntlClientProvider>
   );
 }

@@ -1,0 +1,11 @@
+{
+  "title": "विश्लेषण",
+  "analyticsReport": "विश्लेषण रिपोर्ट",
+  "platformBreakdown": "प्लेटफ़ॉर्म विश्लेषण",
+  "sentimentOverTime": "समय के साथ भावना",
+  "topTopics": "शीर्ष विषय",
+  "engagementMetrics": "सहभागिता मेट्रिक्स",
+  "sentimentHeatmap": "भावना हीटमैप",
+  "geographicSentiment": "भौगोलिक भावना वितरण",
+  "loadingHeatmap": "हीटमैप डेटा लोड हो रहा है..."
+}
