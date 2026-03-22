@@ -4,19 +4,22 @@ import { useVoters } from "@/lib/api/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function VotersPage() {
+  const t = useTranslations("voters");
+  const tc = useTranslations("common");
   const { data: voters, isLoading } = useVoters();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Voters</h1>
-        <Button><Plus className="mr-2 h-4 w-4" /> Add Voter</Button>
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
+        <Button><Plus className="mr-2 h-4 w-4" /> {t("addVoter")}</Button>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Voter Database</CardTitle>
+          <CardTitle>{t("voterDatabase")}</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -26,10 +29,10 @@ export default function VotersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="p-3 text-left font-medium">Name</th>
-                    <th className="p-3 text-left font-medium">Region</th>
-                    <th className="p-3 text-left font-medium">Sentiment</th>
-                    <th className="p-3 text-left font-medium">Tags</th>
+                    <th className="p-3 text-left font-medium">{tc("name")}</th>
+                    <th className="p-3 text-left font-medium">{tc("region")}</th>
+                    <th className="p-3 text-left font-medium">{t("sentiment")}</th>
+                    <th className="p-3 text-left font-medium">{t("tags")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -42,7 +45,7 @@ export default function VotersPage() {
                     </tr>
                   ))}
                   {(!voters || voters.length === 0) && (
-                    <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">No voters found</td></tr>
+                    <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">{t("noVotersFound")}</td></tr>
                   )}
                 </tbody>
               </table>

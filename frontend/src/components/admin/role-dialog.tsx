@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,14 +22,6 @@ import { PermissionSelect } from "@/components/admin/permission-select";
 import { useCreateRole, useUpdateRole } from "@/lib/api/hooks";
 import type { Role } from "@/types";
 
-const roleSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  permissions: z.array(z.string()).min(1, "Select at least one permission"),
-});
-
-type RoleFormData = z.infer<typeof roleSchema>;
-
 interface RoleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -37,6 +30,18 @@ interface RoleDialogProps {
 }
 
 export function RoleDialog({ open, onOpenChange, mode, role }: RoleDialogProps) {
+  const t = useTranslations("admin.roles");
+  const tc = useTranslations("common");
+  const tv = useTranslations("validation");
+
+  const roleSchema = z.object({
+    name: z.string().min(1, tv("nameRequired")),
+    description: z.string().optional(),
+    permissions: z.array(z.string()).min(1, tv("selectAtLeastOnePermission")),
+  });
+
+  type RoleFormData = z.infer<typeof roleSchema>;
+
   const createRole = useCreateRole();
   const updateRole = useUpdateRole();
 
@@ -68,7 +73,7 @@ export function RoleDialog({ open, onOpenChange, mode, role }: RoleDialogProps) 
           description: data.description,
           permissions: data.permissions,
         });
-        toast.success("Role created successfully");
+        toast.success(t("roleCreated"));
       } else if (role) {
         await updateRole.mutateAsync({
           id: role.id,
@@ -76,15 +81,15 @@ export function RoleDialog({ open, onOpenChange, mode, role }: RoleDialogProps) 
           description: data.description,
           permissions: data.permissions,
         });
-        toast.success("Role updated successfully");
+        toast.success(t("roleUpdated"));
       }
       onOpenChange(false);
     } catch (error: unknown) {
       const detail = (error as { response?: { status?: number } })?.response?.status;
       if (detail === 409) {
-        toast.error("A role with this name already exists");
+        toast.error(t("roleNameExists"));
       } else {
-        toast.error(isCreate ? "Failed to create role" : "Failed to update role");
+        toast.error(isCreate ? t("failedCreate") : t("failedUpdate"));
       }
     }
   }
@@ -95,16 +100,16 @@ export function RoleDialog({ open, onOpenChange, mode, role }: RoleDialogProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isCreate ? "Create Role" : "Edit Role"}</DialogTitle>
+          <DialogTitle>{isCreate ? t("createRole") : t("editRole")}</DialogTitle>
           <DialogDescription>
             {isCreate
-              ? "Create a new role with specific permissions for your team."
-              : "Update the role name, description, or permissions."}
+              ? t("createDescription")
+              : t("editDescription")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{tc("name")}</Label>
             <Input id="name" {...form.register("name")} />
             {form.formState.errors.name && (
               <p className="text-sm text-destructive">
@@ -114,7 +119,7 @@ export function RoleDialog({ open, onOpenChange, mode, role }: RoleDialogProps) 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">{tc("description")}</Label>
             <Textarea
               id="description"
               rows={2}
@@ -123,7 +128,7 @@ export function RoleDialog({ open, onOpenChange, mode, role }: RoleDialogProps) 
           </div>
 
           <div className="space-y-2">
-            <Label>Permissions</Label>
+            <Label>{tc("permissions")}</Label>
             <Controller
               control={form.control}
               name="permissions"
@@ -148,16 +153,16 @@ export function RoleDialog({ open, onOpenChange, mode, role }: RoleDialogProps) 
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="submit" disabled={isPending}>
               {isPending
                 ? isCreate
-                  ? "Creating..."
-                  : "Saving..."
+                  ? tc("creating")
+                  : tc("saving")
                 : isCreate
-                  ? "Create Role"
-                  : "Save Changes"}
+                  ? t("createRole")
+                  : tc("save")}
             </Button>
           </DialogFooter>
         </form>

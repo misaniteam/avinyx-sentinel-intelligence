@@ -1,0 +1,16 @@
+{
+  "title": "Ingested Data",
+  "searchPlaceholder": "Search content...",
+  "allPlatforms": "All Platforms",
+  "noResultsFound": "No results found",
+  "noIngestedDataYet": "No ingested data yet",
+  "tryAdjustingFilters": "Try adjusting your filters.",
+  "configureDataSources": "Configure data sources to start ingesting content.",
+  "content": "Content",
+  "author": "Author",
+  "published": "Published",
+  "ingestedAt": "Ingested At",
+  "externalId": "External ID",
+  "url": "URL",
+  "engagement": "Engagement"
+}

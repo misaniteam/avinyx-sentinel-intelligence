@@ -2,13 +2,16 @@
 
 import { useMediaFeeds } from "@/lib/api/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslations } from "next-intl";
 
 export default function MediaFeedsPage() {
+  const t = useTranslations("navigation");
+  const tc = useTranslations("common");
   const { data: feeds, isLoading } = useMediaFeeds();
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Media Feeds</h1>
+      <h1 className="text-3xl font-bold">{t("mediaFeeds")}</h1>
       {isLoading ? (
         <div className="space-y-4">{[...Array(5)].map((_, i) => <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />)}</div>
       ) : (
@@ -24,9 +27,9 @@ export default function MediaFeedsPage() {
                   {item.platform}
                 </div>
                 <div className="flex-1 space-y-1">
-                  <p className="text-sm">{item.content || "No content"}</p>
+                  <p className="text-sm">{item.content || tc("noContent")}</p>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>{item.author || "Unknown"}</span>
+                    <span>{item.author || tc("unknown")}</span>
                     {item.sentiment_label && (
                       <span className={`font-medium ${
                         item.sentiment_label === "positive" ? "text-green-600" :
@@ -42,7 +45,7 @@ export default function MediaFeedsPage() {
             </Card>
           ))}
           {(!feeds || feeds.length === 0) && (
-            <p className="text-muted-foreground text-center py-12">No media items yet. Configure data sources to start ingesting.</p>
+            <p className="text-muted-foreground text-center py-12">{t("noMediaItemsYet")}</p>
           )}
         </div>
       )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Building2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,6 +19,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login, user } = useAuth();
   const router = useRouter();
+  const t = useTranslations("auth");
+  const tc = useTranslations("common");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +28,7 @@ export default function LoginPage() {
     try {
       await login(email, password);
     } catch {
-      toast.error("Invalid credentials");
+      toast.error(t("invalidCredentials"));
     } finally {
       setIsLoading(false);
     }
@@ -38,29 +42,32 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50">
+      <div className="absolute top-4 right-4">
+        <LocaleSwitcher />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
             <Building2 className="h-6 w-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">Sentinel Intelligence</CardTitle>
-          <CardDescription>Sign in to your account</CardDescription>
+          <CardTitle className="text-2xl">{t("appTitle")}</CardTitle>
+          <CardDescription>{t("signInDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{tc("email")}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@example.com"
+                placeholder={t("emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{tc("password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -70,11 +77,11 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isLoading ? t("signingIn") : t("signIn")}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               <Link href="/forgot-password" className="hover:text-primary">
-                Forgot password?
+                {t("forgotPassword")}
               </Link>
             </div>
           </form>

@@ -1,0 +1,17 @@
+{
+  "title": "রিপোর্ট",
+  "createReport": "রিপোর্ট তৈরি করুন",
+  "createReportTitle": "রিপোর্ট তৈরি করুন",
+  "namePlaceholder": "মাসিক মনোভাব সারাংশ",
+  "format": "ফরম্যাট",
+  "formatPdf": "PDF",
+  "formatImage": "ছবি",
+  "formatCsv": "CSV",
+  "generateReport": "রিপোর্ট তৈরি করুন",
+  "downloadReport": "রিপোর্ট ডাউনলোড করুন",
+  "noReportsYet": "এখনো কোনো রিপোর্ট তৈরি হয়নি",
+  "statusCompleted": "সম্পন্ন",
+  "statusGenerating": "তৈরি হচ্ছে",
+  "statusFailed": "ব্যর্থ",
+  "statusPending": "অপেক্ষমাণ"
+}

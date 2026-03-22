@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useWorkerStatus } from "@/lib/firebase/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import { Activity, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function AdminWorkersPage() {
+  const t = useTranslations("admin.workers");
   const { workers, isLoading } = useWorkerStatus();
   const workerList = Object.entries(workers);
 
@@ -39,9 +41,9 @@ export default function AdminWorkersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Worker Status</h1>
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
         <Badge variant="outline" className="text-sm">
-          {workerList.length} worker{workerList.length !== 1 ? "s" : ""}
+          {workerList.length} {workerList.length !== 1 ? t("workers") : t("worker")}
         </Badge>
       </div>
 
@@ -55,9 +57,9 @@ export default function AdminWorkersPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Activity className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No active workers</p>
+            <p className="text-muted-foreground">{t("noActiveWorkers")}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Worker status will appear here when ingestion jobs run
+              {t("workerStatusDescription")}
             </p>
           </CardContent>
         </Card>
@@ -77,14 +79,14 @@ export default function AdminWorkersPage() {
               <CardContent>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Items fetched</span>
+                    <span className="text-muted-foreground">{t("itemsFetched")}</span>
                     <span className="font-medium">
                       {worker.items_fetched ?? 0}
                     </span>
                   </div>
                   {worker.started_at && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Started</span>
+                      <span className="text-muted-foreground">{t("started")}</span>
                       <span>
                         {formatDistanceToNow(new Date(worker.started_at), {
                           addSuffix: true,
@@ -94,7 +96,7 @@ export default function AdminWorkersPage() {
                   )}
                   {worker.updated_at && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Last update</span>
+                      <span className="text-muted-foreground">{t("lastUpdate")}</span>
                       <span>
                         {formatDistanceToNow(new Date(worker.updated_at), {
                           addSuffix: true,

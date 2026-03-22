@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations, useFormatter } from "next-intl";
 import { useIngestedData } from "@/lib/api/hooks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,15 +38,18 @@ const PLATFORM_OPTIONS = [
   { value: "reddit", label: "Reddit" },
 ];
 
-function formatDate(dateString: string | null): string {
-  if (!dateString) return "—";
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function useFormatDate() {
+  const format = useFormatter();
+  return (dateString: string | null): string => {
+    if (!dateString) return "—";
+    return format.dateTime(new Date(dateString), {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 }
 
 function truncate(text: string | null, max: number): string {
@@ -61,20 +65,22 @@ function formatEngagement(engagement: Record<string, number> | null): string {
 }
 
 function ExpandedRow({ item }: { item: IngestedDataItem }) {
+  const t = useTranslations("admin.ingestedData");
+  const tc = useTranslations("common");
   return (
     <tr className="bg-muted/20">
       <td colSpan={7} className="px-4 py-4">
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="col-span-2">
-            <p className="font-medium text-muted-foreground mb-1">Content</p>
-            <p className="whitespace-pre-wrap">{item.content || "No content"}</p>
+            <p className="font-medium text-muted-foreground mb-1">{t("content")}</p>
+            <p className="whitespace-pre-wrap">{item.content || tc("noContent")}</p>
           </div>
           <div>
-            <p className="font-medium text-muted-foreground mb-1">External ID</p>
+            <p className="font-medium text-muted-foreground mb-1">{t("externalId")}</p>
             <p className="font-mono text-xs">{item.external_id}</p>
           </div>
           <div>
-            <p className="font-medium text-muted-foreground mb-1">URL</p>
+            <p className="font-medium text-muted-foreground mb-1">{t("url")}</p>
             {item.url ? (
               <a
                 href={item.url}
@@ -82,18 +88,18 @@ function ExpandedRow({ item }: { item: IngestedDataItem }) {
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline inline-flex items-center gap-1"
               >
-                Open <ExternalLink className="h-3 w-3" />
+                {tc("open")} <ExternalLink className="h-3 w-3" />
               </a>
             ) : (
               <p>—</p>
             )}
           </div>
           <div>
-            <p className="font-medium text-muted-foreground mb-1">Region</p>
+            <p className="font-medium text-muted-foreground mb-1">{tc("region")}</p>
             <p>{item.geo_region || "—"}</p>
           </div>
           <div>
-            <p className="font-medium text-muted-foreground mb-1">Engagement</p>
+            <p className="font-medium text-muted-foreground mb-1">{t("engagement")}</p>
             <p>{formatEngagement(item.engagement)}</p>
           </div>
         </div>
@@ -103,6 +109,10 @@ function ExpandedRow({ item }: { item: IngestedDataItem }) {
 }
 
 export default function AdminIngestedDataPage() {
+  const t = useTranslations("admin.ingestedData");
+  const tc = useTranslations("common");
+  const formatDate = useFormatDate();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState<string>("");
   const [dateFrom, setDateFrom] = useState("");
@@ -137,7 +147,7 @@ export default function AdminIngestedDataPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">
-          Ingested Data{total > 0 ? ` (${total})` : ""}
+          {t("title")}{total > 0 ? ` (${total})` : ""}
         </h1>
       </div>
 
@@ -146,7 +156,7 @@ export default function AdminIngestedDataPage() {
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search content..."
+            placeholder={t("searchPlaceholder")}
             aria-label="Search content"
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
@@ -159,7 +169,7 @@ export default function AdminIngestedDataPage() {
           onValueChange={(val) => { setPlatformFilter(val); setPage(0); }}
         >
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="All Platforms" />
+            <SelectValue placeholder={t("allPlatforms")} />
           </SelectTrigger>
           <SelectContent>
             {PLATFORM_OPTIONS.map((p) => (
@@ -175,7 +185,7 @@ export default function AdminIngestedDataPage() {
           onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
           className="w-40"
         />
-        <span className="text-muted-foreground text-sm">to</span>
+        <span className="text-muted-foreground text-sm">{tc("to")}</span>
         <Input
           type="date"
           aria-label="Date to"
@@ -186,7 +196,7 @@ export default function AdminIngestedDataPage() {
 
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
-            <X className="mr-1 h-4 w-4" /> Clear
+            <X className="mr-1 h-4 w-4" /> {tc("clear")}
           </Button>
         )}
       </div>
@@ -212,12 +222,12 @@ export default function AdminIngestedDataPage() {
         <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-16">
           <Inbox className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <h3 className="text-lg font-semibold">
-            {hasFilters ? "No results found" : "No ingested data yet"}
+            {hasFilters ? t("noResultsFound") : t("noIngestedDataYet")}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
             {hasFilters
-              ? "Try adjusting your filters."
-              : "Configure data sources to start ingesting content."}
+              ? t("tryAdjustingFilters")
+              : t("configureDataSources")}
           </p>
         </div>
       ) : (
@@ -227,12 +237,12 @@ export default function AdminIngestedDataPage() {
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-3 text-left font-medium w-8"></th>
-                  <th className="px-4 py-3 text-left font-medium">Platform</th>
-                  <th className="px-4 py-3 text-left font-medium">Content</th>
-                  <th className="px-4 py-3 text-left font-medium">Author</th>
-                  <th className="px-4 py-3 text-left font-medium">Published</th>
-                  <th className="px-4 py-3 text-left font-medium">Region</th>
-                  <th className="px-4 py-3 text-left font-medium">Ingested At</th>
+                  <th className="px-4 py-3 text-left font-medium">{tc("platform")}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("content")}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("author")}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("published")}</th>
+                  <th className="px-4 py-3 text-left font-medium">{tc("region")}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("ingestedAt")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -280,7 +290,7 @@ export default function AdminIngestedDataPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Showing {from}–{to} of {total} items
+              {tc("showing", { from, to, total })}
             </p>
             <div className="flex items-center gap-2">
               <Button
@@ -289,7 +299,7 @@ export default function AdminIngestedDataPage() {
                 disabled={page === 0}
                 onClick={() => setPage((p) => p - 1)}
               >
-                <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                <ChevronLeft className="mr-1 h-4 w-4" /> {tc("previous")}
               </Button>
               <Button
                 variant="outline"
@@ -297,7 +307,7 @@ export default function AdminIngestedDataPage() {
                 disabled={to >= total}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Next <ChevronRight className="ml-1 h-4 w-4" />
+                {tc("next")} <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
           </div>

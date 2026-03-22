@@ -15,14 +15,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Download, Play, Loader2 } from "lucide-react";
-
-const FORMAT_OPTIONS = [
-  { value: "pdf", label: "PDF" },
-  { value: "image", label: "Image" },
-  { value: "csv", label: "CSV" },
-];
+import { useTranslations } from "next-intl";
 
 export default function ReportsPage() {
+  const t = useTranslations("reports");
+  const tc = useTranslations("common");
+
+  const FORMAT_OPTIONS = [
+    { value: "pdf", label: t("formatPdf") },
+    { value: "image", label: t("formatImage") },
+    { value: "csv", label: t("formatCsv") },
+  ];
+
   const { data: reports, isLoading } = useReports();
   const createReport = useCreateReport();
   const generateReport = useGenerateReport();
@@ -77,29 +81,29 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Reports</h1>
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-2 h-4 w-4" /> Create Report
+              <Plus className="mr-2 h-4 w-4" /> {t("createReport")}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Report</DialogTitle>
+              <DialogTitle>{t("createReport")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="report-name">Name</Label>
+                <Label htmlFor="report-name">{tc("name")}</Label>
                 <Input
                   id="report-name"
-                  placeholder="Monthly Sentiment Summary"
+                  placeholder={t("namePlaceholder")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="report-format">Format</Label>
+                <Label htmlFor="report-format">{t("format")}</Label>
                 <select
                   id="report-format"
                   value={format}
@@ -121,7 +125,7 @@ export default function ReportsPage() {
                 {createReport.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                Create
+                {tc("create")}
               </Button>
             </div>
           </DialogContent>
@@ -133,17 +137,17 @@ export default function ReportsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="p-3 text-left font-medium">Name</th>
-                <th className="p-3 text-left font-medium">Format</th>
-                <th className="p-3 text-left font-medium">Status</th>
-                <th className="p-3 text-left font-medium">Actions</th>
+                <th className="p-3 text-left font-medium">{tc("name")}</th>
+                <th className="p-3 text-left font-medium">{t("format")}</th>
+                <th className="p-3 text-left font-medium">{tc("status")}</th>
+                <th className="p-3 text-left font-medium">{tc("actions")}</th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
                   <td colSpan={4} className="p-6 text-center text-muted-foreground">
-                    Loading...
+                    {tc("loading")}
                   </td>
                 </tr>
               )}
@@ -169,7 +173,7 @@ export default function ReportsPage() {
                             generateReport.isPending &&
                             generateReport.variables === report.id
                           }
-                          title="Generate report"
+                          title={t("generateReport")}
                         >
                           {generateReport.isPending &&
                           generateReport.variables === report.id ? (
@@ -188,7 +192,7 @@ export default function ReportsPage() {
                             downloadReport.isPending &&
                             downloadReport.variables === report.id
                           }
-                          title="Download report"
+                          title={t("downloadReport")}
                         >
                           {downloadReport.isPending &&
                           downloadReport.variables === report.id ? (
@@ -208,7 +212,7 @@ export default function ReportsPage() {
                     colSpan={4}
                     className="p-6 text-center text-muted-foreground"
                   >
-                    No reports generated yet
+                    {t("noReportsYet")}
                   </td>
                 </tr>
               )}

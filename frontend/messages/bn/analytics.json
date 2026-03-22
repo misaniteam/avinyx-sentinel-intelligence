@@ -1,0 +1,11 @@
+{
+  "title": "বিশ্লেষণ",
+  "analyticsReport": "বিশ্লেষণ রিপোর্ট",
+  "platformBreakdown": "প্ল্যাটফর্ম বিশ্লেষণ",
+  "sentimentOverTime": "সময়ের সাথে মনোভাব",
+  "topTopics": "শীর্ষ বিষয়",
+  "engagementMetrics": "এনগেজমেন্ট মেট্রিক্স",
+  "sentimentHeatmap": "মনোভাব হিটম্যাপ",
+  "geographicSentiment": "ভৌগলিক মনোভাব বণ্টন",
+  "loadingHeatmap": "হিটম্যাপ ডেটা লোড হচ্ছে..."
+}

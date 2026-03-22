@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations, useFormatter } from "next-intl";
 import { useTenants, useUpdateTenant, useDeleteTenant } from "@/lib/api/hooks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,9 @@ import { toast } from "sonner";
 import type { Tenant } from "@/types";
 
 export default function SuperAdminTenantsPage() {
+  const t = useTranslations("superAdmin.tenants");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const { data: tenants, isLoading } = useTenants();
   const updateTenant = useUpdateTenant();
   const deleteTenant = useDeleteTenant();
@@ -43,9 +47,9 @@ export default function SuperAdminTenantsPage() {
     const newStatus = tenant.status === "active" ? "suspended" : "active";
     try {
       await updateTenant.mutateAsync({ id: tenant.id, status: newStatus });
-      toast.success(`Tenant ${newStatus === "active" ? "activated" : "suspended"}`);
+      toast.success(newStatus === "active" ? t("tenantActivated") : t("tenantSuspended"));
     } catch {
-      toast.error("Failed to update tenant status");
+      toast.error(t("failedUpdateStatus"));
     }
   };
 
@@ -53,11 +57,11 @@ export default function SuperAdminTenantsPage() {
     if (!selectedTenant) return;
     try {
       await deleteTenant.mutateAsync(selectedTenant.id);
-      toast.success("Tenant deleted");
+      toast.success(t("tenantDeleted"));
       setDeleteDialogOpen(false);
       setSelectedTenant(undefined);
     } catch {
-      toast.error("Failed to delete tenant");
+      toast.error(t("failedDelete"));
     }
   };
 
@@ -69,9 +73,9 @@ export default function SuperAdminTenantsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Tenants</h1>
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
         <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" /> Onboard Tenant
+          <Plus className="mr-2 h-4 w-4" /> {t("onboardTenant")}
         </Button>
       </div>
       <Card>
@@ -79,12 +83,12 @@ export default function SuperAdminTenantsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="p-3 text-left font-medium">Name</th>
-                <th className="p-3 text-left font-medium">Slug</th>
-                <th className="p-3 text-left font-medium">Constituency</th>
-                <th className="p-3 text-left font-medium">Status</th>
-                <th className="p-3 text-left font-medium">Created</th>
-                <th className="p-3 text-right font-medium">Actions</th>
+                <th className="p-3 text-left font-medium">{tc("name")}</th>
+                <th className="p-3 text-left font-medium">{t("slug")}</th>
+                <th className="p-3 text-left font-medium">{t("constituency")}</th>
+                <th className="p-3 text-left font-medium">{tc("status")}</th>
+                <th className="p-3 text-left font-medium">{t("created")}</th>
+                <th className="p-3 text-right font-medium">{tc("actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -107,11 +111,15 @@ export default function SuperAdminTenantsPage() {
                             : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {tenant.status}
+                      {tenant.status === "active"
+                        ? tc("active")
+                        : tenant.status === "suspended"
+                          ? tc("suspended")
+                          : tc("inactive")}
                     </span>
                   </td>
                   <td className="p-3 text-muted-foreground">
-                    {new Date(tenant.created_at).toLocaleDateString()}
+                    {format.dateTime(new Date(tenant.created_at), { dateStyle: "medium" })}
                   </td>
                   <td className="p-3 text-right">
                     <DropdownMenu>
@@ -122,16 +130,16 @@ export default function SuperAdminTenantsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(tenant)}>
-                          <Pencil className="mr-2 h-4 w-4" /> Edit
+                          <Pencil className="mr-2 h-4 w-4" /> {tc("edit")}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleToggleStatus(tenant)}>
                           {tenant.status === "active" ? (
                             <>
-                              <Ban className="mr-2 h-4 w-4" /> Suspend
+                              <Ban className="mr-2 h-4 w-4" /> {t("suspend")}
                             </>
                           ) : (
                             <>
-                              <CheckCircle className="mr-2 h-4 w-4" /> Activate
+                              <CheckCircle className="mr-2 h-4 w-4" /> {t("activate")}
                             </>
                           )}
                         </DropdownMenuItem>
@@ -139,7 +147,7 @@ export default function SuperAdminTenantsPage() {
                           onClick={() => openDeleteDialog(tenant)}
                           className="text-destructive"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          <Trash2 className="mr-2 h-4 w-4" /> {tc("delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -149,7 +157,7 @@ export default function SuperAdminTenantsPage() {
               {(!tenants || tenants.length === 0) && (
                 <tr>
                   <td colSpan={6} className="p-6 text-center text-muted-foreground">
-                    No tenants yet
+                    {t("noTenantsYet")}
                   </td>
                 </tr>
               )}
@@ -168,8 +176,8 @@ export default function SuperAdminTenantsPage() {
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        title="Delete Tenant"
-        description={`Are you sure you want to delete "${selectedTenant?.name}"? This action cannot be undone and will remove all tenant data.`}
+        title={t("deleteTenant")}
+        description={t("deleteConfirm", { name: selectedTenant?.name ?? "" })}
         onConfirm={handleDelete}
         isPending={deleteTenant.isPending}
       />

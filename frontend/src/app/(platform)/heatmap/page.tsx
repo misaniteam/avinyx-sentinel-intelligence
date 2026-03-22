@@ -7,8 +7,10 @@ import { useTenant } from '@/lib/tenant/tenant-provider';
 import MapProvider from '@/components/heatmap/map-provider';
 import SentimentHeatmap from '@/components/heatmap/sentiment-heatmap';
 import HeatmapControls from '@/components/heatmap/heatmap-controls';
+import { useTranslations } from 'next-intl';
 
 export default function HeatmapPage() {
+  const t = useTranslations('analytics');
   const [sentimentFilter, setSentimentFilter] = useState<string | undefined>(undefined);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -26,7 +28,7 @@ export default function HeatmapPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Sentiment Heatmap</h1>
+      <h1 className="text-3xl font-bold">{t('sentimentHeatmap')}</h1>
 
       <HeatmapControls
         sentimentFilter={sentimentFilter}
@@ -39,12 +41,12 @@ export default function HeatmapPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Geographic Sentiment Distribution</CardTitle>
+          <CardTitle>{t('geographicSentiment')}</CardTitle>
         </CardHeader>
         <CardContent className="h-[600px] p-0">
           {isLoading ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
-              Loading heatmap data...
+              {t('loadingHeatmap')}
             </div>
           ) : (
             <MapProvider>

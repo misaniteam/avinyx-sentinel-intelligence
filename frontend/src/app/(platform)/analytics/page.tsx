@@ -8,6 +8,7 @@ import {
   EngagementAreaChart,
 } from "@/components/charts";
 import { ExportableContainer } from "@/components/shared/exportable-container";
+import { useTranslations } from "next-intl";
 import { useSentimentTrends } from "@/lib/api/hooks";
 import {
   usePlatformBreakdown,
@@ -22,6 +23,7 @@ function ChartSkeleton() {
 }
 
 export default function AnalyticsPage() {
+  const t = useTranslations("analytics");
   const { data: platformData, isLoading: platformLoading } = usePlatformBreakdown();
   const { data: sentimentData, isLoading: sentimentLoading } = useSentimentTrends("daily");
   const { data: topicsData, isLoading: topicsLoading } = useTopTopics();
@@ -29,12 +31,12 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Analytics</h1>
-      <ExportableContainer title="Analytics Report">
+      <h1 className="text-3xl font-bold">{t("title")}</h1>
+      <ExportableContainer title={t("analyticsReport")}>
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Platform Breakdown</CardTitle>
+              <CardTitle>{t("platformBreakdown")}</CardTitle>
             </CardHeader>
             <CardContent>
               {platformLoading ? (
@@ -46,7 +48,7 @@ export default function AnalyticsPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Sentiment Over Time</CardTitle>
+              <CardTitle>{t("sentimentOverTime")}</CardTitle>
             </CardHeader>
             <CardContent>
               {sentimentLoading ? (
@@ -58,7 +60,7 @@ export default function AnalyticsPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Top Topics</CardTitle>
+              <CardTitle>{t("topTopics")}</CardTitle>
             </CardHeader>
             <CardContent>
               {topicsLoading ? (
@@ -70,7 +72,7 @@ export default function AnalyticsPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Engagement Metrics</CardTitle>
+              <CardTitle>{t("engagementMetrics")}</CardTitle>
             </CardHeader>
             <CardContent>
               {engagementLoading ? (

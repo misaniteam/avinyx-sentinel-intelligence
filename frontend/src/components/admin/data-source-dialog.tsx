@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -30,28 +31,11 @@ import { TagInput } from "@/components/ui/tag-input";
 import { useCreateDataSource, useUpdateDataSource } from "@/lib/api/hooks";
 import type { DataSource } from "@/types";
 
-const PLATFORMS = [
-  { value: "brand24", label: "Brand24" },
-  { value: "youtube", label: "YouTube" },
-  { value: "twitter", label: "Twitter / X" },
-  { value: "news_rss", label: "News RSS" },
-  { value: "news_api", label: "News API" },
-  { value: "reddit", label: "Reddit" },
-] as const;
+const PLATFORM_VALUES = ["brand24", "youtube", "twitter", "news_rss", "news_api", "reddit"] as const;
 
-const LANGUAGES = [
-  { value: "en", label: "English" },
-  { value: "es", label: "Spanish" },
-  { value: "fr", label: "French" },
-  { value: "de", label: "German" },
-  { value: "hi", label: "Hindi" },
-  { value: "pt", label: "Portuguese" },
-  { value: "ar", label: "Arabic" },
-  { value: "zh", label: "Chinese" },
-  { value: "ja", label: "Japanese" },
-] as const;
+const LANGUAGE_VALUES = ["en", "es", "fr", "de", "hi", "pt", "ar", "zh", "ja"] as const;
 
-type Platform = typeof PLATFORMS[number]["value"];
+type Platform = typeof PLATFORM_VALUES[number];
 
 const baseSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -146,47 +130,62 @@ interface ConfigField {
   options?: { value: string; label: string }[];
 }
 
+interface ConfigFieldDef {
+  name: string;
+  labelKey: string;
+  type: "password" | "text" | "textarea" | "select" | "tags";
+  placeholderKey?: string;
+  required?: boolean;
+  hasLanguageOptions?: boolean;
+}
+
+const PLATFORM_CONFIG_FIELDS: Record<string, ConfigFieldDef[]> = {
+  brand24: [
+    { name: "api_key", labelKey: "fields.apiKey", type: "password", required: true },
+    { name: "project_id", labelKey: "fields.projectId", type: "text", required: true },
+    { name: "search_queries", labelKey: "fields.hashtagsTopics", type: "tags", placeholderKey: "placeholders.hashtagsTopics" },
+  ],
+  youtube: [
+    { name: "api_key", labelKey: "fields.apiKey", type: "password", required: true },
+    { name: "channel_ids", labelKey: "fields.channelIds", type: "textarea", placeholderKey: "placeholders.channelIds" },
+    { name: "search_queries", labelKey: "fields.hashtagsTopics", type: "tags", placeholderKey: "placeholders.hashtagsTopics" },
+  ],
+  twitter: [
+    { name: "api_key", labelKey: "fields.apiKey", type: "password", required: true },
+    { name: "api_secret", labelKey: "fields.apiSecret", type: "password", required: true },
+    { name: "bearer_token", labelKey: "fields.bearerToken", type: "password", required: true },
+    { name: "search_queries", labelKey: "fields.hashtagsTopics", type: "tags", placeholderKey: "placeholders.hashtagsTopics" },
+  ],
+  news_rss: [
+    { name: "feed_urls", labelKey: "fields.feedUrls", type: "textarea", placeholderKey: "placeholders.feedUrls", required: true },
+  ],
+  news_api: [
+    { name: "api_key", labelKey: "fields.apiKey", type: "password", required: true },
+    { name: "keywords", labelKey: "fields.keywords", type: "textarea", placeholderKey: "placeholders.keywords" },
+    { name: "sources", labelKey: "fields.sources", type: "text", placeholderKey: "placeholders.sources" },
+    { name: "language", labelKey: "fields.language", type: "select", hasLanguageOptions: true },
+  ],
+  reddit: [
+    { name: "client_id", labelKey: "fields.clientId", type: "password", required: true },
+    { name: "client_secret", labelKey: "fields.clientSecret", type: "password", required: true },
+    { name: "subreddits", labelKey: "fields.subreddits", type: "textarea", placeholderKey: "placeholders.subreddits" },
+  ],
+};
+
+function getConfigFieldDefsForPlatform(platform: string): ConfigFieldDef[] {
+  return PLATFORM_CONFIG_FIELDS[platform] || [];
+}
+
 function getConfigFieldsForPlatform(platform: string): ConfigField[] {
-  switch (platform) {
-    case "brand24":
-      return [
-        { name: "api_key", label: "API Key", type: "password", required: true },
-        { name: "project_id", label: "Project ID", type: "text", required: true },
-        { name: "search_queries", label: "Hashtags / Topics", type: "tags", placeholder: "Type a hashtag or topic and press Enter" },
-      ];
-    case "youtube":
-      return [
-        { name: "api_key", label: "API Key", type: "password", required: true },
-        { name: "channel_ids", label: "Channel IDs", type: "textarea", placeholder: "Comma-separated channel IDs" },
-        { name: "search_queries", label: "Hashtags / Topics", type: "tags", placeholder: "Type a hashtag or topic and press Enter" },
-      ];
-    case "twitter":
-      return [
-        { name: "api_key", label: "API Key", type: "password", required: true },
-        { name: "api_secret", label: "API Secret", type: "password", required: true },
-        { name: "bearer_token", label: "Bearer Token", type: "password", required: true },
-        { name: "search_queries", label: "Hashtags / Topics", type: "tags", placeholder: "Type a hashtag or topic and press Enter" },
-      ];
-    case "news_rss":
-      return [
-        { name: "feed_urls", label: "Feed URLs", type: "textarea", placeholder: "One URL per line", required: true },
-      ];
-    case "news_api":
-      return [
-        { name: "api_key", label: "API Key", type: "password", required: true },
-        { name: "keywords", label: "Keywords", type: "textarea", placeholder: "Comma-separated keywords" },
-        { name: "sources", label: "Sources", type: "text", placeholder: "Comma-separated source IDs" },
-        { name: "language", label: "Language", type: "select", options: [...LANGUAGES] },
-      ];
-    case "reddit":
-      return [
-        { name: "client_id", label: "Client ID", type: "password", required: true },
-        { name: "client_secret", label: "Client Secret", type: "password", required: true },
-        { name: "subreddits", label: "Subreddits", type: "textarea", placeholder: "Comma-separated subreddit names" },
-      ];
-    default:
-      return [];
-  }
+  // Legacy adapter used by buildConfigFromForm and extractConfigValues
+  const defs = getConfigFieldDefsForPlatform(platform);
+  return defs.map((d) => ({
+    name: d.name,
+    label: d.labelKey,
+    type: d.type,
+    placeholder: d.placeholderKey,
+    required: d.required,
+  }));
 }
 
 function extractConfigValues(config: Record<string, unknown>, platform: string): Record<string, string | string[]> {
@@ -216,10 +215,24 @@ interface DataSourceDialogProps {
 }
 
 export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataSourceDialogProps) {
+  const t = useTranslations("admin.dataSources");
+  const tc = useTranslations("common");
+  const tv = useTranslations("validation");
+
   const createDataSource = useCreateDataSource();
   const updateDataSource = useUpdateDataSource();
 
   const isCreate = mode === "create";
+
+  const platforms = useMemo(() =>
+    PLATFORM_VALUES.map((value) => ({ value, label: t(`platforms.${value}`) })),
+    [t]
+  );
+
+  const languages = useMemo(() =>
+    LANGUAGE_VALUES.map((value) => ({ value, label: t(`languages.${value}`) })),
+    [t]
+  );
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -278,7 +291,7 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
       const configResult = configSchema.safeParse(configFields);
       if (!configResult.success) {
         const firstError = configResult.error.errors[0];
-        toast.error(firstError?.message || "Invalid configuration");
+        toast.error(firstError?.message || tv("invalidConfiguration"));
         return;
       }
     }
@@ -293,7 +306,7 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
           config,
           poll_interval_minutes: data.poll_interval_minutes,
         });
-        toast.success("Data source created successfully");
+        toast.success(t("createSuccess"));
       } else if (dataSource) {
         await updateDataSource.mutateAsync({
           id: dataSource.id,
@@ -302,41 +315,41 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
           poll_interval_minutes: data.poll_interval_minutes,
           is_active: data.is_active,
         });
-        toast.success("Data source updated successfully");
+        toast.success(t("updateSuccess"));
       }
       onOpenChange(false);
     } catch (error: unknown) {
       const detail = (error as { response?: { status?: number } })?.response?.status;
       if (detail === 409) {
-        toast.error("A data source with this name already exists");
+        toast.error(t("duplicateNameError"));
       } else {
-        toast.error(isCreate ? "Failed to create data source" : "Failed to update data source");
+        toast.error(isCreate ? t("createFailed") : t("updateFailed"));
       }
     }
   }
 
   const isPending = createDataSource.isPending || updateDataSource.isPending;
-  const configFields = getConfigFieldsForPlatform(watchedPlatform);
+  const configFieldDefs = getConfigFieldDefsForPlatform(watchedPlatform);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isCreate ? "Add Data Source" : "Edit Data Source"}</DialogTitle>
+          <DialogTitle>{isCreate ? t("addDataSource") : t("editDataSource")}</DialogTitle>
           <DialogDescription>
             {isCreate
-              ? "Configure a new platform connector to ingest data."
-              : "Update the data source settings and credentials."}
+              ? t("createDescription")
+              : t("editDescription")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {/* General Section */}
           <div className="space-y-4">
-            <h4 className="text-sm font-medium text-muted-foreground">General</h4>
+            <h4 className="text-sm font-medium text-muted-foreground">{t("general")}</h4>
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" {...form.register("name", { required: "Name is required" })} />
+              <Label htmlFor="name">{tc("name")}</Label>
+              <Input id="name" {...form.register("name", { required: tv("nameRequired") })} />
               {form.formState.errors.name && (
                 <p className="text-sm text-destructive">
                   {form.formState.errors.name.message}
@@ -345,11 +358,11 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="platform">Platform</Label>
+              <Label htmlFor="platform">{tc("platform")}</Label>
               <Controller
                 control={form.control}
                 name="platform"
-                rules={{ required: "Platform is required" }}
+                rules={{ required: tv("platformRequired") }}
                 render={({ field }) => (
                   <Select
                     value={field.value}
@@ -357,10 +370,10 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
                     disabled={!isCreate}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a platform" />
+                      <SelectValue placeholder={t("selectPlatform")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {PLATFORMS.map((p) => (
+                      {platforms.map((p) => (
                         <SelectItem key={p.value} value={p.value}>
                           {p.label}
                         </SelectItem>
@@ -377,7 +390,7 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="poll_interval_minutes">Poll Interval (minutes)</Label>
+              <Label htmlFor="poll_interval_minutes">{t("pollIntervalMinutes")}</Label>
               <Input
                 id="poll_interval_minutes"
                 type="number"
@@ -394,7 +407,7 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
 
             {!isCreate && (
               <div className="flex items-center justify-between">
-                <Label htmlFor="is_active">Active</Label>
+                <Label htmlFor="is_active">{tc("active")}</Label>
                 <Controller
                   control={form.control}
                   name="is_active"
@@ -411,22 +424,22 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
           </div>
 
           {/* Credentials Section */}
-          {watchedPlatform && configFields.length > 0 && (
+          {watchedPlatform && configFieldDefs.length > 0 && (
             <>
               <Separator />
               <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground">Credentials</h4>
-                {configFields.map((field) => (
+                <h4 className="text-sm font-medium text-muted-foreground">{t("credentials")}</h4>
+                {configFieldDefs.map((field) => (
                   <div key={field.name} className="space-y-2">
                     <Label htmlFor={field.name}>
-                      {field.label}
+                      {t(field.labelKey)}
                       {field.required && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     {field.type === "password" && (
                       <Input
                         id={field.name}
                         type="password"
-                        placeholder={!isCreate && isMasked(form.getValues(field.name as keyof FormData)) ? "Leave blank to keep current value" : undefined}
+                        placeholder={!isCreate && isMasked(form.getValues(field.name as keyof FormData)) ? t("leaveBlankToKeep") : undefined}
                         {...form.register(field.name as keyof FormData)}
                         onChange={(e) => {
                           form.setValue(field.name as keyof FormData, e.target.value);
@@ -436,7 +449,7 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
                     {field.type === "text" && (
                       <Input
                         id={field.name}
-                        placeholder={field.placeholder}
+                        placeholder={field.placeholderKey ? t(field.placeholderKey) : undefined}
                         {...form.register(field.name as keyof FormData)}
                       />
                     )}
@@ -444,7 +457,7 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
                       <Textarea
                         id={field.name}
                         rows={3}
-                        placeholder={field.placeholder}
+                        placeholder={field.placeholderKey ? t(field.placeholderKey) : undefined}
                         {...form.register(field.name as keyof FormData)}
                       />
                     )}
@@ -456,12 +469,12 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
                           <TagInput
                             value={Array.isArray(controllerField.value) ? controllerField.value as string[] : []}
                             onChange={controllerField.onChange}
-                            placeholder={field.placeholder}
+                            placeholder={field.placeholderKey ? t(field.placeholderKey) : undefined}
                           />
                         )}
                       />
                     )}
-                    {field.type === "select" && field.options && (
+                    {field.type === "select" && field.hasLanguageOptions && (
                       <Controller
                         control={form.control}
                         name={field.name as keyof FormData}
@@ -471,10 +484,10 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
                             onValueChange={controllerField.onChange}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select..." />
+                              <SelectValue placeholder={t("selectOption")} />
                             </SelectTrigger>
                             <SelectContent>
-                              {field.options!.map((opt) => (
+                              {languages.map((opt) => (
                                 <SelectItem key={opt.value} value={opt.value}>
                                   {opt.label}
                                 </SelectItem>
@@ -497,16 +510,16 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="submit" disabled={isPending}>
               {isPending
                 ? isCreate
-                  ? "Creating..."
-                  : "Saving..."
+                  ? tc("creating")
+                  : tc("saving")
                 : isCreate
-                  ? "Add Data Source"
-                  : "Save Changes"}
+                  ? t("addDataSource")
+                  : tc("save")}
             </Button>
           </DialogFooter>
         </form>

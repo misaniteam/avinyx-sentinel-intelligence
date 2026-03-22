@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations, useFormatter } from "next-intl";
 import { useRoles, useDeleteRole } from "@/lib/api/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,15 +20,11 @@ import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import type { Role } from "@/types";
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 export default function AdminRolesPage() {
+  const t = useTranslations("admin.roles");
+  const tc = useTranslations("common");
+  const format = useFormatter();
+
   const { data: roles, isLoading } = useRoles();
   const deleteRole = useDeleteRole();
 
@@ -66,11 +63,11 @@ export default function AdminRolesPage() {
     if (!roleToDelete) return;
     try {
       await deleteRole.mutateAsync(roleToDelete.id);
-      toast.success("Role deleted successfully");
+      toast.success(t("roleDeleted"));
       setDeleteDialogOpen(false);
       setRoleToDelete(undefined);
     } catch {
-      toast.error("Failed to delete role");
+      toast.error(t("failedDelete"));
     }
   }
 
@@ -78,11 +75,11 @@ export default function AdminRolesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">
-          Roles{roles ? ` (${roles.length})` : ""}
+          {t("title")}{roles ? ` (${roles.length})` : ""}
         </h1>
         <PermissionGate permission="roles:write">
           <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Create Role
+            <Plus className="mr-2 h-4 w-4" /> {t("createRole")}
           </Button>
         </PermissionGate>
       </div>
@@ -90,8 +87,8 @@ export default function AdminRolesPage() {
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search roles..."
-          aria-label="Search roles"
+          placeholder={t("searchPlaceholder")}
+          aria-label={t("searchPlaceholder")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -116,22 +113,22 @@ export default function AdminRolesPage() {
       ) : filteredRoles.length === 0 && !searchQuery.trim() ? (
         <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-16">
           <ShieldCheck className="h-12 w-12 text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-semibold">No roles yet</h3>
+          <h3 className="text-lg font-semibold">{t("noRolesYet")}</h3>
           <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Create your first role to manage team permissions.
+            {t("noRolesYetDescription")}
           </p>
           <PermissionGate permission="roles:write">
             <Button onClick={handleCreate}>
-              <Plus className="mr-2 h-4 w-4" /> Create Role
+              <Plus className="mr-2 h-4 w-4" /> {t("createRole")}
             </Button>
           </PermissionGate>
         </div>
       ) : filteredRoles.length === 0 && searchQuery.trim() ? (
         <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-16">
           <Search className="h-12 w-12 text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-semibold">No roles found</h3>
+          <h3 className="text-lg font-semibold">{t("noRolesFound")}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            No roles match &quot;{searchQuery}&quot;. Try a different search term.
+            {t("noRolesFoundDescription", { query: searchQuery })}
           </p>
         </div>
       ) : (
@@ -139,12 +136,12 @@ export default function AdminRolesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium">Name</th>
-                <th className="px-4 py-3 text-left font-medium">Description</th>
-                <th className="px-4 py-3 text-left font-medium">Permissions</th>
-                <th className="px-4 py-3 text-left font-medium">Created</th>
+                <th className="px-4 py-3 text-left font-medium">{tc("name")}</th>
+                <th className="px-4 py-3 text-left font-medium">{tc("description")}</th>
+                <th className="px-4 py-3 text-left font-medium">{tc("permissions")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("created")}</th>
                 <th className="px-4 py-3 text-right font-medium">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{tc("actions")}</span>
                 </th>
               </tr>
             </thead>
@@ -153,15 +150,15 @@ export default function AdminRolesPage() {
                 <tr key={role.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-medium">{role.name}</td>
                   <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">
-                    {role.description || "No description"}
+                    {role.description || tc("noDescription")}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="secondary">
-                      {role.permissions.length} permission{role.permissions.length !== 1 ? "s" : ""}
+                      {role.permissions.length} {role.permissions.length !== 1 ? tc("permissions") : tc("permission")}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {formatDate(role.created_at)}
+                    {format.dateTime(new Date(role.created_at), { year: "numeric", month: "short", day: "numeric" })}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <PermissionGate permission="roles:write">
@@ -174,14 +171,14 @@ export default function AdminRolesPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleEdit(role)}>
                             <Pencil className="mr-2 h-4 w-4" />
-                            Edit
+                            {tc("edit")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(role)}
                             className="text-destructive"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
+                            {tc("delete")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -204,8 +201,8 @@ export default function AdminRolesPage() {
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        title="Delete Role"
-        description={`Are you sure you want to delete the "${roleToDelete?.name}" role? Users assigned this role will lose its permissions.`}
+        title={t("deleteRole")}
+        description={t("deleteRoleConfirm", { name: roleToDelete?.name ?? "" })}
         onConfirm={handleDeleteConfirm}
         isPending={deleteRole.isPending}
       />

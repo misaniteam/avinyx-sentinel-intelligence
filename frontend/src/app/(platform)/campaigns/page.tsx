@@ -5,15 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 
 export default function CampaignsPage() {
+  const t = useTranslations("campaigns");
   const { data: campaigns, isLoading } = useCampaigns();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Campaigns</h1>
-        <Button><Plus className="mr-2 h-4 w-4" /> New Campaign</Button>
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
+        <Button><Plus className="mr-2 h-4 w-4" /> {t("newCampaign")}</Button>
       </div>
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -45,7 +47,7 @@ export default function CampaignsPage() {
             </Card>
           ))}
           {(!campaigns || campaigns.length === 0) && (
-            <p className="text-muted-foreground col-span-full text-center py-12">No campaigns yet</p>
+            <p className="text-muted-foreground col-span-full text-center py-12">{t("noCampaignsYet")}</p>
           )}
         </div>
       )}

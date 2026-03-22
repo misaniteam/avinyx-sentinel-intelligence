@@ -1,0 +1,16 @@
+{
+  "title": "সংগৃহীত ডেটা",
+  "searchPlaceholder": "বিষয়বস্তু অনুসন্ধান...",
+  "allPlatforms": "সব প্ল্যাটফর্ম",
+  "noResultsFound": "কোনো ফলাফল পাওয়া যায়নি",
+  "noIngestedDataYet": "এখনো কোনো সংগৃহীত ডেটা নেই",
+  "tryAdjustingFilters": "আপনার ফিল্টার পরিবর্তন করে দেখুন।",
+  "configureDataSources": "বিষয়বস্তু সংগ্রহ শুরু করতে ডেটা সোর্স কনফিগার করুন।",
+  "content": "বিষয়বস্তু",
+  "author": "লেখক",
+  "published": "প্রকাশিত",
+  "ingestedAt": "সংগ্রহের সময়",
+  "externalId": "এক্সটার্নাল আইডি",
+  "url": "URL",
+  "engagement": "এনগেজমেন্ট"
+}

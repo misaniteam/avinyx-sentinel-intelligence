@@ -1,0 +1,10 @@
+{
+  "title": "Notifications",
+  "markAllRead": "Mark all read",
+  "noNotifications": "No notifications",
+  "types": {
+    "alert": "Alert",
+    "info": "Info",
+    "warning": "Warning"
+  }
+}

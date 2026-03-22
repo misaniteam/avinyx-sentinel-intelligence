@@ -1,0 +1,20 @@
+{
+  "required": "এই ক্ষেত্রটি আবশ্যক",
+  "invalidEmail": "ভুল ইমেইল",
+  "validEmailRequired": "সঠিক ইমেইল প্রয়োজন",
+  "passwordMinLength": "পাসওয়ার্ড কমপক্ষে {min} অক্ষরের হতে হবে",
+  "minimumChars": "কমপক্ষে {min} অক্ষর",
+  "nameRequired": "নাম আবশ্যক",
+  "platformRequired": "প্ল্যাটফর্ম আবশ্যক",
+  "apiKeyRequired": "API কী আবশ্যক",
+  "selectAtLeastOnePermission": "কমপক্ষে একটি অনুমতি নির্বাচন করুন",
+  "tenantNameRequired": "টেন্যান্টের নাম আবশ্যক",
+  "slugRequired": "স্লাগ আবশ্যক",
+  "slugFormat": "শুধুমাত্র ছোট হাতের অক্ষর, সংখ্যা এবং হাইফেন",
+  "constituencyRequired": "নির্বাচনী এলাকা আবশ্যক",
+  "adminNameRequired": "অ্যাডমিনের নাম আবশ্যক",
+  "displayNameRequired": "প্রদর্শন নাম আবশ্যক",
+  "timezoneRequired": "টাইমজোন আবশ্যক",
+  "languageRequired": "ভাষা আবশ্যক",
+  "modelRequired": "মডেলের নাম আবশ্যক"
+}

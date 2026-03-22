@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useDataSources, useDeleteDataSource } from "@/lib/api/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,20 +29,23 @@ import { PermissionGate } from "@/components/shared/permission-gate";
 import { platformConfig } from "@/lib/constants/platforms";
 import type { DataSource } from "@/types";
 
-function formatDate(dateString: string | null): string {
-  if (!dateString) return "Never";
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export default function AdminDataSourcesPage() {
+  const t = useTranslations("admin.dataSources");
+  const tc = useTranslations("common");
+
   const { data: dataSources, isLoading } = useDataSources();
   const deleteDataSource = useDeleteDataSource();
+
+  function formatDate(dateString: string | null): string {
+    if (!dateString) return tc("never");
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
 
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -78,11 +82,11 @@ export default function AdminDataSourcesPage() {
     if (!dsToDelete) return;
     try {
       await deleteDataSource.mutateAsync(dsToDelete.id);
-      toast.success("Data source deleted successfully");
+      toast.success(t("deleteSuccess"));
       setDeleteDialogOpen(false);
       setDsToDelete(undefined);
     } catch {
-      toast.error("Failed to delete data source");
+      toast.error(t("deleteFailed"));
     }
   }
 
@@ -90,11 +94,11 @@ export default function AdminDataSourcesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">
-          Data Sources{dataSources ? ` (${dataSources.length})` : ""}
+          {t("title")}{dataSources ? ` (${dataSources.length})` : ""}
         </h1>
         <PermissionGate permission="data_sources:write">
           <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Add Data Source
+            <Plus className="mr-2 h-4 w-4" /> {t("addDataSource")}
           </Button>
         </PermissionGate>
       </div>
@@ -102,8 +106,8 @@ export default function AdminDataSourcesPage() {
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search data sources..."
-          aria-label="Search data sources"
+          placeholder={t("searchPlaceholder")}
+          aria-label={t("searchPlaceholder")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -129,22 +133,22 @@ export default function AdminDataSourcesPage() {
       ) : filteredDataSources.length === 0 && !searchQuery.trim() ? (
         <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-16">
           <Database className="h-12 w-12 text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-semibold">No data sources yet</h3>
+          <h3 className="text-lg font-semibold">{t("noDataSourcesYet")}</h3>
           <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Add your first platform connector to start ingesting data.
+            {t("noDataSourcesYetDescription")}
           </p>
           <PermissionGate permission="data_sources:write">
             <Button onClick={handleCreate}>
-              <Plus className="mr-2 h-4 w-4" /> Add Data Source
+              <Plus className="mr-2 h-4 w-4" /> {t("addDataSource")}
             </Button>
           </PermissionGate>
         </div>
       ) : filteredDataSources.length === 0 && searchQuery.trim() ? (
         <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-16">
           <Search className="h-12 w-12 text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-semibold">No data sources found</h3>
+          <h3 className="text-lg font-semibold">{t("noDataSourcesFound")}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            No data sources match &quot;{searchQuery}&quot;. Try a different search term.
+            {t("noDataSourcesFoundDescription", { query: searchQuery })}
           </p>
         </div>
       ) : (
@@ -152,13 +156,13 @@ export default function AdminDataSourcesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium">Name</th>
-                <th className="px-4 py-3 text-left font-medium">Platform</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-left font-medium">Poll Interval</th>
-                <th className="px-4 py-3 text-left font-medium">Last Polled</th>
+                <th className="px-4 py-3 text-left font-medium">{tc("name")}</th>
+                <th className="px-4 py-3 text-left font-medium">{tc("platform")}</th>
+                <th className="px-4 py-3 text-left font-medium">{tc("status")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("pollInterval")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("lastPolled")}</th>
                 <th className="px-4 py-3 text-right font-medium">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{tc("actions")}</span>
                 </th>
               </tr>
             </thead>
@@ -182,11 +186,11 @@ export default function AdminDataSourcesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={ds.is_active ? "default" : "outline"}>
-                        {ds.is_active ? "Active" : "Inactive"}
+                        {ds.is_active ? tc("active") : tc("inactive")}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {ds.poll_interval_minutes} min
+                      {ds.poll_interval_minutes} {tc("min")}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {formatDate(ds.last_polled_at)}
@@ -202,14 +206,14 @@ export default function AdminDataSourcesPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleEdit(ds)}>
                               <Pencil className="mr-2 h-4 w-4" />
-                              Edit
+                              {tc("edit")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDeleteClick(ds)}
                               className="text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
+                              {tc("delete")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -233,8 +237,8 @@ export default function AdminDataSourcesPage() {
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        title="Delete Data Source"
-        description={`Are you sure you want to delete the "${dsToDelete?.name}" data source? This action cannot be undone.`}
+        title={t("deleteTitle")}
+        description={t("deleteConfirm", { name: dsToDelete?.name ?? "" })}
         onConfirm={handleDeleteConfirm}
         isPending={deleteDataSource.isPending}
       />

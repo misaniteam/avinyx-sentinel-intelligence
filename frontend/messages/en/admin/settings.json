@@ -1,0 +1,48 @@
+{
+  "title": "Settings",
+  "ai": {
+    "title": "AI Provider",
+    "provider": "Provider",
+    "selectProvider": "Select provider",
+    "claude": "Claude",
+    "openai": "OpenAI",
+    "awsBedrock": "AWS Bedrock",
+    "modelName": "Model Name",
+    "modelPlaceholder": "e.g., claude-sonnet-4-5-20250514, gpt-4o",
+    "apiKey": "API Key",
+    "enterApiKey": "Enter API key",
+    "fallbackProvider": "Fallback Provider",
+    "none": "None",
+    "saved": "AI provider settings saved",
+    "failedSave": "Failed to save AI provider settings"
+  },
+  "notifications": {
+    "title": "Notification Preferences",
+    "sentimentThreshold": "Sentiment Alert Threshold",
+    "thresholdHelp": "Alert when average sentiment drops below this value (e.g., -0.5)",
+    "emailAlerts": "Enable email alerts",
+    "pushNotifications": "Enable push notifications",
+    "saved": "Notification preferences saved",
+    "failedSave": "Failed to save notification preferences"
+  },
+  "general": {
+    "title": "General Settings",
+    "displayName": "Display Name",
+    "displayNamePlaceholder": "Organization display name",
+    "timezone": "Timezone",
+    "selectTimezone": "Select timezone",
+    "defaultLanguage": "Default Language",
+    "selectLanguage": "Select language",
+    "saved": "General settings saved",
+    "failedSave": "Failed to save general settings",
+    "languages": {
+      "en": "English",
+      "hi": "Hindi",
+      "es": "Spanish",
+      "fr": "French",
+      "de": "German",
+      "ja": "Japanese",
+      "pt": "Portuguese"
+    }
+  }
+}

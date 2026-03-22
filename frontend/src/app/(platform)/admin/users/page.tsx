@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useUsers, useDeleteUser } from "@/lib/api/hooks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,8 @@ import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import type { User } from "@/types";
 
 export default function AdminUsersPage() {
+  const t = useTranslations("admin.users");
+  const tc = useTranslations("common");
   const { data: users, isLoading } = useUsers();
   const deleteUser = useDeleteUser();
 
@@ -47,20 +50,20 @@ export default function AdminUsersPage() {
     if (!userToDelete) return;
     try {
       await deleteUser.mutateAsync(userToDelete.id);
-      toast.success("User deleted successfully");
+      toast.success(t("userDeleted"));
       setDeleteDialogOpen(false);
       setUserToDelete(undefined);
     } catch {
-      toast.error("Failed to delete user");
+      toast.error(t("failedDelete"));
     }
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Users</h1>
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
         <Button onClick={handleAdd}>
-          <Plus className="mr-2 h-4 w-4" /> Add User
+          <Plus className="mr-2 h-4 w-4" /> {t("addUser")}
         </Button>
       </div>
       <Card>
@@ -68,11 +71,11 @@ export default function AdminUsersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="p-3 text-left font-medium">Name</th>
-                <th className="p-3 text-left font-medium">Email</th>
-                <th className="p-3 text-left font-medium">Roles</th>
-                <th className="p-3 text-left font-medium">Status</th>
-                <th className="p-3 text-right font-medium">Actions</th>
+                <th className="p-3 text-left font-medium">{tc("name")}</th>
+                <th className="p-3 text-left font-medium">{tc("email")}</th>
+                <th className="p-3 text-left font-medium">{t("roles")}</th>
+                <th className="p-3 text-left font-medium">{tc("status")}</th>
+                <th className="p-3 text-right font-medium">{tc("actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -91,7 +94,7 @@ export default function AdminUsersPage() {
                           : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {user.is_active ? "Active" : "Inactive"}
+                      {user.is_active ? tc("active") : tc("inactive")}
                     </span>
                   </td>
                   <td className="p-3 text-right">
@@ -104,14 +107,14 @@ export default function AdminUsersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(user)}>
                           <Pencil className="mr-2 h-4 w-4" />
-                          Edit
+                          {tc("edit")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDeleteClick(user)}
                           className="text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          {tc("delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -124,7 +127,7 @@ export default function AdminUsersPage() {
                     colSpan={5}
                     className="p-6 text-center text-muted-foreground"
                   >
-                    No users found
+                    {t("noUsersFound")}
                   </td>
                 </tr>
               )}
@@ -143,8 +146,8 @@ export default function AdminUsersPage() {
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        title="Delete User"
-        description={`Are you sure you want to delete "${userToDelete?.full_name}"? This action cannot be undone.`}
+        title={t("deleteUser")}
+        description={t("deleteUserConfirm", { name: userToDelete?.full_name ?? "" })}
         onConfirm={handleDeleteConfirm}
         isPending={deleteUser.isPending}
       />

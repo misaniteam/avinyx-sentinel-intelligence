@@ -1,0 +1,17 @@
+{
+  "title": "Reports",
+  "createReport": "Create Report",
+  "createReportTitle": "Create Report",
+  "namePlaceholder": "Monthly Sentiment Summary",
+  "format": "Format",
+  "formatPdf": "PDF",
+  "formatImage": "Image",
+  "formatCsv": "CSV",
+  "generateReport": "Generate report",
+  "downloadReport": "Download report",
+  "noReportsYet": "No reports generated yet",
+  "statusCompleted": "completed",
+  "statusGenerating": "generating",
+  "statusFailed": "failed",
+  "statusPending": "pending"
+}

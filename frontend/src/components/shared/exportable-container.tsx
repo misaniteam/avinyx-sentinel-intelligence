@@ -1,6 +1,7 @@
 'use client';
 
 import { useExport } from '@/lib/export/use-export';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 
@@ -12,6 +13,7 @@ interface ExportableContainerProps {
 
 export function ExportableContainer({ title, children, className }: ExportableContainerProps) {
   const { exportRef, exportToPdf, exportToPng, isExporting } = useExport();
+  const t = useTranslations("common");
 
   return (
     <div className={className}>
@@ -23,7 +25,7 @@ export function ExportableContainer({ title, children, className }: ExportableCo
           disabled={isExporting}
         >
           <Download className="h-4 w-4 mr-1" />
-          PDF
+          {t("exportPdf")}
         </Button>
         <Button
           variant="outline"
@@ -32,7 +34,7 @@ export function ExportableContainer({ title, children, className }: ExportableCo
           disabled={isExporting}
         >
           <Download className="h-4 w-4 mr-1" />
-          PNG
+          {t("exportPng")}
         </Button>
       </div>
       <div ref={exportRef}>

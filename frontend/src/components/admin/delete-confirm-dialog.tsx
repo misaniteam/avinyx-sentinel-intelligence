@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 interface DeleteConfirmDialogProps {
   open: boolean;
@@ -27,6 +28,8 @@ export function DeleteConfirmDialog({
   onConfirm,
   isPending,
 }: DeleteConfirmDialogProps) {
+  const t = useTranslations("common");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -36,10 +39,10 @@ export function DeleteConfirmDialog({
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
-            Cancel
+            {t("cancel")}
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
-            {isPending ? "Deleting..." : "Delete"}
+            {isPending ? t("deleting") : t("delete")}
           </Button>
         </DialogFooter>
       </DialogContent>

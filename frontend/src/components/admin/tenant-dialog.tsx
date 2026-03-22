@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,25 +28,29 @@ import { ConstituencyCombobox } from "@/components/admin/constituency-combobox";
 import { WB_CONSTITUENCY_MAP } from "@/lib/data/wb-constituencies";
 import type { Tenant } from "@/types";
 
-const createSchema = z.object({
-  name: z.string().min(1, "Tenant name is required"),
-  slug: z
-    .string()
-    .min(1, "Slug is required")
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Lowercase alphanumeric and hyphens only"),
-  constituency_code: z.string().min(1, "Constituency is required"),
-  admin_email: z.string().email("Valid email required"),
-  admin_password: z.string().min(8, "Minimum 8 characters"),
-  admin_name: z.string().min(1, "Admin name is required"),
-});
+function createCreateSchema(tv: (key: string, values?: Record<string, any>) => string) {
+  return z.object({
+    name: z.string().min(1, tv("tenantNameRequired")),
+    slug: z
+      .string()
+      .min(1, tv("slugRequired"))
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, tv("slugFormat")),
+    constituency_code: z.string().min(1, tv("constituencyRequired")),
+    admin_email: z.string().email(tv("validEmailRequired")),
+    admin_password: z.string().min(8, tv("minimumChars", { min: 8 })),
+    admin_name: z.string().min(1, tv("adminNameRequired")),
+  });
+}
 
-const editSchema = z.object({
-  name: z.string().min(1, "Tenant name is required"),
-  status: z.enum(["active", "inactive", "suspended"]),
-});
+function createEditSchema(tv: (key: string, values?: Record<string, any>) => string) {
+  return z.object({
+    name: z.string().min(1, tv("tenantNameRequired")),
+    status: z.enum(["active", "inactive", "suspended"]),
+  });
+}
 
-type CreateFormValues = z.infer<typeof createSchema>;
-type EditFormValues = z.infer<typeof editSchema>;
+type CreateFormValues = z.infer<ReturnType<typeof createCreateSchema>>;
+type EditFormValues = z.infer<ReturnType<typeof createEditSchema>>;
 
 interface TenantDialogProps {
   open: boolean;
@@ -75,6 +80,10 @@ function CreateTenantForm({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useTranslations("superAdmin.tenants");
+  const tc = useTranslations("common");
+  const tv = useTranslations("validation");
+  const createSchema = createCreateSchema(tv);
   const createTenant = useCreateTenant();
   const {
     register,
@@ -118,13 +127,13 @@ function CreateTenantForm({
         admin_password: values.admin_password,
         admin_name: values.admin_name,
       });
-      toast.success("Tenant onboarded successfully");
+      toast.success(t("onboardSuccess"));
       onOpenChange(false);
     } catch (err: unknown) {
       const message =
         err instanceof Error && err.message.includes("409")
-          ? "Constituency is already assigned to another tenant"
-          : "Failed to onboard tenant";
+          ? t("constituencyConflict")
+          : t("failedOnboard");
       toast.error(message);
     }
   };
@@ -133,21 +142,21 @@ function CreateTenantForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Onboard Tenant</DialogTitle>
+          <DialogTitle>{t("onboardTenant")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Tenant Name</Label>
+            <Label htmlFor="name">{t("tenantName")}</Label>
             <Input id="name" {...register("name")} />
             {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="slug">Slug</Label>
+            <Label htmlFor="slug">{t("slug")}</Label>
             <Input id="slug" {...register("slug")} />
             {errors.slug && <p className="text-sm text-destructive">{errors.slug.message}</p>}
           </div>
           <div className="space-y-2">
-            <Label>Constituency</Label>
+            <Label>{t("constituency")}</Label>
             <ConstituencyCombobox
               value={constituencyValue}
               onValueChange={(code) => setValue("constituency_code", code, { shouldValidate: true })}
@@ -157,21 +166,21 @@ function CreateTenantForm({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="admin_name">Admin Full Name</Label>
+            <Label htmlFor="admin_name">{t("adminFullName")}</Label>
             <Input id="admin_name" {...register("admin_name")} />
             {errors.admin_name && (
               <p className="text-sm text-destructive">{errors.admin_name.message}</p>
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="admin_email">Admin Email</Label>
+            <Label htmlFor="admin_email">{t("adminEmail")}</Label>
             <Input id="admin_email" type="email" {...register("admin_email")} />
             {errors.admin_email && (
               <p className="text-sm text-destructive">{errors.admin_email.message}</p>
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="admin_password">Admin Password</Label>
+            <Label htmlFor="admin_password">{t("adminPassword")}</Label>
             <Input id="admin_password" type="password" {...register("admin_password")} />
             {errors.admin_password && (
               <p className="text-sm text-destructive">{errors.admin_password.message}</p>
@@ -179,10 +188,10 @@ function CreateTenantForm({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="submit" disabled={createTenant.isPending}>
-              {createTenant.isPending ? "Creating..." : "Onboard Tenant"}
+              {createTenant.isPending ? tc("creating") : t("onboardTenant")}
             </Button>
           </DialogFooter>
         </form>
@@ -200,6 +209,10 @@ function EditTenantForm({
   onOpenChange: (open: boolean) => void;
   tenant?: Tenant;
 }) {
+  const t = useTranslations("superAdmin.tenants");
+  const tc = useTranslations("common");
+  const tv = useTranslations("validation");
+  const editSchema = createEditSchema(tv);
   const updateTenant = useUpdateTenant();
   const {
     register,
@@ -228,10 +241,10 @@ function EditTenantForm({
     if (!tenant) return;
     try {
       await updateTenant.mutateAsync({ id: tenant.id, name: values.name, status: values.status });
-      toast.success("Tenant updated successfully");
+      toast.success(t("updateSuccess"));
       onOpenChange(false);
     } catch {
-      toast.error("Failed to update tenant");
+      toast.error(t("failedUpdate"));
     }
   };
 
@@ -243,40 +256,40 @@ function EditTenantForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Tenant</DialogTitle>
+          <DialogTitle>{t("editTenant")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="edit-name">Tenant Name</Label>
+            <Label htmlFor="edit-name">{t("tenantName")}</Label>
             <Input id="edit-name" {...register("name")} />
             {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
           </div>
           {constituencyName && (
             <div className="space-y-2">
-              <Label>Constituency</Label>
+              <Label>{t("constituency")}</Label>
               <p className="text-sm text-muted-foreground">{constituencyName}</p>
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="edit-status">Status</Label>
+            <Label htmlFor="edit-status">{tc("status")}</Label>
             <Select value={statusValue} onValueChange={(val) => setValue("status", val as "active" | "inactive" | "suspended")}>
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
+                <SelectItem value="active">{t("statusActive")}</SelectItem>
+                <SelectItem value="inactive">{t("statusInactive")}</SelectItem>
+                <SelectItem value="suspended">{t("statusSuspended")}</SelectItem>
               </SelectContent>
             </Select>
             {errors.status && <p className="text-sm text-destructive">{errors.status.message}</p>}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="submit" disabled={updateTenant.isPending}>
-              {updateTenant.isPending ? "Saving..." : "Save Changes"}
+              {updateTenant.isPending ? tc("saving") : tc("save")}
             </Button>
           </DialogFooter>
         </form>

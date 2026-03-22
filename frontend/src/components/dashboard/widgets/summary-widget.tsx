@@ -4,6 +4,7 @@ import { useDashboardSummary } from '@/lib/api/hooks';
 import { StatCard } from '@/components/shared/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageSquare, TrendingUp, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 function SummarySkeleton() {
   return (
@@ -16,6 +17,7 @@ function SummarySkeleton() {
 }
 
 export default function SummaryWidget() {
+  const t = useTranslations('dashboard');
   const { data, isLoading } = useDashboardSummary();
 
   if (isLoading || !data) return <SummarySkeleton />;
@@ -23,22 +25,22 @@ export default function SummaryWidget() {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <StatCard
-        title="Total Mentions"
+        title={t('totalMentions')}
         value={data.total_media_items.toLocaleString()}
         icon={MessageSquare}
       />
       <StatCard
-        title="Avg Sentiment"
+        title={t('avgSentiment')}
         value={data.avg_sentiment.toFixed(2)}
         icon={TrendingUp}
       />
       <StatCard
-        title="Positive"
+        title={t('positive')}
         value={data.sentiment_distribution.positive.toLocaleString()}
         icon={ThumbsUp}
       />
       <StatCard
-        title="Negative"
+        title={t('negative')}
         value={data.sentiment_distribution.negative.toLocaleString()}
         icon={ThumbsDown}
       />

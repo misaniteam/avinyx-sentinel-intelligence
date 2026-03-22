@@ -4,6 +4,7 @@ import {
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
 } from '@/lib/api/hooks';
+import { useTranslations, useFormatter } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -12,7 +13,6 @@ import {
   AlertTriangle,
   AlertCircle,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 import type { Notification } from '@/types';
 
 interface NotificationPanelProps {
@@ -24,6 +24,9 @@ export function NotificationPanel({ notifications, isLoading }: NotificationPane
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const t = useTranslations("navigation");
+  const tc = useTranslations("common");
+  const format = useFormatter();
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -39,13 +42,13 @@ export function NotificationPanel({ notifications, isLoading }: NotificationPane
   const formatTime = (timestamp: string | number) => {
     const date =
       typeof timestamp === 'number' ? new Date(timestamp) : new Date(timestamp);
-    return formatDistanceToNow(date, { addSuffix: true });
+    return format.relativeTime(date);
   };
 
   return (
     <div className="w-80">
       <div className="flex items-center justify-between p-3">
-        <h4 className="font-semibold text-sm">Notifications</h4>
+        <h4 className="font-semibold text-sm">{t("notifications")}</h4>
         {unreadCount > 0 && (
           <Button
             variant="ghost"
@@ -55,7 +58,7 @@ export function NotificationPanel({ notifications, isLoading }: NotificationPane
             disabled={markAllRead.isPending}
           >
             <CheckCheck className="h-3 w-3 mr-1" />
-            Mark all read
+            {t("markAllRead")}
           </Button>
         )}
       </div>
@@ -63,11 +66,11 @@ export function NotificationPanel({ notifications, isLoading }: NotificationPane
       <div className="max-h-80 overflow-y-auto">
         {isLoading ? (
           <div className="p-4 text-center text-sm text-muted-foreground">
-            Loading...
+            {tc("loading")}
           </div>
         ) : notifications.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground">
-            No notifications
+            {t("noNotifications")}
           </div>
         ) : (
           notifications.map((notification) => (

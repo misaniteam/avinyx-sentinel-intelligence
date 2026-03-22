@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield } from "lucide-react";
 import { toast } from "sonner";
+import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 
 export default function SetupPage() {
   const [email, setEmail] = useState("");
@@ -19,6 +21,8 @@ export default function SetupPage() {
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
   const { setupAdmin } = useAuth();
   const router = useRouter();
+  const t = useTranslations("auth.setup");
+  const tc = useTranslations("common");
 
   useEffect(() => {
     api
@@ -38,10 +42,10 @@ export default function SetupPage() {
     setIsLoading(true);
     try {
       await setupAdmin(email, password, fullName);
-      toast.success("Super admin created successfully");
+      toast.success(t("success"));
       router.push("/super-admin/tenants");
     } catch {
-      toast.error("Setup failed");
+      toast.error(t("failed"));
     } finally {
       setIsLoading(false);
     }
@@ -59,18 +63,21 @@ export default function SetupPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50">
+      <div className="absolute top-4 right-4">
+        <LocaleSwitcher />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
             <Shield className="h-6 w-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">Initial Setup</CardTitle>
-          <CardDescription>Create the super admin account</CardDescription>
+          <CardTitle className="text-2xl">{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName">{t("fullName")}</Label>
               <Input
                 id="fullName"
                 value={fullName}
@@ -79,7 +86,7 @@ export default function SetupPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{tc("email")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -89,7 +96,7 @@ export default function SetupPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{tc("password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -100,7 +107,7 @@ export default function SetupPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Super Admin"}
+              {isLoading ? t("creating") : t("createSuperAdmin")}
             </Button>
           </form>
         </CardContent>

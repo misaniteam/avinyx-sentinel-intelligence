@@ -36,6 +36,7 @@
     "ky": "^1.7",
     "lucide-react": "^0.468",
     "next": "^15.1",
+    "next-intl": "^4.8.3",
     "react": "^19.0",
     "react-dom": "^19.0",
     "react-grid-layout": "^1.5",
