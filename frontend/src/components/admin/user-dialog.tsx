@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -20,21 +21,25 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useRoles, useCreateUser, useUpdateUser } from "@/lib/api/hooks";
 import type { User } from "@/types";
 
-const createSchema = z.object({
-  email: z.string().email("Invalid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  full_name: z.string().min(1, "Name is required"),
-  role_ids: z.array(z.string()),
-});
+function createSchemaFactory(tv: (key: string, values?: Record<string, any>) => string) {
+  return z.object({
+    email: z.string().email(tv("invalidEmail")),
+    password: z.string().min(8, tv("passwordMinLength", { min: 8 })),
+    full_name: z.string().min(1, tv("nameRequired")),
+    role_ids: z.array(z.string()),
+  });
+}
 
-const editSchema = z.object({
-  full_name: z.string().min(1, "Name is required"),
-  is_active: z.boolean(),
-  role_ids: z.array(z.string()),
-});
+function editSchemaFactory(tv: (key: string, values?: Record<string, any>) => string) {
+  return z.object({
+    full_name: z.string().min(1, tv("nameRequired")),
+    is_active: z.boolean(),
+    role_ids: z.array(z.string()),
+  });
+}
 
-type CreateFormData = z.infer<typeof createSchema>;
-type EditFormData = z.infer<typeof editSchema>;
+type CreateFormData = z.infer<ReturnType<typeof createSchemaFactory>>;
+type EditFormData = z.infer<ReturnType<typeof editSchemaFactory>>;
 
 interface UserDialogProps {
   open: boolean;
@@ -44,11 +49,17 @@ interface UserDialogProps {
 }
 
 export function UserDialog({ open, onOpenChange, mode, user }: UserDialogProps) {
+  const t = useTranslations("admin.users");
+  const tc = useTranslations("common");
+  const tv = useTranslations("validation");
   const { data: roles } = useRoles();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
 
   const isCreate = mode === "create";
+
+  const createSchema = useMemo(() => createSchemaFactory(tv), [tv]);
+  const editSchema = useMemo(() => editSchemaFactory(tv), [tv]);
 
   const createForm = useForm<CreateFormData>({
     resolver: zodResolver(createSchema),
@@ -76,10 +87,10 @@ export function UserDialog({ open, onOpenChange, mode, user }: UserDialogProps) 
   async function onSubmitCreate(data: CreateFormData) {
     try {
       await createUser.mutateAsync(data);
-      toast.success("User created successfully");
+      toast.success(t("userCreated"));
       onOpenChange(false);
     } catch {
-      toast.error("Failed to create user");
+      toast.error(t("failedCreate"));
     }
   }
 
@@ -87,10 +98,10 @@ export function UserDialog({ open, onOpenChange, mode, user }: UserDialogProps) 
     if (!user) return;
     try {
       await updateUser.mutateAsync({ id: user.id, ...data });
-      toast.success("User updated successfully");
+      toast.success(t("userUpdated"));
       onOpenChange(false);
     } catch {
-      toast.error("Failed to update user");
+      toast.error(t("failedUpdate"));
     }
   }
 
@@ -121,7 +132,7 @@ export function UserDialog({ open, onOpenChange, mode, user }: UserDialogProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isCreate ? "Add User" : "Edit User"}</DialogTitle>
+          <DialogTitle>{isCreate ? t("addUser") : t("editUser")}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={
@@ -134,7 +145,7 @@ export function UserDialog({ open, onOpenChange, mode, user }: UserDialogProps) 
           {isCreate && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{tc("email")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -147,7 +158,7 @@ export function UserDialog({ open, onOpenChange, mode, user }: UserDialogProps) 
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{tc("password")}</Label>
                 <Input
                   id="password"
                   type="password"
@@ -163,7 +174,7 @@ export function UserDialog({ open, onOpenChange, mode, user }: UserDialogProps) 
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="full_name">Full Name</Label>
+            <Label htmlFor="full_name">{t("fullName")}</Label>
             {isCreate ? (
               <>
                 <Input id="full_name" {...createForm.register("full_name")} />
@@ -194,12 +205,12 @@ export function UserDialog({ open, onOpenChange, mode, user }: UserDialogProps) 
                   editForm.setValue("is_active", checked, { shouldDirty: true })
                 }
               />
-              <Label htmlFor="is_active">Active</Label>
+              <Label htmlFor="is_active">{tc("active")}</Label>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label>Roles</Label>
+            <Label>{t("roles")}</Label>
             <div className="space-y-2 rounded-md border p-3 max-h-40 overflow-y-auto">
               {roles?.map((role) => (
                 <div key={role.id} className="flex items-center gap-2">
@@ -214,7 +225,7 @@ export function UserDialog({ open, onOpenChange, mode, user }: UserDialogProps) 
                 </div>
               ))}
               {(!roles || roles.length === 0) && (
-                <p className="text-sm text-muted-foreground">No roles available</p>
+                <p className="text-sm text-muted-foreground">{t("noRolesAvailable")}</p>
               )}
             </div>
           </div>
@@ -226,16 +237,16 @@ export function UserDialog({ open, onOpenChange, mode, user }: UserDialogProps) 
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="submit" disabled={isPending}>
               {isPending
                 ? isCreate
-                  ? "Creating..."
-                  : "Saving..."
+                  ? tc("creating")
+                  : tc("saving")
                 : isCreate
-                  ? "Create User"
-                  : "Save Changes"}
+                  ? t("addUser")
+                  : tc("save")}
             </Button>
           </DialogFooter>
         </form>

@@ -1,0 +1,10 @@
+{
+  "title": "वर्कर स्थिति",
+  "worker": "वर्कर",
+  "workers": "वर्कर",
+  "noActiveWorkers": "कोई सक्रिय वर्कर नहीं",
+  "workerStatusDescription": "इंजेशन जॉब चलने पर वर्कर स्थिति यहाँ दिखाई देगी",
+  "itemsFetched": "आइटम प्राप्त किए गए",
+  "started": "शुरू हुआ",
+  "lastUpdate": "अंतिम अपडेट"
+}

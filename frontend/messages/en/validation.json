@@ -1,0 +1,20 @@
+{
+  "required": "This field is required",
+  "invalidEmail": "Invalid email",
+  "validEmailRequired": "Valid email required",
+  "passwordMinLength": "Password must be at least {min} characters",
+  "minimumChars": "Minimum {min} characters",
+  "nameRequired": "Name is required",
+  "platformRequired": "Platform is required",
+  "apiKeyRequired": "API key is required",
+  "selectAtLeastOnePermission": "Select at least one permission",
+  "tenantNameRequired": "Tenant name is required",
+  "slugRequired": "Slug is required",
+  "slugFormat": "Lowercase alphanumeric and hyphens only",
+  "constituencyRequired": "Constituency is required",
+  "adminNameRequired": "Admin name is required",
+  "displayNameRequired": "Display name is required",
+  "timezoneRequired": "Timezone is required",
+  "languageRequired": "Language is required",
+  "modelRequired": "Model name is required"
+}

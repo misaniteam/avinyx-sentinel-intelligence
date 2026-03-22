@@ -1,0 +1,48 @@
+{
+  "title": "सेटिंग्स",
+  "ai": {
+    "title": "AI प्रदाता",
+    "provider": "प्रदाता",
+    "selectProvider": "प्रदाता चुनें",
+    "claude": "Claude",
+    "openai": "OpenAI",
+    "awsBedrock": "AWS Bedrock",
+    "modelName": "मॉडल का नाम",
+    "modelPlaceholder": "उदा., claude-sonnet-4-5-20250514, gpt-4o",
+    "apiKey": "API कुंजी",
+    "enterApiKey": "API कुंजी दर्ज करें",
+    "fallbackProvider": "फ़ॉलबैक प्रदाता",
+    "none": "कोई नहीं",
+    "saved": "AI प्रदाता सेटिंग्स सहेजी गईं",
+    "failedSave": "AI प्रदाता सेटिंग्स सहेजने में विफल"
+  },
+  "notifications": {
+    "title": "सूचना प्राथमिकताएँ",
+    "sentimentThreshold": "भावना चेतावनी सीमा",
+    "thresholdHelp": "जब औसत भावना इस मान से नीचे गिरे तो चेतावनी दें (उदा., -0.5)",
+    "emailAlerts": "ईमेल चेतावनियाँ सक्षम करें",
+    "pushNotifications": "पुश सूचनाएँ सक्षम करें",
+    "saved": "सूचना प्राथमिकताएँ सहेजी गईं",
+    "failedSave": "सूचना प्राथमिकताएँ सहेजने में विफल"
+  },
+  "general": {
+    "title": "सामान्य सेटिंग्स",
+    "displayName": "प्रदर्शन नाम",
+    "displayNamePlaceholder": "संगठन का प्रदर्शन नाम",
+    "timezone": "समय क्षेत्र",
+    "selectTimezone": "समय क्षेत्र चुनें",
+    "defaultLanguage": "डिफ़ॉल्ट भाषा",
+    "selectLanguage": "भाषा चुनें",
+    "saved": "सामान्य सेटिंग्स सहेजी गईं",
+    "failedSave": "सामान्य सेटिंग्स सहेजने में विफल",
+    "languages": {
+      "en": "अंग्रेज़ी",
+      "hi": "हिन्दी",
+      "es": "स्पैनिश",
+      "fr": "फ़्रेंच",
+      "de": "जर्मन",
+      "ja": "जापानी",
+      "pt": "पुर्तगाली"
+    }
+  }
+}

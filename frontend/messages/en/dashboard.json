@@ -1,0 +1,18 @@
+{
+  "title": "Dashboard",
+  "addWidget": "Add Widget",
+  "addWidgetDescription": "Select a widget to add to your dashboard.",
+  "resetLayout": "Reset Layout",
+  "widgets": {
+    "summaryStats": "Summary Statistics",
+    "sentimentTrends": "Sentiment Trends",
+    "platformBreakdown": "Platform Breakdown",
+    "topTopics": "Top Topics",
+    "engagementMetrics": "Engagement Metrics",
+    "sentimentDistribution": "Sentiment Distribution"
+  },
+  "totalMentions": "Total Mentions",
+  "avgSentiment": "Avg Sentiment",
+  "positive": "Positive",
+  "negative": "Negative"
+}

@@ -52,10 +52,11 @@ describe('UserDialog', () => {
         mode="create"
       />
     );
-    expect(screen.getByText('Add User')).toBeInTheDocument();
+    // "Add User" appears in both title and submit button
+    const matches = screen.getAllByText('Add User');
+    expect(matches.length).toBe(2);
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
-    expect(screen.getByText('Create User')).toBeInTheDocument();
   });
 
   it('renders in edit mode with pre-filled data', () => {

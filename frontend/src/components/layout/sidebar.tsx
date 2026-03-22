@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/lib/rbac/rbac-provider";
 import { useTenant } from "@/lib/tenant/tenant-provider";
@@ -22,34 +23,35 @@ import {
 } from "lucide-react";
 
 interface NavItem {
-  title: string;
+  titleKey: string;
   href: string;
   icon: React.ElementType;
   permission?: string;
 }
 
 const tenantNavItems: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
-  { title: "Voters", href: "/voters", icon: Users, permission: "voters:read" },
-  { title: "Heatmap", href: "/heatmap", icon: Map, permission: "heatmap:view" },
-  { title: "Media Feeds", href: "/media-feeds", icon: Rss, permission: "media:read" },
-  { title: "Analytics", href: "/analytics", icon: BarChart3, permission: "analytics:read" },
-  { title: "Reports", href: "/reports", icon: FileText, permission: "reports:read" },
-  { title: "Campaigns", href: "/campaigns", icon: Megaphone, permission: "campaigns:read" },
-  { title: "Data Sources", href: "/admin/data-sources", icon: Database, permission: "data_sources:read" },
-  { title: "Ingested Data", href: "/admin/ingested-data", icon: FileSearch, permission: "data_sources:read" },
-  { title: "Admin", href: "/admin/users", icon: Settings, permission: "users:read" },
+  { titleKey: "dashboard", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
+  { titleKey: "voters", href: "/voters", icon: Users, permission: "voters:read" },
+  { titleKey: "heatmap", href: "/heatmap", icon: Map, permission: "heatmap:view" },
+  { titleKey: "mediaFeeds", href: "/media-feeds", icon: Rss, permission: "media:read" },
+  { titleKey: "analytics", href: "/analytics", icon: BarChart3, permission: "analytics:read" },
+  { titleKey: "reports", href: "/reports", icon: FileText, permission: "reports:read" },
+  { titleKey: "campaigns", href: "/campaigns", icon: Megaphone, permission: "campaigns:read" },
+  { titleKey: "dataSources", href: "/admin/data-sources", icon: Database, permission: "data_sources:read" },
+  { titleKey: "ingestedData", href: "/admin/ingested-data", icon: FileSearch, permission: "data_sources:read" },
+  { titleKey: "admin", href: "/admin/users", icon: Settings, permission: "users:read" },
 ];
 
 const superAdminNavItems: NavItem[] = [
-  { title: "Tenants", href: "/super-admin/tenants", icon: Shield },
-  { title: "Infrastructure", href: "/super-admin/infrastructure", icon: Server },
+  { titleKey: "tenants", href: "/super-admin/tenants", icon: Shield },
+  { titleKey: "infrastructure", href: "/super-admin/infrastructure", icon: Server },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { hasPermission } = usePermission();
   const { isSuperAdmin } = useTenant();
+  const t = useTranslations("navigation");
 
   const visibleItems = isSuperAdmin
     ? superAdminNavItems
@@ -62,7 +64,7 @@ export function Sidebar() {
     <aside className="flex h-full w-64 flex-col border-r bg-sidebar">
       <div className="flex h-16 items-center border-b px-6">
         <Building2 className="mr-2 h-6 w-6 text-sidebar-accent" />
-        <span className="text-lg font-bold text-sidebar-foreground">Sentinel</span>
+        <span className="text-lg font-bold text-sidebar-foreground">{t("sentinel")}</span>
       </div>
       <nav className="flex-1 space-y-1 p-4">
         {visibleItems.map((item) => {
@@ -79,7 +81,7 @@ export function Sidebar() {
               )}
             >
               <item.icon className="h-4 w-4" />
-              {item.title}
+              {t(item.titleKey)}
             </Link>
           );
         })}

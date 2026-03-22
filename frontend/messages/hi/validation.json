@@ -1,0 +1,20 @@
+{
+  "required": "यह फ़ील्ड आवश्यक है",
+  "invalidEmail": "अमान्य ईमेल",
+  "validEmailRequired": "वैध ईमेल आवश्यक है",
+  "passwordMinLength": "पासवर्ड कम से कम {min} अक्षरों का होना चाहिए",
+  "minimumChars": "न्यूनतम {min} अक्षर",
+  "nameRequired": "नाम आवश्यक है",
+  "platformRequired": "प्लेटफ़ॉर्म आवश्यक है",
+  "apiKeyRequired": "API कुंजी आवश्यक है",
+  "selectAtLeastOnePermission": "कम से कम एक अनुमति चुनें",
+  "tenantNameRequired": "टेनेंट का नाम आवश्यक है",
+  "slugRequired": "स्लग आवश्यक है",
+  "slugFormat": "केवल लोअरकेस अल्फ़ान्यूमेरिक और हाइफ़न",
+  "constituencyRequired": "निर्वाचन क्षेत्र आवश्यक है",
+  "adminNameRequired": "एडमिन का नाम आवश्यक है",
+  "displayNameRequired": "प्रदर्शन नाम आवश्यक है",
+  "timezoneRequired": "समय क्षेत्र आवश्यक है",
+  "languageRequired": "भाषा आवश्यक है",
+  "modelRequired": "मॉडल का नाम आवश्यक है"
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Worker Status",
+  "worker": "worker",
+  "workers": "workers",
+  "noActiveWorkers": "No active workers",
+  "workerStatusDescription": "Worker status will appear here when ingestion jobs run",
+  "itemsFetched": "Items fetched",
+  "started": "Started",
+  "lastUpdate": "Last update"
+}

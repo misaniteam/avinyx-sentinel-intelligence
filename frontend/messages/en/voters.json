@@ -1,0 +1,8 @@
+{
+  "title": "Voters",
+  "addVoter": "Add Voter",
+  "voterDatabase": "Voter Database",
+  "sentiment": "Sentiment",
+  "tags": "Tags",
+  "noVotersFound": "No voters found"
+}

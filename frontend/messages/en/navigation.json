@@ -1,0 +1,21 @@
+{
+  "sentinel": "Sentinel",
+  "dashboard": "Dashboard",
+  "voters": "Voters",
+  "heatmap": "Heatmap",
+  "mediaFeeds": "Media Feeds",
+  "analytics": "Analytics",
+  "reports": "Reports",
+  "campaigns": "Campaigns",
+  "dataSources": "Data Sources",
+  "ingestedData": "Ingested Data",
+  "admin": "Admin",
+  "tenants": "Tenants",
+  "infrastructure": "Infrastructure",
+  "notifications": "Notifications",
+  "markAllRead": "Mark all read",
+  "noNotifications": "No notifications",
+  "workerStatus": "Worker Status",
+  "settings": "Settings",
+  "noMediaItemsYet": "No media items yet. Configure data sources to start ingesting."
+}

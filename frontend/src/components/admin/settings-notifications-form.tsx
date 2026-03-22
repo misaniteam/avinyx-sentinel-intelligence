@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +22,8 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export function SettingsNotificationsForm() {
+  const t = useTranslations("admin.settings.notifications");
+  const tc = useTranslations("common");
   const { data } = useTenantSettings();
   const updateSettings = useUpdateTenantSettings();
 
@@ -47,21 +50,21 @@ export function SettingsNotificationsForm() {
   async function onSubmit(values: FormData) {
     try {
       await updateSettings.mutateAsync({ settings: { notifications: values } });
-      toast.success("Notification preferences saved");
+      toast.success(t("saved"));
     } catch {
-      toast.error("Failed to save notification preferences");
+      toast.error(t("failedSave"));
     }
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Notification Preferences</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="sentiment-threshold">Sentiment Alert Threshold</Label>
+            <Label htmlFor="sentiment-threshold">{t("sentimentThreshold")}</Label>
             <Input
               id="sentiment-threshold"
               type="number"
@@ -71,7 +74,7 @@ export function SettingsNotificationsForm() {
               {...form.register("sentiment_alert_threshold")}
             />
             <p className="text-sm text-muted-foreground">
-              Alert when average sentiment drops below this value (e.g., -0.5)
+              {t("thresholdHelp")}
             </p>
             {form.formState.errors.sentiment_alert_threshold && (
               <p className="text-sm text-destructive">
@@ -88,7 +91,7 @@ export function SettingsNotificationsForm() {
                 form.setValue("enable_email_alerts", checked, { shouldDirty: true })
               }
             />
-            <Label htmlFor="email-alerts">Enable email alerts</Label>
+            <Label htmlFor="email-alerts">{t("emailAlerts")}</Label>
           </div>
 
           <div className="flex items-center gap-3">
@@ -99,11 +102,11 @@ export function SettingsNotificationsForm() {
                 form.setValue("enable_push_notifications", checked, { shouldDirty: true })
               }
             />
-            <Label htmlFor="push-notifications">Enable push notifications</Label>
+            <Label htmlFor="push-notifications">{t("pushNotifications")}</Label>
           </div>
 
           <Button type="submit" disabled={updateSettings.isPending}>
-            {updateSettings.isPending ? "Saving..." : "Save Changes"}
+            {updateSettings.isPending ? tc("saving") : tc("save")}
           </Button>
         </form>
       </CardContent>

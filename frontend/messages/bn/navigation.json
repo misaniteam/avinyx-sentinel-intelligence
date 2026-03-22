@@ -1,0 +1,21 @@
+{
+  "sentinel": "সেন্টিনেল",
+  "dashboard": "ড্যাশবোর্ড",
+  "voters": "ভোটার",
+  "heatmap": "হিটম্যাপ",
+  "mediaFeeds": "মিডিয়া ফিড",
+  "analytics": "বিশ্লেষণ",
+  "reports": "রিপোর্ট",
+  "campaigns": "প্রচারণা",
+  "dataSources": "ডেটা সোর্স",
+  "ingestedData": "সংগৃহীত ডেটা",
+  "admin": "অ্যাডমিন",
+  "tenants": "টেন্যান্ট",
+  "infrastructure": "অবকাঠামো",
+  "notifications": "বিজ্ঞপ্তি",
+  "markAllRead": "সব পঠিত করুন",
+  "noNotifications": "কোনো বিজ্ঞপ্তি নেই",
+  "workerStatus": "ওয়ার্কার স্ট্যাটাস",
+  "settings": "সেটিংস",
+  "noMediaItemsYet": "এখনো কোনো মিডিয়া আইটেম নেই। ডেটা সংগ্রহ শুরু করতে ডেটা সোর্স কনফিগার করুন।"
+}

@@ -1,0 +1,10 @@
+{
+  "title": "सूचनाएँ",
+  "markAllRead": "सभी पठित करें",
+  "noNotifications": "कोई सूचना नहीं",
+  "types": {
+    "alert": "चेतावनी",
+    "info": "जानकारी",
+    "warning": "सावधानी"
+  }
+}

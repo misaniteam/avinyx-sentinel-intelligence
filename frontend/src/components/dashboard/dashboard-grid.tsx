@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Plus, RotateCcw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { widgetRegistry, type WidgetDefinition } from './widget-registry';
 import { WidgetContainer } from './widget-container';
 
@@ -65,6 +66,7 @@ function loadFromStorage<T>(key: string, fallback: () => T): T {
 }
 
 export function DashboardGrid() {
+  const t = useTranslations('dashboard');
   const [widgets, setWidgets] = useState<WidgetInstance[]>(() =>
     loadFromStorage(WIDGETS_STORAGE_KEY, getDefaultWidgets)
   );
@@ -168,7 +170,7 @@ export function DashboardGrid() {
         return (
           <div key={widget.id}>
             <WidgetContainer
-              title={definition.label}
+              title={t(definition.labelKey)}
               onRemove={() => handleRemoveWidget(widget.id)}
             >
               <WidgetComponent />
@@ -186,14 +188,14 @@ export function DashboardGrid() {
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
               <Plus className="mr-2 h-4 w-4" />
-              Add Widget
+              {t('addWidget')}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Widget</DialogTitle>
+              <DialogTitle>{t('addWidget')}</DialogTitle>
               <DialogDescription>
-                Select a widget to add to your dashboard.
+                {t('addWidgetDescription')}
               </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-3">
@@ -207,7 +209,7 @@ export function DashboardGrid() {
                     onClick={() => handleAddWidget(def)}
                   >
                     <Icon className="h-6 w-6" />
-                    <span className="text-xs">{def.label}</span>
+                    <span className="text-xs">{t(def.labelKey)}</span>
                   </Button>
                 );
               })}
@@ -217,7 +219,7 @@ export function DashboardGrid() {
 
         <Button variant="outline" size="sm" onClick={handleResetLayout}>
           <RotateCcw className="mr-2 h-4 w-4" />
-          Reset Layout
+          {t('resetLayout')}
         </Button>
       </div>
 

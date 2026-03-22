@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ interface PermissionSelectProps {
 }
 
 export function PermissionSelect({ value, onChange }: PermissionSelectProps) {
+  const tc = useTranslations("common");
   const allPermissions = useMemo(() => getAllPermissions(), []);
   const totalCount = allPermissions.length;
   const selectedCount = value.length;
@@ -47,7 +49,7 @@ export function PermissionSelect({ value, onChange }: PermissionSelectProps) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          {selectedCount} of {totalCount} selected
+          {selectedCount} {tc("of")} {totalCount} {tc("selected")}
         </span>
         <div className="flex gap-2">
           <Button
@@ -57,7 +59,7 @@ export function PermissionSelect({ value, onChange }: PermissionSelectProps) {
             onClick={selectAll}
             disabled={selectedCount === totalCount}
           >
-            Select All
+            {tc("selectAll")}
           </Button>
           <Button
             type="button"
@@ -66,7 +68,7 @@ export function PermissionSelect({ value, onChange }: PermissionSelectProps) {
             onClick={deselectAll}
             disabled={selectedCount === 0}
           >
-            Deselect All
+            {tc("deselectAll")}
           </Button>
         </div>
       </div>

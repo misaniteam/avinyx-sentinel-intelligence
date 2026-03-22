@@ -1,0 +1,17 @@
+{
+  "title": "रिपोर्ट",
+  "createReport": "रिपोर्ट बनाएँ",
+  "createReportTitle": "रिपोर्ट बनाएँ",
+  "namePlaceholder": "मासिक भावना सारांश",
+  "format": "प्रारूप",
+  "formatPdf": "PDF",
+  "formatImage": "छवि",
+  "formatCsv": "CSV",
+  "generateReport": "रिपोर्ट जनरेट करें",
+  "downloadReport": "रिपोर्ट डाउनलोड करें",
+  "noReportsYet": "अभी तक कोई रिपोर्ट नहीं बनाई गई",
+  "statusCompleted": "पूर्ण",
+  "statusGenerating": "जनरेट हो रहा है",
+  "statusFailed": "विफल",
+  "statusPending": "लंबित"
+}

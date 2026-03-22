@@ -1,0 +1,18 @@
+{
+  "title": "डैशबोर्ड",
+  "addWidget": "विजेट जोड़ें",
+  "addWidgetDescription": "अपने डैशबोर्ड में जोड़ने के लिए एक विजेट चुनें।",
+  "resetLayout": "लेआउट रीसेट करें",
+  "widgets": {
+    "summaryStats": "सारांश आँकड़े",
+    "sentimentTrends": "भावना रुझान",
+    "platformBreakdown": "प्लेटफ़ॉर्म विश्लेषण",
+    "topTopics": "शीर्ष विषय",
+    "engagementMetrics": "सहभागिता मेट्रिक्स",
+    "sentimentDistribution": "भावना वितरण"
+  },
+  "totalMentions": "कुल उल्लेख",
+  "avgSentiment": "औसत भावना",
+  "positive": "सकारात्मक",
+  "negative": "नकारात्मक"
+}

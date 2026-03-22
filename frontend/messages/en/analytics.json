@@ -1,0 +1,11 @@
+{
+  "title": "Analytics",
+  "analyticsReport": "Analytics Report",
+  "platformBreakdown": "Platform Breakdown",
+  "sentimentOverTime": "Sentiment Over Time",
+  "topTopics": "Top Topics",
+  "engagementMetrics": "Engagement Metrics",
+  "sentimentHeatmap": "Sentiment Heatmap",
+  "geographicSentiment": "Geographic Sentiment Distribution",
+  "loadingHeatmap": "Loading heatmap data..."
+}

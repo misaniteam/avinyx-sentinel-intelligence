@@ -1,0 +1,22 @@
+{
+  "title": "Roles",
+  "createRole": "Create Role",
+  "editRole": "Edit Role",
+  "createDescription": "Create a new role with specific permissions for your team.",
+  "editDescription": "Update the role name, description, or permissions.",
+  "searchPlaceholder": "Search roles...",
+  "noRolesYet": "No roles yet",
+  "noRolesYetDescription": "Create your first role to manage team permissions.",
+  "noRolesFound": "No roles found",
+  "noRolesFoundDescription": "No roles match \"{query}\". Try a different search term.",
+  "created": "Created",
+  "roleDeleted": "Role deleted successfully",
+  "failedDelete": "Failed to delete role",
+  "roleCreated": "Role created successfully",
+  "roleUpdated": "Role updated successfully",
+  "roleNameExists": "A role with this name already exists",
+  "failedCreate": "Failed to create role",
+  "failedUpdate": "Failed to update role",
+  "deleteRole": "Delete Role",
+  "deleteRoleConfirm": "Are you sure you want to delete the \"{name}\" role? Users assigned this role will lose its permissions."
+}

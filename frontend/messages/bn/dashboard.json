@@ -1,0 +1,18 @@
+{
+  "title": "ড্যাশবোর্ড",
+  "addWidget": "উইজেট যোগ করুন",
+  "addWidgetDescription": "আপনার ড্যাশবোর্ডে যোগ করতে একটি উইজেট নির্বাচন করুন।",
+  "resetLayout": "লেআউট রিসেট করুন",
+  "widgets": {
+    "summaryStats": "সারাংশ পরিসংখ্যান",
+    "sentimentTrends": "মনোভাব প্রবণতা",
+    "platformBreakdown": "প্ল্যাটফর্ম বিশ্লেষণ",
+    "topTopics": "শীর্ষ বিষয়",
+    "engagementMetrics": "এনগেজমেন্ট মেট্রিক্স",
+    "sentimentDistribution": "মনোভাব বণ্টন"
+  },
+  "totalMentions": "মোট উল্লেখ",
+  "avgSentiment": "গড় মনোভাব",
+  "positive": "ইতিবাচক",
+  "negative": "নেতিবাচক"
+}

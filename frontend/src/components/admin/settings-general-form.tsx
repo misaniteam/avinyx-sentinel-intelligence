@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -31,27 +32,26 @@ const TIMEZONES = [
   "Australia/Sydney",
 ] as const;
 
-const LANGUAGES = [
-  { value: "en", label: "English" },
-  { value: "hi", label: "Hindi" },
-  { value: "es", label: "Spanish" },
-  { value: "fr", label: "French" },
-  { value: "de", label: "German" },
-  { value: "ja", label: "Japanese" },
-  { value: "pt", label: "Portuguese" },
-] as const;
+const LANGUAGE_KEYS = ["en", "hi", "es", "fr", "de", "ja", "pt"] as const;
 
-const schema = z.object({
-  display_name: z.string().min(1, "Display name is required"),
-  timezone: z.string().min(1, "Timezone is required"),
-  default_language: z.string().min(1, "Language is required"),
-});
-
-type FormData = z.infer<typeof schema>;
+type FormData = {
+  display_name: string;
+  timezone: string;
+  default_language: string;
+};
 
 export function SettingsGeneralForm() {
+  const t = useTranslations("admin.settings.general");
+  const tc = useTranslations("common");
+  const tv = useTranslations("validation");
   const { data } = useTenantSettings();
   const updateSettings = useUpdateTenantSettings();
+
+  const schema = z.object({
+    display_name: z.string().min(1, tv("displayNameRequired")),
+    timezone: z.string().min(1, tv("timezoneRequired")),
+    default_language: z.string().min(1, tv("languageRequired")),
+  });
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -76,24 +76,24 @@ export function SettingsGeneralForm() {
   async function onSubmit(values: FormData) {
     try {
       await updateSettings.mutateAsync({ settings: { general: values } });
-      toast.success("General settings saved");
+      toast.success(t("saved"));
     } catch {
-      toast.error("Failed to save general settings");
+      toast.error(t("failedSave"));
     }
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>General Settings</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="display-name">Display Name</Label>
+            <Label htmlFor="display-name">{t("displayName")}</Label>
             <Input
               id="display-name"
-              placeholder="Organization display name"
+              placeholder={t("displayNamePlaceholder")}
               {...form.register("display_name")}
             />
             {form.formState.errors.display_name && (
@@ -104,13 +104,13 @@ export function SettingsGeneralForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="timezone">Timezone</Label>
+            <Label htmlFor="timezone">{t("timezone")}</Label>
             <Select
               value={form.watch("timezone")}
               onValueChange={(v) => form.setValue("timezone", v, { shouldDirty: true })}
             >
               <SelectTrigger id="timezone">
-                <SelectValue placeholder="Select timezone" />
+                <SelectValue placeholder={t("selectTimezone")} />
               </SelectTrigger>
               <SelectContent>
                 {TIMEZONES.map((tz) => (
@@ -123,18 +123,18 @@ export function SettingsGeneralForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="language">Default Language</Label>
+            <Label htmlFor="language">{t("defaultLanguage")}</Label>
             <Select
               value={form.watch("default_language")}
               onValueChange={(v) => form.setValue("default_language", v, { shouldDirty: true })}
             >
               <SelectTrigger id="language">
-                <SelectValue placeholder="Select language" />
+                <SelectValue placeholder={t("selectLanguage")} />
               </SelectTrigger>
               <SelectContent>
-                {LANGUAGES.map((lang) => (
-                  <SelectItem key={lang.value} value={lang.value}>
-                    {lang.label}
+                {LANGUAGE_KEYS.map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {t(`languages.${key}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -142,7 +142,7 @@ export function SettingsGeneralForm() {
           </div>
 
           <Button type="submit" disabled={updateSettings.isPending}>
-            {updateSettings.isPending ? "Saving..." : "Save Changes"}
+            {updateSettings.isPending ? tc("saving") : tc("save")}
           </Button>
         </form>
       </CardContent>

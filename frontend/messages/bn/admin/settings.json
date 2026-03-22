@@ -1,0 +1,48 @@
+{
+  "title": "সেটিংস",
+  "ai": {
+    "title": "AI প্রদানকারী",
+    "provider": "প্রদানকারী",
+    "selectProvider": "প্রদানকারী নির্বাচন করুন",
+    "claude": "Claude",
+    "openai": "OpenAI",
+    "awsBedrock": "AWS Bedrock",
+    "modelName": "মডেলের নাম",
+    "modelPlaceholder": "যেমন, claude-sonnet-4-5-20250514, gpt-4o",
+    "apiKey": "API কী",
+    "enterApiKey": "API কী দিন",
+    "fallbackProvider": "বিকল্প প্রদানকারী",
+    "none": "কোনোটি নয়",
+    "saved": "AI প্রদানকারী সেটিংস সংরক্ষিত হয়েছে",
+    "failedSave": "AI প্রদানকারী সেটিংস সংরক্ষণ করতে ব্যর্থ"
+  },
+  "notifications": {
+    "title": "বিজ্ঞপ্তি পছন্দসমূহ",
+    "sentimentThreshold": "মনোভাব সতর্কতা থ্রেশহোল্ড",
+    "thresholdHelp": "গড় মনোভাব এই মানের নিচে নামলে সতর্ক করুন (যেমন, -০.৫)",
+    "emailAlerts": "ইমেইল সতর্কতা সক্রিয় করুন",
+    "pushNotifications": "পুশ বিজ্ঞপ্তি সক্রিয় করুন",
+    "saved": "বিজ্ঞপ্তি পছন্দসমূহ সংরক্ষিত হয়েছে",
+    "failedSave": "বিজ্ঞপ্তি পছন্দসমূহ সংরক্ষণ করতে ব্যর্থ"
+  },
+  "general": {
+    "title": "সাধারণ সেটিংস",
+    "displayName": "প্রদর্শন নাম",
+    "displayNamePlaceholder": "প্রতিষ্ঠানের প্রদর্শন নাম",
+    "timezone": "টাইমজোন",
+    "selectTimezone": "টাইমজোন নির্বাচন করুন",
+    "defaultLanguage": "ডিফল্ট ভাষা",
+    "selectLanguage": "ভাষা নির্বাচন করুন",
+    "saved": "সাধারণ সেটিংস সংরক্ষিত হয়েছে",
+    "failedSave": "সাধারণ সেটিংস সংরক্ষণ করতে ব্যর্থ",
+    "languages": {
+      "en": "ইংরেজি",
+      "hi": "হিন্দি",
+      "es": "স্প্যানিশ",
+      "fr": "ফরাসি",
+      "de": "জার্মান",
+      "ja": "জাপানি",
+      "pt": "পর্তুগিজ"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "title": "Users",
+  "addUser": "Add User",
+  "editUser": "Edit User",
+  "fullName": "Full Name",
+  "roles": "Roles",
+  "noRolesAvailable": "No roles available",
+  "noUsersFound": "No users found",
+  "deleteUser": "Delete User",
+  "deleteUserConfirm": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+  "userDeleted": "User deleted successfully",
+  "failedDelete": "Failed to delete user",
+  "userCreated": "User created successfully",
+  "userUpdated": "User updated successfully",
+  "failedCreate": "Failed to create user",
+  "failedUpdate": "Failed to update user"
+}
