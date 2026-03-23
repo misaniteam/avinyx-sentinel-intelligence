@@ -4,7 +4,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 
 ## Tech Stack
 
-- **Frontend:** Next.js 15 (App Router) + Shadcn UI + TanStack Query v5 + TypeScript
+- **Frontend:** Next.js 15 (App Router) + Shadcn UI + TanStack Query v5 + next-intl + next-themes + TypeScript
 - **Backend:** Python 3.12 + FastAPI + SQLAlchemy 2.0 (async) + Pydantic v2
 - **Database:** PostgreSQL 16 (async via asyncpg), Firebase RTDB (live status + notifications)
 - **AI:** Configurable per-tenant — Claude, OpenAI, or AWS Bedrock (provider factory pattern)
@@ -40,11 +40,13 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │   └── logging-service/     # Port 8008 — Centralized log collection, Sentry integration
 │
 ├── frontend/                 # Next.js App Router
+│   ├── messages/             # i18n JSON translations (en/, bn/, hi/)
 │   └── src/
-│       ├── app/(auth)/       # Login, setup, forgot-password
-│       ├── app/(platform)/   # Authenticated shell — all main pages
-│       ├── app/api/export/   # Server-side PDF export route (Puppeteer)
+│       ├── app/[locale]/(auth)/     # Login, setup, forgot-password
+│       ├── app/[locale]/(platform)/ # Authenticated shell — all main pages
+│       ├── app/api/export/          # Server-side PDF export route (Puppeteer)
 │       ├── components/       # ui/ (Shadcn), layout/, shared/, charts/, dashboard/, heatmap/, admin/
+│       ├── i18n/             # next-intl config, routing, navigation helpers
 │       ├── lib/              # api/ (ky + hooks), auth/, tenant/, rbac/, export/, firebase/, data/
 │       └── types/            # TypeScript interfaces
 │
@@ -68,6 +70,10 @@ make seed                  # Create default super admin (admin@sentinel.dev / ch
 make test                  # Run backend + frontend tests
 make lint                  # ruff + eslint
 make format                # ruff format + prettier
+make sentry-setup          # First-time Sentry init (migrations + admin user)
+make sentry-up             # Start Sentry services (profile-based)
+make sentry-down           # Stop Sentry services
+make sentry-logs           # Tail Sentry service logs
 ```
 
 ## Frontend Dev
@@ -160,6 +166,31 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - **HTTP client:** `ky` with auto Bearer token injection and 401 redirect (`lib/api/client.ts`)
 - **Access token:** Held in memory + `sessionStorage` (key: `sentinel_access_token`) for persistence across page reloads; refresh token via httpOnly cookie (TODO)
 
+## Internationalization (i18n)
+
+- **Library:** `next-intl` v4 with Next.js plugin (`createNextIntlPlugin` in `next.config.ts`)
+- **Supported locales:** `en` (English), `bn` (Bengali/বাংলা), `hi` (Hindi/हिन्दी) — default: `en`
+- **Routing:** `[locale]` dynamic segment in App Router; `localePrefix: 'never'` (URLs are clean, no `/en/` prefix)
+- **Middleware:** `src/middleware.ts` handles locale negotiation via `createMiddleware(routing)`
+- **Locale switching:** Cookie-based (`NEXT_LOCALE`) via `LocaleSwitcher` component in topbar
+- **Navigation:** Locale-aware wrappers (`Link`, `redirect`, `useRouter`, `usePathname`) exported from `i18n/navigation.ts`
+- **Translation files:** `frontend/messages/{en,bn,hi}/` — namespaced JSON (common, auth, navigation, dashboard, analytics, campaigns, voters, reports, notifications, superAdmin, validation + `admin/` subfolder)
+- **Usage pattern:** `const t = useTranslations("namespace")` → `t("key")`
+- **Fonts:** Multi-script via Google Fonts — Inter (Latin), Noto Sans Bengali, Noto Sans Devanagari — injected as CSS variables
+
+### Adding a new translation namespace:
+1. Create JSON files in `messages/{en,bn,hi}/`
+2. Add dynamic import in `i18n/request.ts` `loadMessages()` function
+3. Use `useTranslations("namespace")` in components
+
+## Theme / Dark Mode
+
+- **Library:** `next-themes` — `ThemeProvider` wraps app in `components/providers.tsx`
+- **Config:** `attribute="class"`, `defaultTheme="system"`, `enableSystem=true`
+- **Tailwind:** `darkMode: ["class"]` — `.dark` class on `<html>` toggles CSS variable themes
+- **CSS variables:** Defined in `app/[locale]/globals.css` — `:root` (light) and `.dark` (dark) selectors
+- **Toggle:** `ModeToggle` component in topbar — dropdown with Light / Dark / System options
+
 ## Component Patterns
 
 - `<PermissionGate permission="voters:write">` — RBAC component-level gating
@@ -226,9 +257,13 @@ All analytics endpoints require `analytics:read` or `reports:read/write` permiss
   - `GET /logs/stats` — Aggregate counts by service/level (super admin only)
   - Daily purge of logs older than 30 days via APScheduler
 - **Self-protection:** logging-service skips shipping its own logs (prevents infinite loop)
-- **Sentry self-hosted:** Setup instructions in `infrastructure/sentry/docker-compose.sentry.yml`
-  - Clone `getsentry/self-hosted` into `infrastructure/sentry/`, run `./install.sh`
-  - Access at `http://localhost:9000`, create project, copy DSN to `.env`
+- **Sentry self-hosted:** Included in main `docker-compose.yml` behind the `sentry` profile (does not start by default)
+  - First-time setup: `make sentry-setup` (runs DB migrations + creates admin user)
+  - Start: `make sentry-up` (or `docker compose --profile sentry up -d`)
+  - Stop: `make sentry-down`
+  - Access at `http://localhost:9000`, login `admin@sentinel.dev / changeme123`
+  - Create a Python project, copy DSN to `.env` as `SENTRY_DSN=http://<key>@sentry-web:9000/<project-id>`
+  - Shares the app's `postgres` (separate `sentry` database, auto-created via init script) and `redis`
 - **Graceful degradation:** If `SENTRY_DSN` is empty, Sentry is not initialized; if logging-service is down, logs are silently dropped
 
 ### All services initialize logging in their lifespan:
@@ -424,3 +459,4 @@ Current migrations:
 - [x] Phase 7 — Constituency & Ingestion (WB constituency system with tenant binding, automated APScheduler polling, location-aware connector handlers, ingested data browsing endpoint)
 - [x] Phase 8 — Ingestion Completion (ingested data admin page with filters/pagination/expandable rows, tag input for hashtag/topic entry on Brand24/YouTube/Twitter, Reddit handler implementation, shared platform config extraction)
 - [x] Phase 9 — Logging & Observability (centralized logging service with PostgreSQL storage, Sentry SDK integration across all services, structlog processors for error forwarding and log shipping, self-hosted Sentry Docker setup)
+- [x] Phase 10 — Internationalization & Theming (next-intl with English/Bengali/Hindi locales, cookie-based locale switching, `[locale]` App Router segment, next-themes dark/light/system mode toggle, multi-script Google Fonts)
