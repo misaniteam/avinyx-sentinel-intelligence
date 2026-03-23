@@ -49,8 +49,18 @@
     "analyticsServiceDesc": "ড্যাশবোর্ড, হিটম্যাপ, রিপোর্ট",
     "campaignServiceDesc": "ক্যাম্পেইন, ভোটার, মিডিয়া ফিড",
     "notificationServiceDesc": "Firebase বিজ্ঞপ্তি",
+    "loggingService": "লগিং সার্ভিস",
+    "loggingServiceDesc": "কেন্দ্রীভূত লগ সংগ্রহ, Sentry ইন্টিগ্রেশন",
     "ingestionJobsDesc": "কাঁচা ডেটা সংগ্রহ কাজ",
     "aiPipelineDesc": "মনোভাব ও বিষয় বিশ্লেষণ",
-    "notificationsDesc": "ব্যবহারকারী বিজ্ঞপ্তি বিতরণ"
+    "notificationsDesc": "ব্যবহারকারী বিজ্ঞপ্তি বিতরণ",
+    "statusHealthy": "সচল",
+    "statusUnhealthy": "অসচল",
+    "statusUnreachable": "অনুপলব্ধ",
+    "statusChecking": "পরীক্ষা করা হচ্ছে...",
+    "lastChecked": "সর্বশেষ পরীক্ষা {time}",
+    "refresh": "রিফ্রেশ",
+    "fetchError": "অবকাঠামোর অবস্থা আনতে ব্যর্থ",
+    "noDlq": "প্রযোজ্য নয়"
   }
 }

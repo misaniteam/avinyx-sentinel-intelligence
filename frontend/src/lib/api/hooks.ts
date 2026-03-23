@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import { queryKeys } from "./query-keys";
-import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse } from "@/types";
+import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus } from "@/types";
 
 // Dashboard
 export function useDashboardSummary() {
@@ -258,6 +258,15 @@ export function useMarkNotificationRead() {
 export function useMarkAllNotificationsRead() {
   return useMutation({
     mutationFn: () => api.post("api/notifications/notifications/mark-all-read").json(),
+  });
+}
+
+// Infrastructure (super admin)
+export function useInfrastructureStatus() {
+  return useQuery({
+    queryKey: queryKeys.infrastructure.status,
+    queryFn: () => api.get("api/infrastructure/status").json<InfrastructureStatus>(),
+    refetchInterval: 5_000, // auto-refresh every 5 seconds
   });
 }
 

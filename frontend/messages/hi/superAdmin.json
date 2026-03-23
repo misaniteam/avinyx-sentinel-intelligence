@@ -49,8 +49,18 @@
     "analyticsServiceDesc": "डैशबोर्ड, हीटमैप, रिपोर्ट",
     "campaignServiceDesc": "अभियान, मतदाता, मीडिया फ़ीड",
     "notificationServiceDesc": "Firebase सूचनाएँ",
+    "loggingService": "लॉगिंग सेवा",
+    "loggingServiceDesc": "केंद्रीकृत लॉग संग्रह, Sentry एकीकरण",
     "ingestionJobsDesc": "रॉ डेटा इंजेशन कार्य",
     "aiPipelineDesc": "भावना और विषय विश्लेषण",
-    "notificationsDesc": "उपयोगकर्ता सूचना वितरण"
+    "notificationsDesc": "उपयोगकर्ता सूचना वितरण",
+    "statusHealthy": "सक्रिय",
+    "statusUnhealthy": "निष्क्रिय",
+    "statusUnreachable": "अनुपलब्ध",
+    "statusChecking": "जाँच हो रही है...",
+    "lastChecked": "अंतिम जाँच {time}",
+    "refresh": "रिफ़्रेश",
+    "fetchError": "इन्फ्रास्ट्रक्चर स्थिति प्राप्त करने में विफल",
+    "noDlq": "लागू नहीं"
   }
 }
