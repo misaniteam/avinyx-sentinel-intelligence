@@ -52,6 +52,9 @@ export const queryKeys = {
   notifications: {
     all: ["notifications"] as const,
   },
+  infrastructure: {
+    status: ["infrastructure", "status"] as const,
+  },
   settings: {
     tenant: (tenantId: string) => ["settings", tenantId] as const,
   },

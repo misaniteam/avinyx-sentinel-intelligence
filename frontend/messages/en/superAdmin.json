@@ -49,8 +49,18 @@
     "analyticsServiceDesc": "Dashboard, heatmap, reports",
     "campaignServiceDesc": "Campaigns, voters, media feeds",
     "notificationServiceDesc": "Firebase notifications",
+    "loggingService": "Logging Service",
+    "loggingServiceDesc": "Centralized log collection, Sentry integration",
     "ingestionJobsDesc": "Raw data ingestion tasks",
     "aiPipelineDesc": "Sentiment and topic analysis",
-    "notificationsDesc": "User notification delivery"
+    "notificationsDesc": "User notification delivery",
+    "statusHealthy": "Healthy",
+    "statusUnhealthy": "Unhealthy",
+    "statusUnreachable": "Unreachable",
+    "statusChecking": "Checking...",
+    "lastChecked": "Last checked {time}",
+    "refresh": "Refresh",
+    "fetchError": "Failed to fetch infrastructure status",
+    "noDlq": "N/A"
   }
 }

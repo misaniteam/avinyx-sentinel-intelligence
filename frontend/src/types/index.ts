@@ -175,6 +175,23 @@ export interface IngestedDataResponse {
   total: number;
 }
 
+export interface ServiceHealthStatus {
+  status: "healthy" | "unhealthy" | "unreachable";
+  response_time_ms: number | null;
+}
+
+export interface QueueMetrics {
+  messages: number;
+  not_visible: number;
+  dlq_messages: number | null;
+}
+
+export interface InfrastructureStatus {
+  services: Record<string, ServiceHealthStatus>;
+  queues: Record<string, QueueMetrics>;
+  checked_at: string;
+}
+
 export interface TenantOnboardRequest {
   tenant: {
     name: string;

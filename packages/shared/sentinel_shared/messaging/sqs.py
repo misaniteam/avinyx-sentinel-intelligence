@@ -40,3 +40,16 @@ class SQSClient:
             queue_url_resp = await client.get_queue_url(QueueName=queue_name)
             queue_url = queue_url_resp["QueueUrl"]
             await client.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
+
+    async def get_queue_attributes(self, queue_name: str) -> dict:
+        async with self._session.create_client("sqs", **self._get_client_kwargs()) as client:
+            queue_url_resp = await client.get_queue_url(QueueName=queue_name)
+            queue_url = queue_url_resp["QueueUrl"]
+            resp = await client.get_queue_attributes(
+                QueueUrl=queue_url,
+                AttributeNames=[
+                    "ApproximateNumberOfMessages",
+                    "ApproximateNumberOfMessagesNotVisible",
+                ],
+            )
+            return resp.get("Attributes", {})
