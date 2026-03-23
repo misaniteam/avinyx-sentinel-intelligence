@@ -31,7 +31,24 @@
     "twitter": "Twitter / X",
     "news_rss": "न्यूज़ RSS",
     "news_api": "न्यूज़ API",
-    "reddit": "Reddit"
+    "reddit": "Reddit",
+    "file_upload": "फ़ाइल अपलोड"
+  },
+  "fileUpload": {
+    "sectionTitle": "फ़ाइलें",
+    "createDescription": "डेटा इंजेस्ट करने के लिए PDF या Excel फ़ाइलें अपलोड करें।",
+    "description": "अपलोड करने के लिए PDF (.pdf) या Excel (.xlsx, .xls) फ़ाइलें चुनें।",
+    "dropzoneLabel": "फ़ाइलें चुनने के लिए क्लिक करें",
+    "acceptedFormats": "स्वीकृत प्रारूप: PDF, XLSX, XLS",
+    "limits": "अधिकतम {maxFiles} फ़ाइलें, प्रत्येक {maxSize}",
+    "selectedFiles": "चयनित फ़ाइलें ({count})",
+    "uploadedFiles": "अपलोड की गई फ़ाइलें",
+    "noFilesError": "कृपया अपलोड करने के लिए कम से कम एक फ़ाइल चुनें।",
+    "maxFilesError": "आप अधिकतम {max} फ़ाइलें अपलोड कर सकते हैं।",
+    "invalidTypeError": "\"{name}\" एक समर्थित फ़ाइल प्रकार नहीं है। केवल PDF और Excel फ़ाइलें स्वीकार की जाती हैं।",
+    "fileTooLargeError": "\"{name}\" अधिकतम फ़ाइल आकार {max} से अधिक है।",
+    "uploading": "अपलोड हो रहा है...",
+    "uploadButton": "फ़ाइलें अपलोड करें"
   },
   "fields": {
     "apiKey": "API कुंजी",

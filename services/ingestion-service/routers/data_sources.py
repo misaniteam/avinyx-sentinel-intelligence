@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter()
 
-ALLOWED_PLATFORMS = ("brand24", "youtube", "twitter", "news_rss", "news_api", "reddit")
+ALLOWED_PLATFORMS = ("brand24", "youtube", "twitter", "news_rss", "news_api", "reddit", "file_upload")
 
 SENSITIVE_KEY_PATTERNS = ("key", "secret", "token", "password")
 
@@ -41,6 +41,10 @@ PLATFORM_CONFIG_SCHEMA: dict[str, dict] = {
     "reddit": {
         "required": ["client_id", "client_secret"],
         "optional": ["subreddits"],
+    },
+    "file_upload": {
+        "required": [],
+        "optional": [],
     },
 }
 

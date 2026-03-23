@@ -31,7 +31,24 @@
     "twitter": "Twitter / X",
     "news_rss": "News RSS",
     "news_api": "News API",
-    "reddit": "Reddit"
+    "reddit": "Reddit",
+    "file_upload": "File Upload"
+  },
+  "fileUpload": {
+    "sectionTitle": "Files",
+    "createDescription": "Upload PDF or Excel files to ingest data.",
+    "description": "Select PDF (.pdf) or Excel (.xlsx, .xls) files to upload.",
+    "dropzoneLabel": "Click to select files",
+    "acceptedFormats": "Accepted formats: PDF, XLSX, XLS",
+    "limits": "Max {maxFiles} files, {maxSize} each",
+    "selectedFiles": "Selected files ({count})",
+    "uploadedFiles": "Uploaded Files",
+    "noFilesError": "Please select at least one file to upload.",
+    "maxFilesError": "You can upload a maximum of {max} files.",
+    "invalidTypeError": "\"{name}\" is not a supported file type. Only PDF and Excel files are accepted.",
+    "fileTooLargeError": "\"{name}\" exceeds the maximum file size of {max}.",
+    "uploading": "Uploading...",
+    "uploadButton": "Upload Files"
   },
   "fields": {
     "apiKey": "API Key",

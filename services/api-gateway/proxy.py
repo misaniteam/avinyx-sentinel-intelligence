@@ -35,8 +35,8 @@ PUBLIC_PATHS = {
     wait=wait_exponential(multiplier=0.5, min=0.5, max=5),
     retry=retry_if_exception_type(httpx.ConnectError),
 )
-async def proxy_request(method: str, url: str, headers: dict, content: bytes, params: dict) -> httpx.Response:
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+async def proxy_request(method: str, url: str, headers: dict, content: bytes, params: dict, timeout: float = 30.0) -> httpx.Response:
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         return await client.request(
             method=method,
             url=url,
@@ -78,6 +78,9 @@ async def gateway_proxy(request: Request, path: str):
     # Read body
     body = await request.body()
 
+    # Use extended timeout for file upload endpoints
+    timeout = 300.0 if "/file-upload" in full_path else 30.0
+
     try:
         response = await proxy_request(
             method=request.method,
@@ -85,6 +88,7 @@ async def gateway_proxy(request: Request, path: str):
             headers=headers,
             content=body,
             params=dict(request.query_params),
+            timeout=timeout,
         )
 
         # Forward response

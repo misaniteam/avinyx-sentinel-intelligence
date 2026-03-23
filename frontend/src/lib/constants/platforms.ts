@@ -5,6 +5,7 @@ import {
   Rss,
   Newspaper,
   MessageCircle,
+  FileUp,
 } from "lucide-react";
 
 export const platformConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -14,4 +15,5 @@ export const platformConfig: Record<string, { label: string; icon: React.Element
   news_rss: { label: "News RSS", icon: Rss, color: "bg-orange-100 text-orange-800" },
   news_api: { label: "News API", icon: Newspaper, color: "bg-purple-100 text-purple-800" },
   reddit: { label: "Reddit", icon: MessageCircle, color: "bg-amber-100 text-amber-800" },
+  file_upload: { label: "File Upload", icon: FileUp, color: "bg-emerald-100 text-emerald-800" },
 };

@@ -21,6 +21,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │       ├── auth/             # JWT, bcrypt password hashing, FastAPI RBAC dependencies
 │       ├── database/         # Async session, tenant context filtering
 │       ├── messaging/        # SQS client
+│       ├── storage/          # S3 async client (aiobotocore)
 │       ├── ai/               # Provider factory + Claude/OpenAI implementations
 │       ├── firebase/         # RTDB client
 │       ├── logging/          # Sentry SDK init, structlog processors, log shipper
@@ -31,7 +32,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │   ├── api-gateway/          # Port 8000 — CORS, rate limiting, reverse proxy
 │   ├── auth-service/         # Port 8001 — Login, JWT, setup wizard, user/role CRUD, tenant settings
 │   ├── tenant-service/       # Port 8002 — Tenant CRUD, onboarding
-│   ├── ingestion-service/    # Port 8003 — Data source CRUD, scheduler
+│   ├── ingestion-service/    # Port 8003 — Data source CRUD, scheduler, file upload
 │   ├── ingestion-worker/     # SQS consumer — connector plugin pattern
 │   ├── ai-pipeline-service/  # SQS consumer — sentiment/topic/entity analysis
 │   ├── analytics-service/    # Port 8005 — Dashboard, heatmap, reports, platforms, topics
@@ -150,6 +151,20 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - `news_rss` — RSS feed ingestion (config: `feed_urls`)
 - `news_api` — News API (config: `api_key`, `keywords`, `sources`, `language`)
 - `reddit` — Reddit API with OAuth2 client credentials (config: `client_id`, `client_secret`, `subreddits`)
+- `file_upload` — PDF/Excel file upload with S3 storage and text extraction (one-shot, no polling)
+
+## File Upload Data Source
+
+- **Endpoint:** `POST /api/ingestion/file-upload` (multipart/form-data)
+- **Accepted formats:** PDF (`.pdf`), Excel (`.xlsx`, `.xls`)
+- **Limits:** Max 10 files per upload, max 50MB per file
+- **S3 storage:** `s3://sentinel-uploads/{tenant_id}/{data_source_id}/{uuid}_{filename}`
+- **Text extraction:** `pymupdf` for PDF, `openpyxl` for XLSX, `xlrd` for XLS
+- **Chunking:** Files with >500K chars of extracted text are split into multiple RawMediaItem records
+- **One-shot ingestion:** DataSource created with `is_active=False`, `poll_interval_minutes=0` — scheduler ignores it
+- **Security:** Magic byte validation, filename sanitization, S3 SSE-AES256, cross-tenant S3 key validation in worker, PDF page limit (2000), Excel row limit (500K)
+- **Frontend:** File dropzone in DataSourceDialog when platform is `file_upload`, with drag-and-drop, file list, and client-side validation
+- **Deduplication:** Uses S3 key as `external_id`, enforced by existing `uq_media_tenant_platform_ext` constraint
 
 ## Adding a New AI Provider
 
@@ -460,3 +475,4 @@ Current migrations:
 - [x] Phase 8 — Ingestion Completion (ingested data admin page with filters/pagination/expandable rows, tag input for hashtag/topic entry on Brand24/YouTube/Twitter, Reddit handler implementation, shared platform config extraction)
 - [x] Phase 9 — Logging & Observability (centralized logging service with PostgreSQL storage, Sentry SDK integration across all services, structlog processors for error forwarding and log shipping, self-hosted Sentry Docker setup)
 - [x] Phase 10 — Internationalization & Theming (next-intl with English/Bengali/Hindi locales, cookie-based locale switching, `[locale]` App Router segment, next-themes dark/light/system mode toggle, multi-script Google Fonts)
+- [x] Phase 11 — File Upload Ingestion (PDF/Excel file upload as data source, S3 storage with SSE, text extraction via pymupdf/openpyxl/xlrd, one-shot ingestion, magic byte validation, cross-tenant S3 key protection)

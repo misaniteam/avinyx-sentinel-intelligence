@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     sqs_notifications_queue: str = "sentinel-notifications"
     sns_tenant_events_topic: str = "sentinel-tenant-events"
     s3_reports_bucket: str = "sentinel-reports"
+    s3_uploads_bucket: str = "sentinel-uploads"
 
     # Firebase
     firebase_project_id: str = ""

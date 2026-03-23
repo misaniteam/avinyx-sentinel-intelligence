@@ -20,4 +20,7 @@ awslocal sns create-topic --name sentinel-tenant-events
 # S3: Reports bucket
 awslocal s3 mb s3://sentinel-reports
 
+# S3: Uploads bucket (file upload ingestion)
+awslocal s3 mb s3://sentinel-uploads
+
 echo "LocalStack initialization complete."

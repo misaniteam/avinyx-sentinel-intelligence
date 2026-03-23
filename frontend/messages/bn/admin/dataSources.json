@@ -31,7 +31,24 @@
     "twitter": "Twitter / X",
     "news_rss": "News RSS",
     "news_api": "News API",
-    "reddit": "Reddit"
+    "reddit": "Reddit",
+    "file_upload": "ফাইল আপলোড"
+  },
+  "fileUpload": {
+    "sectionTitle": "ফাইল",
+    "createDescription": "ডেটা সংগ্রহের জন্য PDF বা Excel ফাইল আপলোড করুন।",
+    "description": "আপলোড করতে PDF (.pdf) বা Excel (.xlsx, .xls) ফাইল নির্বাচন করুন।",
+    "dropzoneLabel": "ফাইল নির্বাচন করতে ক্লিক করুন",
+    "acceptedFormats": "গৃহীত ফরম্যাট: PDF, XLSX, XLS",
+    "limits": "সর্বোচ্চ {maxFiles}টি ফাইল, প্রতিটি {maxSize}",
+    "selectedFiles": "নির্বাচিত ফাইল ({count})",
+    "uploadedFiles": "আপলোড করা ফাইল",
+    "noFilesError": "অনুগ্রহ করে আপলোড করতে অন্তত একটি ফাইল নির্বাচন করুন।",
+    "maxFilesError": "আপনি সর্বোচ্চ {max}টি ফাইল আপলোড করতে পারেন।",
+    "invalidTypeError": "\"{name}\" একটি সমর্থিত ফাইল টাইপ নয়। শুধুমাত্র PDF এবং Excel ফাইল গ্রহণযোগ্য।",
+    "fileTooLargeError": "\"{name}\" সর্বোচ্চ ফাইল সাইজ {max} অতিক্রম করেছে।",
+    "uploading": "আপলোড হচ্ছে...",
+    "uploadButton": "ফাইল আপলোড করুন"
   },
   "fields": {
     "apiKey": "API কী",

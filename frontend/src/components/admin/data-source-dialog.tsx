@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { FileUp, X, FileText, FileSpreadsheet } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -28,14 +30,37 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { TagInput } from "@/components/ui/tag-input";
-import { useCreateDataSource, useUpdateDataSource } from "@/lib/api/hooks";
+import { useCreateDataSource, useUpdateDataSource, useUploadFileDataSource } from "@/lib/api/hooks";
 import type { DataSource } from "@/types";
 
-const PLATFORM_VALUES = ["brand24", "youtube", "twitter", "news_rss", "news_api", "reddit"] as const;
+const PLATFORM_VALUES = ["brand24", "youtube", "twitter", "news_rss", "news_api", "reddit", "file_upload"] as const;
 
 const LANGUAGE_VALUES = ["en", "es", "fr", "de", "hi", "pt", "ar", "zh", "ja"] as const;
 
 type Platform = typeof PLATFORM_VALUES[number];
+
+const ACCEPTED_FILE_TYPES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+];
+const ACCEPTED_FILE_EXTENSIONS = ".pdf,.xlsx,.xls";
+const MAX_FILES = 10;
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const size = bytes / Math.pow(1024, i);
+  return `${size.toFixed(size < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
+}
+
+function getFileIcon(filename: string) {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return FileText;
+  return FileSpreadsheet;
+}
 
 const baseSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -221,8 +246,14 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
 
   const createDataSource = useCreateDataSource();
   const updateDataSource = useUpdateDataSource();
+  const uploadFileDataSource = useUploadFileDataSource();
 
   const isCreate = mode === "create";
+  const isFileUpload = dataSource?.platform === "file_upload";
+
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileErrors, setFileErrors] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const platforms = useMemo(() =>
     PLATFORM_VALUES.map((value) => ({ value, label: t(`platforms.${value}`) })),
@@ -253,6 +284,8 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
         poll_interval_minutes: 60,
         is_active: true,
       });
+      setSelectedFiles([]);
+      setFileErrors([]);
     }
     if (open && !isCreate && dataSource) {
       const configValues = extractConfigValues(dataSource.config, dataSource.platform);
@@ -263,11 +296,80 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
         is_active: dataSource.is_active,
         ...configValues,
       });
+      setSelectedFiles([]);
+      setFileErrors([]);
     }
   }, [open, mode, dataSource]);
 
+  function validateFiles(files: File[]): string[] {
+    const errors: string[] = [];
+    if (files.length > MAX_FILES) {
+      errors.push(t("fileUpload.maxFilesError", { max: MAX_FILES }));
+    }
+    for (const file of files) {
+      if (!ACCEPTED_FILE_TYPES.includes(file.type)) {
+        errors.push(t("fileUpload.invalidTypeError", { name: file.name }));
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        errors.push(t("fileUpload.fileTooLargeError", { name: file.name, max: "50 MB" }));
+      }
+    }
+    return errors;
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const newFiles = Array.from(e.target.files || []);
+    if (newFiles.length === 0) return;
+
+    const combined = [...selectedFiles, ...newFiles];
+    const errors = validateFiles(combined);
+    setFileErrors(errors);
+
+    if (errors.length === 0) {
+      setSelectedFiles(combined);
+    }
+    // Reset the input so the same file can be re-selected
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function handleRemoveFile(index: number) {
+    const updated = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(updated);
+    setFileErrors(validateFiles(updated));
+  }
+
   async function onSubmit(data: FormData) {
     const platform = data.platform;
+
+    // Handle file_upload platform separately
+    if (platform === "file_upload") {
+      if (selectedFiles.length === 0) {
+        toast.error(t("fileUpload.noFilesError"));
+        return;
+      }
+      const errors = validateFiles(selectedFiles);
+      if (errors.length > 0) {
+        toast.error(errors[0]);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("name", data.name);
+      for (const file of selectedFiles) {
+        formData.append("files", file);
+      }
+
+      try {
+        await uploadFileDataSource.mutateAsync(formData);
+        toast.success(t("createSuccess"));
+        onOpenChange(false);
+      } catch {
+        toast.error(t("createFailed"));
+      }
+      return;
+    }
 
     // Validate platform-specific config
     const configSchema = getConfigSchema(platform);
@@ -328,8 +430,17 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
     }
   }
 
-  const isPending = createDataSource.isPending || updateDataSource.isPending;
+  const isPending = createDataSource.isPending || updateDataSource.isPending || uploadFileDataSource.isPending;
   const configFieldDefs = getConfigFieldDefsForPlatform(watchedPlatform);
+  const isFileUploadPlatform = watchedPlatform === "file_upload";
+
+  // For edit mode on file_upload, extract stored file info from config
+  const existingFiles = useMemo(() => {
+    if (!dataSource || dataSource.platform !== "file_upload") return [];
+    const files = dataSource.config?.files;
+    if (!Array.isArray(files)) return [];
+    return files as Array<{ filename: string; s3_key: string; content_type: string; size: number }>;
+  }, [dataSource]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -338,7 +449,9 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
           <DialogTitle>{isCreate ? t("addDataSource") : t("editDataSource")}</DialogTitle>
           <DialogDescription>
             {isCreate
-              ? t("createDescription")
+              ? isFileUploadPlatform
+                ? t("fileUpload.createDescription")
+                : t("createDescription")
               : t("editDescription")}
           </DialogDescription>
         </DialogHeader>
@@ -389,23 +502,27 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="poll_interval_minutes">{t("pollIntervalMinutes")}</Label>
-              <Input
-                id="poll_interval_minutes"
-                type="number"
-                min={1}
-                max={1440}
-                {...form.register("poll_interval_minutes", { valueAsNumber: true })}
-              />
-              {form.formState.errors.poll_interval_minutes && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.poll_interval_minutes.message}
-                </p>
-              )}
-            </div>
+            {/* Hide poll interval for file_upload */}
+            {!isFileUploadPlatform && (
+              <div className="space-y-2">
+                <Label htmlFor="poll_interval_minutes">{t("pollIntervalMinutes")}</Label>
+                <Input
+                  id="poll_interval_minutes"
+                  type="number"
+                  min={1}
+                  max={1440}
+                  {...form.register("poll_interval_minutes", { valueAsNumber: true })}
+                />
+                {form.formState.errors.poll_interval_minutes && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.poll_interval_minutes.message}
+                  </p>
+                )}
+              </div>
+            )}
 
-            {!isCreate && (
+            {/* Hide active toggle for file_upload */}
+            {!isCreate && !isFileUpload && (
               <div className="flex items-center justify-between">
                 <Label htmlFor="is_active">{tc("active")}</Label>
                 <Controller
@@ -423,8 +540,108 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
             )}
           </div>
 
-          {/* Credentials Section */}
-          {watchedPlatform && configFieldDefs.length > 0 && (
+          {/* File Upload Section (create mode) */}
+          {isFileUploadPlatform && isCreate && (
+            <>
+              <Separator />
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">{t("fileUpload.sectionTitle")}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {t("fileUpload.description")}
+                </p>
+
+                <div className="space-y-3">
+                  <div
+                    className="flex flex-col items-center justify-center rounded-md border-2 border-dashed p-6 cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <FileUp className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                    <p className="text-sm font-medium">{t("fileUpload.dropzoneLabel")}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("fileUpload.acceptedFormats")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("fileUpload.limits", { maxFiles: MAX_FILES, maxSize: "50 MB" })}
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept={ACCEPTED_FILE_EXTENSIONS}
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {/* File error messages */}
+                  {fileErrors.length > 0 && (
+                    <div className="space-y-1">
+                      {fileErrors.map((error, i) => (
+                        <p key={i} className="text-sm text-destructive">{error}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Selected files list */}
+                  {selectedFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>{t("fileUpload.selectedFiles", { count: selectedFiles.length })}</Label>
+                      <div className="rounded-md border divide-y">
+                        {selectedFiles.map((file, index) => {
+                          const Icon = getFileIcon(file.name);
+                          return (
+                            <div key={`${file.name}-${index}`} className="flex items-center gap-3 px-3 py-2">
+                              <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-sm truncate flex-1">{file.name}</span>
+                              <Badge variant="outline" className="shrink-0 text-xs">
+                                {formatFileSize(file.size)}
+                              </Badge>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 shrink-0"
+                                onClick={() => handleRemoveFile(index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* File Upload Section (edit mode - read only) */}
+          {isFileUpload && !isCreate && existingFiles.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">{t("fileUpload.uploadedFiles")}</h4>
+                <div className="rounded-md border divide-y">
+                  {existingFiles.map((file, index) => {
+                    const Icon = getFileIcon(file.filename);
+                    return (
+                      <div key={`${file.s3_key}-${index}`} className="flex items-center gap-3 px-3 py-2">
+                        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm truncate flex-1">{file.filename}</span>
+                        <Badge variant="outline" className="shrink-0 text-xs">
+                          {formatFileSize(file.size)}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Credentials Section (non-file-upload platforms only) */}
+          {watchedPlatform && !isFileUploadPlatform && configFieldDefs.length > 0 && (
             <>
               <Separator />
               <div className="space-y-4">
@@ -515,10 +732,10 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
             <Button type="submit" disabled={isPending}>
               {isPending
                 ? isCreate
-                  ? tc("creating")
+                  ? isFileUploadPlatform ? t("fileUpload.uploading") : tc("creating")
                   : tc("saving")
                 : isCreate
-                  ? t("addDataSource")
+                  ? isFileUploadPlatform ? t("fileUpload.uploadButton") : t("addDataSource")
                   : tc("save")}
             </Button>
           </DialogFooter>
