@@ -38,9 +38,19 @@ class Settings(BaseSettings):
     analytics_service_url: str = "http://analytics-service:8005"
     campaign_service_url: str = "http://campaign-service:8006"
     notification_service_url: str = "http://notification-service:8007"
+    logging_service_url: str = "http://logging-service:8008"
 
     # Redis
     redis_url: str = "redis://localhost:6379"
+
+    # Sentry
+    sentry_dsn: str = ""
+    sentry_environment: str = "development"
+    sentry_traces_sample_rate: float = 0.1
+
+    # Logging Service
+    logging_service_url: str = "http://logging-service:8008"
+    log_shipping_enabled: bool = True
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

@@ -40,6 +40,7 @@ test-backend:
 	cd services/analytics-service && pytest
 	cd services/campaign-service && pytest
 	cd services/notification-service && pytest
+	cd services/logging-service && pytest
 
 test-frontend:
 	cd frontend && npm test

@@ -16,13 +16,14 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 ```
 ├── packages/shared/          # sentinel_shared — Python package used by all backend services
 │   └── sentinel_shared/
-│       ├── models/           # SQLAlchemy models (10 models)
+│       ├── models/           # SQLAlchemy models (11 models)
 │       ├── schemas/          # Pydantic request/response schemas
 │       ├── auth/             # JWT, bcrypt password hashing, FastAPI RBAC dependencies
 │       ├── database/         # Async session, tenant context filtering
 │       ├── messaging/        # SQS client
 │       ├── ai/               # Provider factory + Claude/OpenAI implementations
 │       ├── firebase/         # RTDB client
+│       ├── logging/          # Sentry SDK init, structlog processors, log shipper
 │       ├── data/             # Static data (wb_constituencies.py — 294 WB assembly constituencies)
 │       └── config.py         # Pydantic Settings (reads from .env)
 │
@@ -35,7 +36,8 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │   ├── ai-pipeline-service/  # SQS consumer — sentiment/topic/entity analysis
 │   ├── analytics-service/    # Port 8005 — Dashboard, heatmap, reports, platforms, topics
 │   ├── campaign-service/     # Port 8006 — Campaigns, voters, media feeds
-│   └── notification-service/ # Port 8007 — Firebase notifications, list/mark-read
+│   ├── notification-service/ # Port 8007 — Firebase notifications, list/mark-read
+│   └── logging-service/     # Port 8008 — Centralized log collection, Sentry integration
 │
 ├── frontend/                 # Next.js App Router
 │   └── src/
@@ -110,6 +112,7 @@ All frontend requests go through `api-gateway` at `/api/*`:
 - `/api/analytics/*` → analytics-service
 - `/api/campaigns/*` → campaign-service
 - `/api/notifications/*` → notification-service
+- `/api/logs/*` → logging-service
 
 **Proxy path formula:** The gateway strips `/api` from the prefix and concatenates `{service_prefix}{remaining_path}`. For example, `/api/analytics/dashboard/summary` → `http://analytics-service:8005/analytics/dashboard/summary`. Each service's router prefixes must include the service namespace (e.g., analytics-service mounts routers at `/analytics/dashboard`, `/analytics/platforms`, etc.).
 
@@ -210,6 +213,34 @@ Beyond the original dashboard/heatmap/reports routers (all prefixed with `/analy
 - `GET /analytics/reports/{id}/download` — Returns presigned S3 URL (10-minute expiry)
 
 All analytics endpoints require `analytics:read` or `reports:read/write` permissions and use `get_current_tenant_required` (rejects tenant_id=None).
+
+## Logging & Sentry Integration
+
+- **Shared module:** `sentinel_shared/logging/` — `init_logging(service_name)`, structlog processors, background log shipper
+- **Setup:** `setup.py` — Initializes Sentry SDK (if DSN configured) + configures structlog processor chain
+- **Processors:** `processors.py` — `SentryProcessor` (forwards ERROR/CRITICAL to Sentry), `LogShipperProcessor` (enqueues logs for HTTP shipping)
+- **Shipper:** `shipper.py` — Background asyncio task batches log entries (max 50 / 2s interval) and POSTs to logging-service; fire-and-forget (no cascading failures)
+- **Logging service:** `services/logging-service/` (port 8008) — Centralized log storage in PostgreSQL `log_entries` table
+  - `POST /logs/ingest` — Batch log ingestion (internal, no auth)
+  - `GET /logs/search` — Filter/paginate logs (super admin only)
+  - `GET /logs/stats` — Aggregate counts by service/level (super admin only)
+  - Daily purge of logs older than 30 days via APScheduler
+- **Self-protection:** logging-service skips shipping its own logs (prevents infinite loop)
+- **Sentry self-hosted:** Setup instructions in `infrastructure/sentry/docker-compose.sentry.yml`
+  - Clone `getsentry/self-hosted` into `infrastructure/sentry/`, run `./install.sh`
+  - Access at `http://localhost:9000`, create project, copy DSN to `.env`
+- **Graceful degradation:** If `SENTRY_DSN` is empty, Sentry is not initialized; if logging-service is down, logs are silently dropped
+
+### All services initialize logging in their lifespan:
+```python
+from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
+
+# Startup:
+init_logging("service-name")
+await start_log_shipper()
+# Shutdown:
+await stop_log_shipper()
+```
 
 ## Firebase Integration
 
@@ -380,6 +411,7 @@ Current migrations:
 - `1c3a7f6385e7` — Initial schema (all tables)
 - `6e74ac702418` — Add unique constraint on `roles(tenant_id, name)`
 - `a3b1c2d4e5f6` — Add `constituency_code` column to tenants (unique, indexed, nullable)
+- `b4c2d3e5f7a8` — Add `log_entries` table with service/level/tenant/timestamp indexes
 
 ## Implementation Status
 
@@ -391,3 +423,4 @@ Current migrations:
 - [x] Phase 6 — Admin Enhancements (roles table view with enhanced PermissionSelect, data source management page with per-platform credential forms, backend security hardening with permission/config allowlist validation, SSRF protection, credential masking)
 - [x] Phase 7 — Constituency & Ingestion (WB constituency system with tenant binding, automated APScheduler polling, location-aware connector handlers, ingested data browsing endpoint)
 - [x] Phase 8 — Ingestion Completion (ingested data admin page with filters/pagination/expandable rows, tag input for hashtag/topic entry on Brand24/YouTube/Twitter, Reddit handler implementation, shared platform config extraction)
+- [x] Phase 9 — Logging & Observability (centralized logging service with PostgreSQL storage, Sentry SDK integration across all services, structlog processors for error forwarding and log shipping, self-hosted Sentry Docker setup)

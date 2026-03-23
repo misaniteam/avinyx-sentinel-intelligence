@@ -8,6 +8,7 @@ from sentinel_shared.messaging.sqs import SQSClient
 from sentinel_shared.database.session import get_session_factory, tenant_context
 from sentinel_shared.models.tenant import Tenant
 from sentinel_shared.data.wb_constituencies import WB_CONSTITUENCY_BY_CODE
+from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
 from handlers import get_handler
 
 logger = structlog.get_logger()
@@ -88,6 +89,8 @@ async def process_message(message: dict):
         raise
 
 async def main():
+    init_logging("ingestion-worker")
+    await start_log_shipper()
     logger.info("ingestion-worker starting")
     settings = get_settings()
     sqs = SQSClient()

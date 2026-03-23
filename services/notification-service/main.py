@@ -8,15 +8,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sentinel_shared.database.session import get_db
 from sentinel_shared.auth.dependencies import get_current_tenant, get_current_tenant_required, get_current_user, require_permissions
 from sentinel_shared.firebase.client import push_notification, get_firebase_app
+from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
 from pydantic import BaseModel, Field
 
 logger = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_logging("notification-service")
+    await start_log_shipper()
     logger.info("notification-service starting")
     yield
     logger.info("notification-service shutting down")
+    await stop_log_shipper()
 
 app = FastAPI(title="Notification Service", lifespan=lifespan)
 
