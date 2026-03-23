@@ -7,6 +7,28 @@ x-backend-common: &backend-common
       condition: service_started
   restart: unless-stopped
 
+x-sentry-common: &sentry-common
+  image: getsentry/sentry:latest
+  environment: &sentry-env
+    SENTRY_SECRET_KEY: "${SENTRY_SECRET_KEY:-super-secret-change-me-in-production}"
+    SENTRY_POSTGRES_HOST: postgres
+    SENTRY_POSTGRES_PORT: "5432"
+    SENTRY_DB_NAME: sentry
+    SENTRY_DB_USER: sentinel
+    SENTRY_DB_PASSWORD: sentinel
+    SENTRY_REDIS_HOST: redis
+    SENTRY_REDIS_PORT: "6379"
+    SENTRY_SERVER_EMAIL: "sentry@sentinel.dev"
+    SENTRY_EMAIL_HOST: ""
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_started
+  restart: unless-stopped
+  profiles:
+    - sentry
+
 services:
   postgres:
     image: postgres:16
@@ -16,6 +38,7 @@ services:
       POSTGRES_DB: sentinel
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/scripts/init-sentry-db.sh:/docker-entrypoint-initdb.d/init-sentry-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
       interval: 5s
@@ -89,6 +112,22 @@ services:
     build:
       context: .
       dockerfile: services/logging-service/Dockerfile
+
+  # Sentry self-hosted (optional, activate with --profile sentry)
+  # Uses shared postgres (separate 'sentry' DB) and redis
+  sentry-web:
+    <<: *sentry-common
+    ports:
+      - "9000:9000"
+    command: sentry run web --bind 0.0.0.0:9000
+
+  sentry-worker:
+    <<: *sentry-common
+    command: sentry run worker
+
+  sentry-cron:
+    <<: *sentry-common
+    command: sentry run cron
 
   frontend:
     build:

@@ -1,4 +1,4 @@
-.PHONY: up down build logs up-prod down-prod build-prod logs-prod test test-backend test-frontend migrate migrate-create seed lint format clean
+.PHONY: up down build logs up-prod down-prod build-prod logs-prod test test-backend test-frontend migrate migrate-create seed lint format clean sentry-setup sentry-up sentry-down sentry-logs
 
 COMPOSE_PROD := docker compose -f docker-compose.yml -f docker-compose.prod.yml
 
@@ -62,6 +62,29 @@ lint:
 format:
 	ruff format packages/ services/
 	cd frontend && npx prettier --write .
+
+# Sentry (optional, resource-heavy — uses Docker Compose profiles)
+sentry-setup:
+	@echo "Ensuring postgres and redis are running..."
+	docker compose up -d postgres redis
+	@until docker compose exec postgres pg_isready -U sentinel 2>/dev/null; do sleep 2; done
+	docker compose exec postgres psql -U sentinel -tc "SELECT 1 FROM pg_database WHERE datname = 'sentry'" | grep -q 1 || \
+		docker compose exec postgres psql -U sentinel -c "CREATE DATABASE sentry"
+	docker compose --profile sentry run --rm sentry-web upgrade --noinput
+	docker compose --profile sentry run --rm sentry-web createuser \
+		--email admin@sentinel.dev --password changeme123 --superuser --no-input || echo "User may already exist"
+	@echo ""
+	@echo "Sentry initialized. Run 'make sentry-up' to start."
+	@echo "Then open http://localhost:9000, create a Python project, and copy the DSN to .env"
+
+sentry-up:
+	docker compose --profile sentry up -d
+
+sentry-down:
+	docker compose --profile sentry down
+
+sentry-logs:
+	docker compose --profile sentry logs -f sentry-web sentry-worker sentry-cron
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
