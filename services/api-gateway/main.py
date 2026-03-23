@@ -2,6 +2,7 @@ import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
 from middleware.rate_limiter import RateLimiterMiddleware
 from proxy import router as proxy_router
 
@@ -9,9 +10,12 @@ logger = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_logging("api-gateway")
+    await start_log_shipper()
     logger.info("api-gateway starting")
     yield
     logger.info("api-gateway shutting down")
+    await stop_log_shipper()
 
 app = FastAPI(title="Sentinel API Gateway", lifespan=lifespan)
 

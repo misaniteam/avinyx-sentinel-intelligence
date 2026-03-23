@@ -9,6 +9,7 @@ from sentinel_shared.models.tenant import Tenant
 from sentinel_shared.ai.factory import AIProviderFactory
 from sentinel_shared.ai.claude_provider import ClaudeProvider
 from sentinel_shared.ai.openai_provider import OpenAIProvider
+from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
 from sqlalchemy import select
 
 logger = structlog.get_logger()
@@ -67,6 +68,8 @@ async def process_message(message: dict):
         logger.info("analysis_complete", tenant_id=tenant_id, items=len(items))
 
 async def main():
+    init_logging("ai-pipeline-service")
+    await start_log_shipper()
     logger.info("ai-pipeline-service starting")
     settings = get_settings()
     sqs = SQSClient()

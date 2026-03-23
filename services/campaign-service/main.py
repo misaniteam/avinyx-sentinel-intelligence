@@ -1,15 +1,19 @@
 import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
 from routers import campaigns_router, voters_router, media_feeds_router
 
 logger = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_logging("campaign-service")
+    await start_log_shipper()
     logger.info("campaign-service starting")
     yield
     logger.info("campaign-service shutting down")
+    await stop_log_shipper()
 
 app = FastAPI(title="Campaign Service", lifespan=lifespan)
 app.include_router(campaigns_router, prefix="/campaigns/campaigns", tags=["campaigns"])

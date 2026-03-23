@@ -1,0 +1,84 @@
+# Self-Hosted Sentry for Sentinel Intelligence
+#
+# Usage:
+#   cd infrastructure/sentry
+#   docker compose -f docker-compose.sentry.yml up -d
+#
+# First-time setup:
+#   docker compose -f docker-compose.sentry.yml run --rm sentry-web upgrade
+#   docker compose -f docker-compose.sentry.yml run --rm sentry-web createuser \
+#     --email admin@sentinel.dev --password changeme123 --superuser
+#
+# Access: http://localhost:9000
+# Create a project (Python), copy DSN, add to .env:
+#   SENTRY_DSN=http://<key>@host.docker.internal:9000/<project-id>
+#
+# Network: Services reach Sentry via host.docker.internal:9000
+
+x-sentry-common: &sentry-common
+  image: getsentry/sentry:latest
+  environment: &sentry-env
+    SENTRY_SECRET_KEY: "super-secret-change-me-in-production"
+    SENTRY_POSTGRES_HOST: sentry-postgres
+    SENTRY_POSTGRES_PORT: "5432"
+    SENTRY_DB_NAME: sentry
+    SENTRY_DB_USER: sentry
+    SENTRY_DB_PASSWORD: sentry
+    SENTRY_REDIS_HOST: sentry-redis
+    SENTRY_REDIS_PORT: "6379"
+    SENTRY_SERVER_EMAIL: "sentry@sentinel.dev"
+    SENTRY_EMAIL_HOST: ""
+  depends_on:
+    sentry-postgres:
+      condition: service_healthy
+    sentry-redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  sentry-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sentry
+      POSTGRES_PASSWORD: sentry
+      POSTGRES_DB: sentry
+    volumes:
+      - sentry_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentry -d sentry"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  sentry-redis:
+    image: redis:7
+    volumes:
+      - sentry_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  sentry-web:
+    <<: *sentry-common
+    ports:
+      - "9000:9000"
+    command: >
+      bash -c "
+        sentry run web --bind 0.0.0.0:9000
+      "
+
+  sentry-worker:
+    <<: *sentry-common
+    command: sentry run worker
+
+  sentry-cron:
+    <<: *sentry-common
+    command: sentry run cron
+
+volumes:
+  sentry_postgres_data:
+  sentry_redis_data:

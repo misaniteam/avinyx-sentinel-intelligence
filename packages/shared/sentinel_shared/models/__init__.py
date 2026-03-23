@@ -7,6 +7,7 @@ from sentinel_shared.models.campaign import Campaign, CampaignStatus
 from sentinel_shared.models.voter import Voter, VoterInteraction
 from sentinel_shared.models.report import Report, ReportFormat
 from sentinel_shared.models.worker import WorkerRun, WorkerRunStatus
+from sentinel_shared.models.log_entry import LogEntry
 
 __all__ = [
     "Tenant", "TenantStatus",
@@ -18,4 +19,5 @@ __all__ = [
     "Voter", "VoterInteraction",
     "Report", "ReportFormat",
     "WorkerRun", "WorkerRunStatus",
+    "LogEntry",
 ]

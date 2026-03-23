@@ -1,15 +1,19 @@
 import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
 from routers import dashboard_router, heatmap_router, reports_router, platforms_router, topics_router
 
 logger = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_logging("analytics-service")
+    await start_log_shipper()
     logger.info("analytics-service starting")
     yield
     logger.info("analytics-service shutting down")
+    await stop_log_shipper()
 
 app = FastAPI(title="Analytics Service", lifespan=lifespan)
 app.include_router(dashboard_router, prefix="/analytics/dashboard", tags=["dashboard"])

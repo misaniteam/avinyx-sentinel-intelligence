@@ -57,6 +57,12 @@ Thumbs.db
 firebase-credentials.json
 *-firebase-adminsdk-*.json
 
+# Sentry (self-hosted)
+infrastructure/sentry/*
+!infrastructure/sentry/.gitkeep
+!infrastructure/sentry/docker-compose.sentry.yml
+!infrastructure/sentry/setup.sh
+
 # Terraform
 infrastructure/terraform/.terraform/
 infrastructure/terraform/*.tfstate

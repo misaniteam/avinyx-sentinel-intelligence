@@ -84,6 +84,12 @@ services:
       context: .
       dockerfile: services/notification-service/Dockerfile
 
+  logging-service:
+    <<: *backend-common
+    build:
+      context: .
+      dockerfile: services/logging-service/Dockerfile
+
   frontend:
     build:
       context: ./frontend
