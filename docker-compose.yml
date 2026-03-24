@@ -74,12 +74,21 @@ services:
     build:
       context: .
       dockerfile: services/ingestion-service/Dockerfile
+    ports:                                                                                                                                                    
+      - "8003:8003" 
 
   ingestion-worker:
     <<: *backend-common
     build:
       context: .
       dockerfile: services/ingestion-worker/Dockerfile
+    command: python main.py
+
+  voter-service:
+    <<: *backend-common
+    build:
+      context: .
+      dockerfile: services/voter-service/Dockerfile
     command: python main.py
 
   ai-pipeline-service:

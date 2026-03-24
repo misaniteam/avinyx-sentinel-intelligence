@@ -79,7 +79,7 @@ async def gateway_proxy(request: Request, path: str):
     body = await request.body()
 
     # Use extended timeout for file upload endpoints
-    timeout = 300.0 if "/file-upload" in full_path else 30.0
+    timeout = 300.0 if ("/file-upload" in full_path or "/voter-list-upload" in full_path) else 30.0
 
     try:
         response = await proxy_request(

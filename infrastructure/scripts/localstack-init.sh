@@ -14,6 +14,10 @@ awslocal sqs create-queue --queue-name sentinel-ai-pipeline --attributes '{"Redr
 # SQS: Notifications queue
 awslocal sqs create-queue --queue-name sentinel-notifications
 
+# SQS: Voter list processing queue with DLQ
+awslocal sqs create-queue --queue-name sentinel-voter-list-jobs-dlq
+awslocal sqs create-queue --queue-name sentinel-voter-list-jobs --attributes '{"RedrivePolicy":"{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-1:000000000000:sentinel-voter-list-jobs-dlq\",\"maxReceiveCount\":\"3\"}"}'
+
 # SNS: Tenant events topic
 awslocal sns create-topic --name sentinel-tenant-events
 
@@ -22,5 +26,8 @@ awslocal s3 mb s3://sentinel-reports
 
 # S3: Uploads bucket (file upload ingestion)
 awslocal s3 mb s3://sentinel-uploads
+
+# S3: Voter docs bucket (voter list PDFs)
+awslocal s3 mb s3://voter-docs
 
 echo "LocalStack initialization complete."

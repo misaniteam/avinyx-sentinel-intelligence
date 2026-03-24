@@ -19,9 +19,11 @@ class Settings(BaseSettings):
     sqs_ingestion_queue: str = "sentinel-ingestion-jobs"
     sqs_ai_pipeline_queue: str = "sentinel-ai-pipeline"
     sqs_notifications_queue: str = "sentinel-notifications"
+    sqs_voter_list_queue: str = "sentinel-voter-list-jobs"
     sns_tenant_events_topic: str = "sentinel-tenant-events"
     s3_reports_bucket: str = "sentinel-reports"
     s3_uploads_bucket: str = "sentinel-uploads"
+    s3_voter_docs_bucket: str = "voter-docs"
 
     # Firebase
     firebase_project_id: str = ""
