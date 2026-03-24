@@ -192,6 +192,59 @@ export interface InfrastructureStatus {
   checked_at: string;
 }
 
+// Voter List types
+export interface VoterListGroupItem {
+  id: string;
+  year: number;
+  constituency: string;
+  file_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  voter_count: number;
+}
+
+export interface VoterListGroupsResponse {
+  items: VoterListGroupItem[];
+  total: number;
+}
+
+export interface VoterEntryItem {
+  id: string;
+  name: string;
+  father_or_husband_name: string | null;
+  gender: string | null;
+  age: number | null;
+  voter_no: string | null;
+  house_number: string | null;
+  relation_type: string | null;
+  created_at: string;
+}
+
+export interface VoterListGroupDetail {
+  id: string;
+  year: number;
+  constituency: string;
+  file_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VoterListGroupDetailResponse {
+  group: VoterListGroupDetail;
+  entries: VoterEntryItem[];
+  total_entries: number;
+}
+
+export interface VoterListUploadResponse {
+  file_id: string;
+  s3_key: string;
+  year: number;
+  language: string;
+  status: string;
+}
+
 export interface TenantOnboardRequest {
   tenant: {
     name: string;
