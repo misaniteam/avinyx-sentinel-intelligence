@@ -97,6 +97,8 @@ async def process_voter_list(message: dict):
                     gender=v.get("gender"),
                     age=v.get("age"),
                     voter_no=v.get("voter_no"),
+                    house_number=v.get("house_number"),
+                    relation_type=v.get("relation_type"),
                 )
                 session.add(entry)
             await session.commit()

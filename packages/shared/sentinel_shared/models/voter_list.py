@@ -26,3 +26,5 @@ class VoterListEntry(Base, TimestampMixin):
     gender = Column(String(10), nullable=True)
     age = Column(Integer, nullable=True)
     voter_no = Column(String(50), nullable=True)
+    house_number = Column(String(100), nullable=True)
+    relation_type = Column(String(20), nullable=True)
