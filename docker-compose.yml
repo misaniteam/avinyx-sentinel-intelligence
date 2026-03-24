@@ -74,8 +74,8 @@ services:
     build:
       context: .
       dockerfile: services/ingestion-service/Dockerfile
-    ports:                                                                                                                                                    
-      - "8003:8003" 
+    # ports:                                                                                                                                                    
+    #   - "8003:8003" 
 
   ingestion-worker:
     <<: *backend-common
