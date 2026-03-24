@@ -1,5 +1,6 @@
 import re
 import uuid
+from typing import Literal
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from pydantic import BaseModel
@@ -48,7 +49,7 @@ def _get_file_extension(filename: str) -> str:
 async def upload_voter_list(
     file: UploadFile = File(...),
     year: int = Form(...),
-    language: str = Form(default="en"),
+    language: Literal["en", "bn", "hi"] = Form(default="en"),
     tenant_id: str = Depends(get_current_tenant_required),
     user: dict = Depends(require_permissions("voters:write")),
 ):
@@ -81,13 +82,6 @@ async def upload_voter_list(
         raise HTTPException(
             status_code=422,
             detail=f"File {filename} is not a valid PDF. The file may be corrupted or misnamed.",
-        )
-
-    # Validate language
-    if language not in ("en", "bn", "hi"):
-        raise HTTPException(
-            status_code=422,
-            detail=f"Unsupported language: {language}. Allowed: en, bn, hi",
         )
 
     settings = get_settings()

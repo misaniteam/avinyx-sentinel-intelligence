@@ -42,7 +42,6 @@ class Settings(BaseSettings):
     campaign_service_url: str = "http://campaign-service:8006"
     notification_service_url: str = "http://notification-service:8007"
     logging_service_url: str = "http://logging-service:8008"
-    voter_service_url: str = "http://voter-service:8009"
 
     # Redis
     redis_url: str = "redis://localhost:6379"

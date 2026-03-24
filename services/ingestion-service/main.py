@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
-from routers import data_sources_router, ingested_data_router, file_upload_router
+from routers import data_sources_router, ingested_data_router, file_upload_router, voter_list_upload_router, voter_list_data_router
 from scheduler import check_and_dispatch_polls
 
 logger = structlog.get_logger()
@@ -36,6 +36,8 @@ app = FastAPI(title="Ingestion Service", lifespan=lifespan)
 app.include_router(data_sources_router, prefix="/ingestion/data-sources", tags=["data-sources"])
 app.include_router(ingested_data_router, prefix="/ingestion/ingested-data", tags=["ingested-data"])
 app.include_router(file_upload_router, prefix="/ingestion/file-upload", tags=["file-upload"])
+app.include_router(voter_list_upload_router, prefix="/ingestion/voter-list-upload", tags=["voter-list"])
+app.include_router(voter_list_data_router, prefix="/ingestion/voter-lists", tags=["voter-list-data"])
 
 @app.get("/health")
 async def health():

@@ -19,7 +19,6 @@ def get_service_map() -> dict[str, str]:
         "/api/analytics": settings.analytics_service_url,
         "/api/campaigns": settings.campaign_service_url,
         "/api/notifications": settings.notification_service_url,
-        "/api/voters": settings.voter_service_url,
         "/api/logs": settings.logging_service_url,
     }
 
