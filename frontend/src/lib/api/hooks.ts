@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import { queryKeys } from "./query-keys";
-import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus } from "@/types";
+import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus, VoterListGroupsResponse, VoterListGroupDetailResponse, VoterListUploadResponse } from "@/types";
 
 // Dashboard
 export function useDashboardSummary() {
@@ -67,6 +67,69 @@ export function useCreateVoter() {
   return useMutation({
     mutationFn: (data: Partial<Voter>) => api.post("api/campaigns/voters", { json: data }).json<Voter>(),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.voters.all }),
+  });
+}
+
+// Voter Lists
+export function useVoterListGroups(params?: {
+  year?: number;
+  status?: string;
+  search?: string;
+  skip?: number;
+  limit?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params?.year) searchParams.set("year", String(params.year));
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.search) searchParams.set("search", params.search);
+  if (params?.skip) searchParams.set("skip", String(params.skip));
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return useQuery({
+    queryKey: [...queryKeys.voterLists.all, params],
+    queryFn: () => api.get(`api/ingestion/voter-lists${qs ? `?${qs}` : ""}`).json<VoterListGroupsResponse>(),
+  });
+}
+
+export function useVoterListGroupDetail(groupId: string, params?: {
+  search?: string;
+  gender?: string;
+  skip?: number;
+  limit?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params?.search) searchParams.set("search", params.search);
+  if (params?.gender) searchParams.set("gender", params.gender);
+  if (params?.skip) searchParams.set("skip", String(params.skip));
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return useQuery({
+    queryKey: [...queryKeys.voterLists.detail(groupId), params],
+    queryFn: () => api.get(`api/ingestion/voter-lists/${groupId}${qs ? `?${qs}` : ""}`).json<VoterListGroupDetailResponse>(),
+    enabled: !!groupId,
+  });
+}
+
+export function useUploadVoterList() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      const token = sessionStorage.getItem("sentinel_access_token");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/api/ingestion/voter-list-upload`, {
+        method: "POST",
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: formData,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+      return res.json() as Promise<VoterListUploadResponse>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.voterLists.all });
+    },
   });
 }
 

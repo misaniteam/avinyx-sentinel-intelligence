@@ -16,6 +16,7 @@ import {
   Megaphone,
   Database,
   FileSearch,
+  FileUp,
   Settings,
   Shield,
   Building2,
@@ -32,6 +33,7 @@ interface NavItem {
 const tenantNavItems: NavItem[] = [
   { titleKey: "dashboard", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
   { titleKey: "voters", href: "/voters", icon: Users, permission: "voters:read" },
+  { titleKey: "voterUpload", href: "/voter-upload", icon: FileUp, permission: "voters:write" },
   { titleKey: "heatmap", href: "/heatmap", icon: Map, permission: "heatmap:view" },
   { titleKey: "mediaFeeds", href: "/media-feeds", icon: Rss, permission: "media:read" },
   { titleKey: "analytics", href: "/analytics", icon: BarChart3, permission: "analytics:read" },

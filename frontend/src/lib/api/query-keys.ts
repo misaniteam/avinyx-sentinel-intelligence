@@ -55,6 +55,10 @@ export const queryKeys = {
   infrastructure: {
     status: ["infrastructure", "status"] as const,
   },
+  voterLists: {
+    all: ["voter-lists"] as const,
+    detail: (groupId: string) => ["voter-lists", groupId] as const,
+  },
   settings: {
     tenant: (tenantId: string) => ["settings", tenantId] as const,
   },
