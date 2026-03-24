@@ -19,6 +19,7 @@ def get_service_map() -> dict[str, str]:
         "/api/analytics": settings.analytics_service_url,
         "/api/campaigns": settings.campaign_service_url,
         "/api/notifications": settings.notification_service_url,
+        "/api/voters": settings.voter_service_url,
         "/api/logs": settings.logging_service_url,
     }
 
@@ -79,7 +80,7 @@ async def gateway_proxy(request: Request, path: str):
     body = await request.body()
 
     # Use extended timeout for file upload endpoints
-    timeout = 300.0 if "/file-upload" in full_path else 30.0
+    timeout = 300.0 if ("/file-upload" in full_path or "/voter-list-upload" in full_path) else 30.0
 
     try:
         response = await proxy_request(

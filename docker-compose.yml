@@ -82,6 +82,12 @@ services:
       dockerfile: services/ingestion-worker/Dockerfile
     command: python main.py
 
+  voter-service:
+    <<: *backend-common
+    build:
+      context: .
+      dockerfile: services/voter-service/Dockerfile
+
   ai-pipeline-service:
     <<: *backend-common
     build:

@@ -5,6 +5,7 @@ from sentinel_shared.models.data_source import DataSource
 from sentinel_shared.models.media import RawMediaItem, SentimentAnalysis, SentimentAggregate
 from sentinel_shared.models.campaign import Campaign, CampaignStatus
 from sentinel_shared.models.voter import Voter, VoterInteraction
+from sentinel_shared.models.voter_list import VoterListGroup, VoterListEntry
 from sentinel_shared.models.report import Report, ReportFormat
 from sentinel_shared.models.worker import WorkerRun, WorkerRunStatus
 from sentinel_shared.models.log_entry import LogEntry
@@ -17,6 +18,7 @@ __all__ = [
     "RawMediaItem", "SentimentAnalysis", "SentimentAggregate",
     "Campaign", "CampaignStatus",
     "Voter", "VoterInteraction",
+    "VoterListGroup", "VoterListEntry",
     "Report", "ReportFormat",
     "WorkerRun", "WorkerRunStatus",
     "LogEntry",
