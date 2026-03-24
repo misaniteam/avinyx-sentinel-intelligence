@@ -24,15 +24,18 @@ class SQSClient:
             )
             return resp["MessageId"]
 
-    async def receive_messages(self, queue_name: str, max_messages: int = 10, wait_time: int = 20) -> list:
+    async def receive_messages(self, queue_name: str, max_messages: int = 10, wait_time: int = 20, visibility_timeout: int | None = None) -> list:
         async with self._session.create_client("sqs", **self._get_client_kwargs()) as client:
             queue_url_resp = await client.get_queue_url(QueueName=queue_name)
             queue_url = queue_url_resp["QueueUrl"]
-            resp = await client.receive_message(
-                QueueUrl=queue_url,
-                MaxNumberOfMessages=max_messages,
-                WaitTimeSeconds=wait_time,
-            )
+            kwargs = {
+                "QueueUrl": queue_url,
+                "MaxNumberOfMessages": max_messages,
+                "WaitTimeSeconds": wait_time,
+            }
+            if visibility_timeout is not None:
+                kwargs["VisibilityTimeout"] = visibility_timeout
+            resp = await client.receive_message(**kwargs)
             return resp.get("Messages", [])
 
     async def delete_message(self, queue_name: str, receipt_handle: str):

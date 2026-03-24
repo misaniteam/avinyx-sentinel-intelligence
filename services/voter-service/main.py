@@ -8,6 +8,10 @@ from processor import process_voter_list
 
 logger = structlog.get_logger()
 
+# Visibility timeout for voter list processing (10 minutes)
+# EasyOCR on large PDFs can take several minutes on CPU
+VISIBILITY_TIMEOUT = 600
+
 
 async def main():
     init_logging("voter-service")
@@ -18,7 +22,12 @@ async def main():
 
     while True:
         try:
-            messages = await sqs.receive_messages(settings.sqs_voter_list_queue)
+            messages = await sqs.receive_messages(
+                settings.sqs_voter_list_queue,
+                max_messages=1,
+                wait_time=20,
+                visibility_timeout=VISIBILITY_TIMEOUT,
+            )
             for msg in messages:
                 try:
                     body = json.loads(msg["Body"])

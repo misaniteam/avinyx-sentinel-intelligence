@@ -23,9 +23,25 @@ async def process_voter_list(message: dict):
     tenant_context.set(tenant_id)
     logger.info("processing_voter_list", file_id=file_id, s3_key=s3_key, year=year, language=language, tenant_id=tenant_id)
 
-    # Create group record with processing status
     factory = get_session_factory()
+
+    # Deduplicate: skip if this file_id already has a completed or processing group
+    async with factory() as session:
+        existing = await session.execute(
+            select(VoterListGroup).where(
+                VoterListGroup.file_id == file_id,
+                VoterListGroup.tenant_id == tenant_id,
+                VoterListGroup.status.in_(["processing", "completed"]),
+            )
+        )
+        existing_group = existing.scalar_one_or_none()
+        if existing_group:
+            logger.info("voter_list_already_exists", file_id=file_id, status=existing_group.status, group_id=str(existing_group.id))
+            return
+
+    # Create group record with processing status
     constituency = await _get_tenant_constituency(tenant_id)
+    logger.info("constituency_resolved", constituency=constituency, tenant_id=tenant_id)
 
     async with factory() as session:
         group = VoterListGroup(
@@ -40,6 +56,8 @@ async def process_voter_list(message: dict):
         await session.refresh(group)
         group_id = group.id
 
+    logger.info("voter_list_group_created", group_id=str(group_id), file_id=file_id)
+
     try:
         # Download PDF from S3
         s3 = S3Client()
@@ -49,23 +67,27 @@ async def process_voter_list(message: dict):
         if not s3_key.startswith(f"{tenant_id}/"):
             raise ValueError(f"S3 key tenant mismatch: {s3_key} does not belong to tenant {tenant_id}")
 
+        logger.info("downloading_pdf", s3_key=s3_key)
         pdf_bytes = await s3.download_file(settings.s3_voter_docs_bucket, s3_key)
         logger.info("pdf_downloaded", s3_key=s3_key, size=len(pdf_bytes))
 
-        # Extract text (pdfplumber with OCR fallback)
+        # Extract text using EasyOCR
+        logger.info("starting_ocr", file_id=file_id)
         text = extract_text(pdf_bytes, language)
         if not text or not text.strip():
             raise ValueError("No text could be extracted from the PDF")
-        logger.info("text_extracted", chars=len(text))
+        logger.info("text_extracted", chars=len(text), file_id=file_id)
 
         # Parse voter records
+        logger.info("parsing_voter_data", file_id=file_id)
         voters = parse_voter_data(text, language)
-        logger.info("voters_parsed", count=len(voters))
+        logger.info("voters_parsed", count=len(voters), file_id=file_id)
 
         if not voters:
             logger.warning("no_voters_found", file_id=file_id, s3_key=s3_key)
 
-        # Store voter entries
+        # Store voter entries in batches
+        logger.info("storing_voter_entries", count=len(voters), group_id=str(group_id))
         async with factory() as session:
             for v in voters:
                 entry = VoterListEntry(
@@ -90,11 +112,14 @@ async def process_voter_list(message: dict):
     except Exception as e:
         logger.error("voter_list_processing_failed", file_id=file_id, error=str(e))
         # Update group status to failed
-        async with factory() as session:
-            group = await session.get(VoterListGroup, group_id)
-            if group:
-                group.status = "failed"
-                await session.commit()
+        try:
+            async with factory() as session:
+                group = await session.get(VoterListGroup, group_id)
+                if group:
+                    group.status = "failed"
+                    await session.commit()
+        except Exception as db_err:
+            logger.error("failed_to_update_group_status", error=str(db_err))
         raise
 
 
