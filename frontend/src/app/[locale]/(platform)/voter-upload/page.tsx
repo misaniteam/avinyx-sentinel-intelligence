@@ -359,25 +359,31 @@ function GroupDetailView({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left font-medium">{t("voterNo")}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t("serialNo")}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t("epicNo")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("name")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("fatherOrHusbandName")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("relationType")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("gender")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("age")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("houseNumber")}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t("section")}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t("entryStatus")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {entries.map((entry) => (
                       <tr key={entry.id} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-3 font-mono text-xs">{entry.voter_no || "—"}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{entry.serial_no ?? "—"}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{entry.epic_no || "—"}</td>
                         <td className="px-4 py-3 font-medium">{entry.name}</td>
                         <td className="px-4 py-3 text-muted-foreground">{entry.father_or_husband_name || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{entry.relation_type || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{entry.gender || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{entry.age ?? "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{entry.house_number || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{entry.section || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{entry.status ? <Badge variant="outline">{entry.status}</Badge> : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
