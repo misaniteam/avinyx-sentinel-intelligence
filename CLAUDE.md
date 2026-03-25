@@ -36,7 +36,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │   ├── ingestion-worker/     # SQS consumer — connector plugin pattern
 │   ├── ai-pipeline-service/  # SQS consumer — sentiment/topic/entity analysis
 │   ├── analytics-service/    # Port 8005 — Dashboard, heatmap, reports, platforms, topics
-│   ├── voter-service/        # SQS consumer — PDF voter list OCR + parsing (GPU-accelerated)
+│   ├── voter-service/        # SQS consumer — PDF voter list extraction via AWS Bedrock LLM
 │   ├── campaign-service/     # Port 8006 — Campaigns, voters, media feeds
 │   ├── notification-service/ # Port 8007 — Firebase notifications, list/mark-read
 │   └── logging-service/     # Port 8008 — Centralized log collection, Sentry integration
@@ -72,9 +72,6 @@ make seed                  # Create default super admin (admin@sentinel.dev / ch
 make test                  # Run backend + frontend tests
 make lint                  # ruff + eslint
 make format                # ruff format + prettier
-make up-gpu                # Start all services with GPU support (voter-service)
-make down-gpu              # Stop GPU-enabled services
-make logs-gpu              # Tail GPU-enabled service logs
 make sentry-setup          # First-time Sentry init (migrations + admin user)
 make sentry-up             # Start Sentry services (profile-based)
 make sentry-down           # Stop Sentry services
@@ -184,23 +181,21 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - **Frontend page:** `/voter-upload` — UploadForm (PDF dropzone + year/language/part_no/part_name fields), GroupsListView (table with Part No/Part Name columns), GroupDetailView (group info card + voter entries table)
 - **i18n keys:** `voters.partNo`, `voters.partName` in en/bn/hi
 
-## Voter Service (OCR)
+## Voter Service (Textract + Bedrock)
 
 - **Service:** `services/voter-service/` — SQS consumer that processes uploaded voter list PDFs
-- **Docker image:** `nvidia/cuda:12.6.3-runtime-ubuntu24.04` with PyTorch CUDA 12.4 + EasyOCR
-- **OCR strategy:** PyMuPDF first (fast, for digital PDFs) → EasyOCR fallback (for scanned/image PDFs)
-- **GPU support:** Auto-detects via `torch.cuda.is_available()` at startup; logs `ocr_device_detected gpu_available=True/False`
-- **Languages:** English (`en`), Bengali (`bn`), Hindi (`hi`) — EasyOCR models pre-downloaded in Docker image
-- **Parser:** Extracts voter records from Indian Electoral Roll format — name, voter ID, gender, age, house number, relation type
-- **Enabling GPU locally:**
-  ```bash
-  sudo apt-get install -y nvidia-container-toolkit
-  sudo nvidia-ctk runtime configure --runtime=docker
-  sudo systemctl restart docker
-  make up-gpu  # uses docker-compose.gpu.yml overlay
-  ```
-  GPU is opt-in via `make up-gpu`. The default `make up` runs voter-service on CPU (slower but works everywhere).
-- **SQS visibility timeout:** 600s (10 minutes) to accommodate CPU-mode OCR processing
+- **Docker image:** `python:3.12-slim` — lightweight, no GPU required
+- **Extraction pipeline:** Textract OCR → Bedrock LLM → JSON → DB
+  1. pymupdf splits PDF into single pages
+  2. Textract `detect_document_text` extracts raw text from each page
+  3. Pages grouped into chunks (`BEDROCK_VOTER_PAGES_PER_CHUNK`, default 5)
+  4. Each chunk sent to Bedrock LLM (`invoke_model`) which returns structured JSON voter records
+  5. Deduplicated by EPIC number and inserted into DB
+- **Model:** Configurable via `BEDROCK_VOTER_MODEL_ID` (default: Claude Sonnet)
+- **AWS credentials:** Shared IAM user for both Textract and Bedrock (`AWS_TEXTRACT_*` env vars)
+- **AWS permissions:** `textract:DetectDocumentText` + `bedrock:InvokeModel`
+- **Error handling:** Per-page Textract retries + per-chunk Bedrock retries (2x with exponential backoff); failed pages/chunks skipped
+- **SQS visibility timeout:** 600s (10 minutes) to accommodate OCR + LLM processing
 
 ## Adding a New AI Provider
 
@@ -515,4 +510,4 @@ Current migrations:
 - [x] Phase 9 — Logging & Observability (centralized logging service with PostgreSQL storage, Sentry SDK integration across all services, structlog processors for error forwarding and log shipping, self-hosted Sentry Docker setup)
 - [x] Phase 10 — Internationalization & Theming (next-intl with English/Bengali/Hindi locales, cookie-based locale switching, `[locale]` App Router segment, next-themes dark/light/system mode toggle, multi-script Google Fonts)
 - [x] Phase 11 — File Upload Ingestion (PDF/Excel file upload as data source, S3 storage with SSE, text extraction via pymupdf/openpyxl/xlrd, one-shot ingestion, magic byte validation, cross-tenant S3 key protection)
-- [x] Phase 12 — Voter List Processing (voter-service SQS worker with PyMuPDF + EasyOCR, GPU auto-detection via CUDA/PyTorch, NVIDIA CUDA runtime Docker image, Part No/Part Name upload metadata fields, voter list upload/list/detail endpoints, electoral roll PDF parsing with multilingual OCR support)
+- [x] Phase 12 — Voter List Processing (voter-service SQS worker with Textract OCR + Bedrock LLM structured extraction, PDF page splitting via pymupdf, Part No/Part Name upload metadata fields, voter list upload/list/detail endpoints)

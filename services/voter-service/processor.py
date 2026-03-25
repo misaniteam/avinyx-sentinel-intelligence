@@ -7,8 +7,7 @@ from sentinel_shared.models.tenant import Tenant
 from sentinel_shared.storage.s3 import S3Client
 from sentinel_shared.config import get_settings
 
-from ocr import extract_text
-from parser import parse_voter_data
+from textract_extractor import extract_voters_from_pdf
 
 logger = structlog.get_logger()
 
@@ -18,7 +17,7 @@ BATCH_SIZE = 500
 async def process_voter_list(message: dict):
     """
     End-to-end processing:
-    S3 → OCR → Parse → DB
+    S3 → Textract OCR + parse → DB
 
     Guarantees:
     - No duplicate processing
@@ -103,39 +102,23 @@ async def process_voter_list(message: dict):
         raise
 
     # --------------------------------------------------
-    # 3. OCR
+    # 3. EXTRACT VOTER DATA (Textract OCR + parse)
     # --------------------------------------------------
     try:
-        text = extract_text(pdf_bytes, language)
-
-        if not text or len(text.strip()) < 100:
-            raise ValueError("OCR produced insufficient text")
-
-        logger.info("ocr_complete", chars=len(text))
-
-    except Exception as e:
-        logger.error("ocr_failed", error=str(e))
-        await _mark_failed(factory, group_id)
-        raise
-
-    # --------------------------------------------------
-    # 4. PARSE
-    # --------------------------------------------------
-    try:
-        voters = parse_voter_data(text, language)
+        voters = await extract_voters_from_pdf(pdf_bytes, language)
 
         if not voters:
-            logger.warning("no_voters_parsed", file_id=file_id)
+            logger.warning("no_voters_extracted", file_id=file_id)
 
-        logger.info("parsing_complete", count=len(voters))
+        logger.info("extraction_complete", count=len(voters))
 
     except Exception as e:
-        logger.error("parsing_failed", error=str(e))
+        logger.error("extraction_failed", error=str(e))
         await _mark_failed(factory, group_id)
         raise
 
     # --------------------------------------------------
-    # 5. CLEAN OLD DATA (retry-safe)
+    # 4. CLEAN OLD DATA (retry-safe)
     # --------------------------------------------------
     async with factory() as session:
         await session.execute(
@@ -146,7 +129,7 @@ async def process_voter_list(message: dict):
         await session.commit()
 
     # --------------------------------------------------
-    # 6. BULK INSERT
+    # 5. BULK INSERT
     # --------------------------------------------------
     try:
         async with factory() as session:
@@ -189,7 +172,7 @@ async def process_voter_list(message: dict):
         raise
 
     # --------------------------------------------------
-    # 7. MARK COMPLETE
+    # 6. MARK COMPLETE
     # --------------------------------------------------
     async with factory() as session:
         group = await session.get(VoterListGroup, group_id)
