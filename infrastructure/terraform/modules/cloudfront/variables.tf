@@ -24,7 +24,7 @@ variable "frontend_bucket_regional_domain_name" {
 }
 
 variable "acm_certificate_arn" {
-  description = "ARN of the ACM certificate in us-east-1 for CloudFront"
+  description = "ARN of the ACM certificate in ap-south-1 for CloudFront"
   type        = string
   default     = ""
 }
