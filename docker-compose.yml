@@ -89,6 +89,7 @@ services:
     build:
       context: .
       dockerfile: services/voter-service/Dockerfile
+      network: host
     command: python main.py
 
   ai-pipeline-service:

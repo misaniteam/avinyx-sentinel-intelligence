@@ -1,0 +1,11 @@
+# GPU overlay for voter-service (EasyOCR with NVIDIA CUDA)
+# Usage: make up-gpu (requires nvidia-container-toolkit)
+services:
+  voter-service:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

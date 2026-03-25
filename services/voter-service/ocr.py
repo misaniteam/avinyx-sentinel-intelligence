@@ -1,5 +1,6 @@
 import numpy as np
 from pdf2image import convert_from_bytes
+import torch
 import easyocr
 import pymupdf
 import structlog
@@ -12,6 +13,11 @@ EASYOCR_LANG_MAP = {
     "hi": ["hi", "en"],
 }
 
+# Detect GPU availability once at module load
+_use_gpu = torch.cuda.is_available()
+logger.info("ocr_device_detected", gpu_available=_use_gpu,
+            device=torch.cuda.get_device_name(0) if _use_gpu else "cpu")
+
 # Module-level reader cache to avoid re-downloading models per call
 _readers: dict[str, easyocr.Reader] = {}
 
@@ -20,8 +26,8 @@ def _get_reader(language: str) -> easyocr.Reader:
     """Get or create a cached EasyOCR Reader for the given language."""
     if language not in _readers:
         langs = EASYOCR_LANG_MAP.get(language, ["en"])
-        logger.info("initializing_easyocr_reader", langs=langs)
-        _readers[language] = easyocr.Reader(langs, gpu=False)
+        logger.info("initializing_easyocr_reader", langs=langs, gpu=_use_gpu)
+        _readers[language] = easyocr.Reader(langs, gpu=_use_gpu)
         logger.info("easyocr_reader_ready", langs=langs)
     return _readers[language]
 

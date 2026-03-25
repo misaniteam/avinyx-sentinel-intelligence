@@ -63,6 +63,8 @@ function UploadForm() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [year, setYear] = useState(String(CURRENT_YEAR));
   const [language, setLanguage] = useState("en");
+  const [partNo, setPartNo] = useState("");
+  const [partName, setPartName] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const uploadMutation = useUploadVoterList();
 
@@ -91,11 +93,15 @@ function UploadForm() {
     formData.append("file", selectedFile);
     formData.append("year", year);
     formData.append("language", language);
+    if (partNo.trim()) formData.append("part_no", partNo.trim());
+    if (partName.trim()) formData.append("part_name", partName.trim());
 
     try {
       await uploadMutation.mutateAsync(formData);
       toast.success(t("uploadSuccess"));
       setSelectedFile(null);
+      setPartNo("");
+      setPartName("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch {
       toast.error(t("uploadError"));
@@ -189,6 +195,28 @@ function UploadForm() {
             </Select>
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("partNo")}</label>
+            <Input
+              placeholder={t("partNo")}
+              value={partNo}
+              onChange={(e) => setPartNo(e.target.value)}
+              maxLength={50}
+              className="w-32"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("partName")}</label>
+            <Input
+              placeholder={t("partName")}
+              value={partName}
+              onChange={(e) => setPartName(e.target.value)}
+              maxLength={255}
+              className="w-48"
+            />
+          </div>
+
           <Button
             onClick={handleUpload}
             disabled={!selectedFile || uploadMutation.isPending}
@@ -258,10 +286,18 @@ function GroupDetailView({
           {/* Group info card */}
           <Card>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">{t("constituency")}</p>
                   <p className="font-medium">{group.constituency}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">{t("partNo")}</p>
+                  <p className="font-medium">{group.part_no || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">{t("partName")}</p>
+                  <p className="font-medium">{group.part_name || "—"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">{t("year")}</p>
@@ -456,6 +492,8 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-3 text-left font-medium">{t("constituency")}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("partNo")}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("partName")}</th>
                   <th className="px-4 py-3 text-left font-medium">{t("year")}</th>
                   <th className="px-4 py-3 text-left font-medium">{t("status")}</th>
                   <th className="px-4 py-3 text-left font-medium">{t("voterCount")}</th>
@@ -467,6 +505,8 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
                 {items.map((item: VoterListGroupItem) => (
                   <tr key={item.id} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium">{item.constituency}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{item.part_no || "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{item.part_name || "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{item.year}</td>
                     <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
                     <td className="px-4 py-3 text-muted-foreground">

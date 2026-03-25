@@ -46,6 +46,8 @@
   "uploadFirstList": "शुरू करने के लिए मतदाता सूची PDF अपलोड करें",
   "noEntriesFound": "कोई मतदाता प्रविष्टि नहीं मिली",
   "tryAdjustingFilters": "अपनी खोज या फ़िल्टर मानदंड समायोजित करें",
+  "partNo": "भाग संख्या",
+  "partName": "भाग का नाम",
   "fileId": "फ़ाइल आईडी",
   "languageEn": "अंग्रेज़ी",
   "languageBn": "बंगाली",

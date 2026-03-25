@@ -46,6 +46,8 @@
   "uploadFirstList": "Upload a voter list PDF to get started",
   "noEntriesFound": "No voter entries found",
   "tryAdjustingFilters": "Try adjusting your search or filter criteria",
+  "partNo": "Part No",
+  "partName": "Part Name",
   "fileId": "File ID",
   "languageEn": "English",
   "languageBn": "Bengali",

@@ -36,6 +36,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │   ├── ingestion-worker/     # SQS consumer — connector plugin pattern
 │   ├── ai-pipeline-service/  # SQS consumer — sentiment/topic/entity analysis
 │   ├── analytics-service/    # Port 8005 — Dashboard, heatmap, reports, platforms, topics
+│   ├── voter-service/        # SQS consumer — PDF voter list OCR + parsing (GPU-accelerated)
 │   ├── campaign-service/     # Port 8006 — Campaigns, voters, media feeds
 │   ├── notification-service/ # Port 8007 — Firebase notifications, list/mark-read
 │   └── logging-service/     # Port 8008 — Centralized log collection, Sentry integration
@@ -71,6 +72,9 @@ make seed                  # Create default super admin (admin@sentinel.dev / ch
 make test                  # Run backend + frontend tests
 make lint                  # ruff + eslint
 make format                # ruff format + prettier
+make up-gpu                # Start all services with GPU support (voter-service)
+make down-gpu              # Stop GPU-enabled services
+make logs-gpu              # Tail GPU-enabled service logs
 make sentry-setup          # First-time Sentry init (migrations + admin user)
 make sentry-up             # Start Sentry services (profile-based)
 make sentry-down           # Stop Sentry services
@@ -165,6 +169,38 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - **Security:** Magic byte validation, filename sanitization, S3 SSE-AES256, cross-tenant S3 key validation in worker, PDF page limit (2000), Excel row limit (500K)
 - **Frontend:** File dropzone in DataSourceDialog when platform is `file_upload`, with drag-and-drop, file list, and client-side validation
 - **Deduplication:** Uses S3 key as `external_id`, enforced by existing `uq_media_tenant_platform_ext` constraint
+
+## Voter List Upload
+
+- **Upload endpoint:** `POST /api/ingestion/voter-list-upload` (multipart/form-data)
+  - Fields: `file` (PDF, max 50MB), `year` (int), `language` ("en"/"bn"/"hi"), `part_no` (string, optional, max 50), `part_name` (string, optional, max 255)
+  - Validates PDF magic bytes, uploads to S3, dispatches SQS message to `sentinel-voter-list` queue
+  - Permission: `voters:write`
+- **List endpoint:** `GET /api/ingestion/voter-lists` — paginated list of `VoterListGroup` records with `part_no`, `part_name`, `constituency`, `year`, `status`, `voter_count`
+- **Detail endpoint:** `GET /api/ingestion/voter-lists/{group_id}` — group info + paginated voter entries
+- **Models:**
+  - `VoterListGroup` — upload metadata: `tenant_id`, `year`, `constituency`, `file_id`, `status`, `part_no`, `part_name`
+  - `VoterListEntry` — individual voter: `name`, `father_or_husband_name`, `gender`, `age`, `voter_no`, `house_number`, `relation_type`
+- **Frontend page:** `/voter-upload` — UploadForm (PDF dropzone + year/language/part_no/part_name fields), GroupsListView (table with Part No/Part Name columns), GroupDetailView (group info card + voter entries table)
+- **i18n keys:** `voters.partNo`, `voters.partName` in en/bn/hi
+
+## Voter Service (OCR)
+
+- **Service:** `services/voter-service/` — SQS consumer that processes uploaded voter list PDFs
+- **Docker image:** `nvidia/cuda:12.6.3-runtime-ubuntu24.04` with PyTorch CUDA 12.4 + EasyOCR
+- **OCR strategy:** PyMuPDF first (fast, for digital PDFs) → EasyOCR fallback (for scanned/image PDFs)
+- **GPU support:** Auto-detects via `torch.cuda.is_available()` at startup; logs `ocr_device_detected gpu_available=True/False`
+- **Languages:** English (`en`), Bengali (`bn`), Hindi (`hi`) — EasyOCR models pre-downloaded in Docker image
+- **Parser:** Extracts voter records from Indian Electoral Roll format — name, voter ID, gender, age, house number, relation type
+- **Enabling GPU locally:**
+  ```bash
+  sudo apt-get install -y nvidia-container-toolkit
+  sudo nvidia-ctk runtime configure --runtime=docker
+  sudo systemctl restart docker
+  make up-gpu  # uses docker-compose.gpu.yml overlay
+  ```
+  GPU is opt-in via `make up-gpu`. The default `make up` runs voter-service on CPU (slower but works everywhere).
+- **SQS visibility timeout:** 600s (10 minutes) to accommodate CPU-mode OCR processing
 
 ## Adding a New AI Provider
 
@@ -462,6 +498,9 @@ Current migrations:
 - `6e74ac702418` — Add unique constraint on `roles(tenant_id, name)`
 - `a3b1c2d4e5f6` — Add `constituency_code` column to tenants (unique, indexed, nullable)
 - `b4c2d3e5f7a8` — Add `log_entries` table with service/level/tenant/timestamp indexes
+- `c5d3e4f6a7b9` — Add `voter_list_groups` and `voter_list_entries` tables
+- `d6e4f5a7b8c0` — Add `house_number` and `relation_type` columns to voter list entries
+- `e7f5a6b8c9d1` — Add `part_no` and `part_name` columns to voter list groups
 
 ## Implementation Status
 
@@ -476,3 +515,4 @@ Current migrations:
 - [x] Phase 9 — Logging & Observability (centralized logging service with PostgreSQL storage, Sentry SDK integration across all services, structlog processors for error forwarding and log shipping, self-hosted Sentry Docker setup)
 - [x] Phase 10 — Internationalization & Theming (next-intl with English/Bengali/Hindi locales, cookie-based locale switching, `[locale]` App Router segment, next-themes dark/light/system mode toggle, multi-script Google Fonts)
 - [x] Phase 11 — File Upload Ingestion (PDF/Excel file upload as data source, S3 storage with SSE, text extraction via pymupdf/openpyxl/xlrd, one-shot ingestion, magic byte validation, cross-tenant S3 key protection)
+- [x] Phase 12 — Voter List Processing (voter-service SQS worker with PyMuPDF + EasyOCR, GPU auto-detection via CUDA/PyTorch, NVIDIA CUDA runtime Docker image, Part No/Part Name upload metadata fields, voter list upload/list/detail endpoints, electoral roll PDF parsing with multilingual OCR support)
