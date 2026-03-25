@@ -2,16 +2,39 @@ from uuid import UUID
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, or_
+
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.voter_list import VoterListGroup, VoterListEntry
 from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
 from pydantic import BaseModel
+from typing import List, Optional
 
 router = APIRouter()
 
 
-# --- Response schemas ---
+# -------------------------
+# RESPONSE SCHEMAS
+# -------------------------
+
+class VoterEntryItem(BaseModel):
+    id: UUID
+    name: str
+    father_or_husband_name: Optional[str]
+    relation_type: Optional[str]
+    gender: Optional[str]
+    age: Optional[int]
+    voter_no: Optional[str]
+    serial_no: Optional[int]
+    epic_no: Optional[str]
+    house_number: Optional[str]
+    section: Optional[str]
+    status: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 
 class VoterListGroupItem(BaseModel):
     id: UUID
@@ -19,30 +42,16 @@ class VoterListGroupItem(BaseModel):
     constituency: str
     file_id: str
     status: str
-    part_no: str | None = None
-    part_name: str | None = None
+    part_no: Optional[str]
+    part_name: Optional[str]
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime]
     voter_count: int
-
-    model_config = {"from_attributes": True}
 
 
 class VoterListGroupsResponse(BaseModel):
-    items: list[VoterListGroupItem]
+    items: List[VoterListGroupItem]
     total: int
-
-
-class VoterEntryItem(BaseModel):
-    id: UUID
-    name: str
-    father_or_husband_name: str | None
-    gender: str | None
-    age: int | None
-    voter_no: str | None
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class VoterListGroupDetail(BaseModel):
@@ -51,19 +60,21 @@ class VoterListGroupDetail(BaseModel):
     constituency: str
     file_id: str
     status: str
-    part_no: str | None = None
-    part_name: str | None = None
+    part_no: Optional[str]
+    part_name: Optional[str]
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime]
 
 
 class VoterListGroupDetailResponse(BaseModel):
     group: VoterListGroupDetail
-    entries: list[VoterEntryItem]
+    entries: List[VoterEntryItem]
     total_entries: int
 
 
-# --- Endpoints ---
+# -------------------------
+# LIST GROUPS
+# -------------------------
 
 @router.get("/", response_model=VoterListGroupsResponse)
 async def list_voter_list_groups(
@@ -76,22 +87,23 @@ async def list_voter_list_groups(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
-    """List voter list groups with voter counts."""
     conditions = [VoterListGroup.tenant_id == tenant_id]
 
     if year:
         conditions.append(VoterListGroup.year == year)
+
     if status:
         conditions.append(VoterListGroup.status == status)
+
     if search:
         conditions.append(VoterListGroup.constituency.ilike(f"%{search}%"))
 
-    # Count query
-    count_query = select(func.count()).select_from(VoterListGroup).where(*conditions)
-    total_result = await db.execute(count_query)
-    total = total_result.scalar() or 0
+    # Total count
+    total = await db.scalar(
+        select(func.count()).select_from(VoterListGroup).where(*conditions)
+    ) or 0
 
-    # Subquery for voter count per group
+    # Voter count subquery
     voter_count_subq = (
         select(
             VoterListEntry.group_id,
@@ -101,11 +113,10 @@ async def list_voter_list_groups(
         .subquery()
     )
 
-    # Items query with voter count
-    items_query = (
+    query = (
         select(
             VoterListGroup,
-            func.coalesce(voter_count_subq.c.voter_count, 0).label("voter_count"),
+            func.coalesce(voter_count_subq.c.voter_count, 0)
         )
         .outerjoin(voter_count_subq, VoterListGroup.id == voter_count_subq.c.group_id)
         .where(*conditions)
@@ -113,28 +124,32 @@ async def list_voter_list_groups(
         .offset(skip)
         .limit(limit)
     )
-    result = await db.execute(items_query)
-    rows = result.all()
+
+    result = await db.execute(query)
 
     return VoterListGroupsResponse(
         items=[
             VoterListGroupItem(
-                id=group.id,
-                year=group.year,
-                constituency=group.constituency,
-                file_id=group.file_id,
-                status=group.status,
-                part_no=group.part_no,
-                part_name=group.part_name,
-                created_at=group.created_at,
-                updated_at=group.updated_at,
-                voter_count=voter_count,
+                id=g.id,
+                year=g.year,
+                constituency=g.constituency,
+                file_id=g.file_id,
+                status=g.status,
+                part_no=g.part_no,
+                part_name=g.part_name,
+                created_at=g.created_at,
+                updated_at=g.updated_at,
+                voter_count=count,
             )
-            for group, voter_count in rows
+            for g, count in result.all()
         ],
         total=total,
     )
 
+
+# -------------------------
+# GET GROUP + ENTRIES
+# -------------------------
 
 @router.get("/{group_id}", response_model=VoterListGroupDetailResponse)
 async def get_voter_list_group(
@@ -144,47 +159,54 @@ async def get_voter_list_group(
     user: dict = Depends(require_permissions("voters:read")),
     search: str | None = None,
     gender: str | None = None,
+    status: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
-    """Get a voter list group with paginated voter entries."""
-    # Fetch group (with tenant isolation)
-    group_query = select(VoterListGroup).where(
-        VoterListGroup.id == group_id,
-        VoterListGroup.tenant_id == tenant_id,
+    # Fetch group
+    group = await db.scalar(
+        select(VoterListGroup).where(
+            VoterListGroup.id == group_id,
+            VoterListGroup.tenant_id == tenant_id,
+        )
     )
-    result = await db.execute(group_query)
-    group = result.scalar_one_or_none()
 
     if not group:
         raise HTTPException(status_code=404, detail="Voter list group not found")
 
-    # Build entry filter conditions
-    entry_conditions = [VoterListEntry.group_id == group_id]
+    # Entry filters
+    conditions = [VoterListEntry.group_id == group_id]
 
     if search:
-        entry_conditions.append(
-            (VoterListEntry.name.ilike(f"%{search}%"))
-            | (VoterListEntry.voter_no.ilike(f"%{search}%"))
+        conditions.append(
+            or_(
+                VoterListEntry.name.ilike(f"%{search}%"),
+                VoterListEntry.voter_no.ilike(f"%{search}%"),
+                VoterListEntry.epic_no.ilike(f"%{search}%"),
+            )
         )
-    if gender:
-        entry_conditions.append(VoterListEntry.gender == gender)
 
-    # Count entries
-    count_query = select(func.count()).select_from(VoterListEntry).where(*entry_conditions)
-    total_result = await db.execute(count_query)
-    total_entries = total_result.scalar() or 0
+    if gender:
+        conditions.append(VoterListEntry.gender == gender)
+
+    if status:
+        conditions.append(VoterListEntry.status == status)
+
+    # Count
+    total_entries = await db.scalar(
+        select(func.count()).select_from(VoterListEntry).where(*conditions)
+    ) or 0
 
     # Fetch entries
-    entries_query = (
+    result = await db.execute(
         select(VoterListEntry)
-        .where(*entry_conditions)
-        .order_by(VoterListEntry.created_at)
+        .where(*conditions)
+        .order_by(VoterListEntry.serial_no.nulls_last())
         .offset(skip)
         .limit(limit)
     )
-    entries_result = await db.execute(entries_query)
-    entries = entries_result.scalars().all()
+
+    entries = result.scalars().all()
 
     return VoterListGroupDetailResponse(
         group=VoterListGroupDetail(
@@ -198,17 +220,6 @@ async def get_voter_list_group(
             created_at=group.created_at,
             updated_at=group.updated_at,
         ),
-        entries=[
-            VoterEntryItem(
-                id=entry.id,
-                name=entry.name,
-                father_or_husband_name=entry.father_or_husband_name,
-                gender=entry.gender,
-                age=entry.age,
-                voter_no=entry.voter_no,
-                created_at=entry.created_at,
-            )
-            for entry in entries
-        ],
+        entries=entries,
         total_entries=total_entries,
     )

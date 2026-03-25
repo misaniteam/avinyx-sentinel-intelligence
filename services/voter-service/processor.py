@@ -1,147 +1,235 @@
 import structlog
-from sqlalchemy import select
-from sentinel_shared.config import get_settings
-from sentinel_shared.storage.s3 import S3Client
+from sqlalchemy import select, delete
+
 from sentinel_shared.database.session import get_session_factory, tenant_context
-from sentinel_shared.models.tenant import Tenant
 from sentinel_shared.models.voter_list import VoterListGroup, VoterListEntry
-from sentinel_shared.data.wb_constituencies import WB_CONSTITUENCY_BY_CODE
+from sentinel_shared.models.tenant import Tenant
+from sentinel_shared.storage.s3 import S3Client
+from sentinel_shared.config import get_settings
+
 from ocr import extract_text
 from parser import parse_voter_data
 
 logger = structlog.get_logger()
 
+BATCH_SIZE = 500
+
 
 async def process_voter_list(message: dict):
-    """Process a voter list PDF: download from S3, extract text, parse, store in DB."""
+    """
+    End-to-end processing:
+    S3 → OCR → Parse → DB
+
+    Guarantees:
+    - No duplicate processing
+    - Safe retries
+    - Consistent group state
+    """
+
     file_id = message["file_id"]
+    tenant_id = message["tenant_id"]
     s3_key = message["s3_key"]
     year = message["year"]
     language = message.get("language", "en")
     part_no = message.get("part_no")
     part_name = message.get("part_name")
-    tenant_id = message["tenant_id"]
 
     tenant_context.set(tenant_id)
-    logger.info("processing_voter_list", file_id=file_id, s3_key=s3_key, year=year, language=language, tenant_id=tenant_id)
-
     factory = get_session_factory()
 
-    # Deduplicate: skip if this file_id already has a completed or processing group
+    logger.info(
+        "processing_started",
+        file_id=file_id,
+        tenant_id=tenant_id,
+    )
+
+    # --------------------------------------------------
+    # 1. CHECK EXISTING GROUP (idempotency)
+    # --------------------------------------------------
     async with factory() as session:
-        existing = await session.execute(
+        result = await session.execute(
             select(VoterListGroup).where(
                 VoterListGroup.file_id == file_id,
                 VoterListGroup.tenant_id == tenant_id,
-                VoterListGroup.status.in_(["processing", "completed"]),
             )
         )
-        existing_group = existing.scalar_one_or_none()
-        if existing_group:
-            logger.info("voter_list_already_exists", file_id=file_id, status=existing_group.status, group_id=str(existing_group.id))
-            return
+        group = result.scalar_one_or_none()
 
-    # Create group record with processing status
-    constituency = await _get_tenant_constituency(tenant_id)
-    logger.info("constituency_resolved", constituency=constituency, tenant_id=tenant_id)
+        if group:
+            if group.status == "completed":
+                logger.info("already_completed", file_id=file_id)
+                return
 
-    async with factory() as session:
-        group = VoterListGroup(
-            tenant_id=tenant_id,
-            year=year,
-            constituency=constituency,
-            file_id=file_id,
-            status="processing",
-            part_no=part_no,
-            part_name=part_name,
-        )
-        session.add(group)
-        await session.commit()
-        await session.refresh(group)
-        group_id = group.id
+            logger.info("retry_processing_existing_group", group_id=str(group.id))
+            group_id = group.id
+        else:
+            # Create new group
+            group = VoterListGroup(
+                tenant_id=tenant_id,
+                year=year,
+                constituency=await _get_tenant_constituency(tenant_id),
+                file_id=file_id,
+                status="processing",
+                part_no=part_no,
+                part_name=part_name,
+            )
+            session.add(group)
+            await session.commit()
+            await session.refresh(group)
+            group_id = group.id
 
-    logger.info("voter_list_group_created", group_id=str(group_id), file_id=file_id)
-
+    # --------------------------------------------------
+    # 2. DOWNLOAD PDF
+    # --------------------------------------------------
     try:
-        # Download PDF from S3
         s3 = S3Client()
         settings = get_settings()
 
-        # Validate S3 key belongs to this tenant
         if not s3_key.startswith(f"{tenant_id}/"):
-            raise ValueError(f"S3 key tenant mismatch: {s3_key} does not belong to tenant {tenant_id}")
+            raise ValueError("Tenant mismatch in S3 key")
 
         logger.info("downloading_pdf", s3_key=s3_key)
-        pdf_bytes = await s3.download_file(settings.s3_voter_docs_bucket, s3_key)
-        logger.info("pdf_downloaded", s3_key=s3_key, size=len(pdf_bytes))
 
-        # Extract text using EasyOCR
-        logger.info("starting_ocr", file_id=file_id)
-        text = extract_text(pdf_bytes, language)
-        if not text or not text.strip():
-            raise ValueError("No text could be extracted from the PDF")
-        logger.info("text_extracted", chars=len(text), file_id=file_id)
+        pdf_bytes = await s3.download_file(
+            settings.s3_voter_docs_bucket,
+            s3_key
+        )
 
-        # Parse voter records
-        logger.info("parsing_voter_data", file_id=file_id)
-        voters = parse_voter_data(text, language)
-        logger.info("voters_parsed", count=len(voters), file_id=file_id)
-
-        if not voters:
-            logger.warning("no_voters_found", file_id=file_id, s3_key=s3_key)
-
-        # Store voter entries in batches
-        logger.info("storing_voter_entries", count=len(voters), group_id=str(group_id))
-        async with factory() as session:
-            for v in voters:
-                entry = VoterListEntry(
-                    group_id=group_id,
-                    name=v["name"],
-                    father_or_husband_name=v.get("father_or_husband_name"),
-                    gender=v.get("gender"),
-                    age=v.get("age"),
-                    voter_no=v.get("voter_no"),
-                    house_number=v.get("house_number"),
-                    relation_type=v.get("relation_type"),
-                )
-                session.add(entry)
-            await session.commit()
-
-        # Update group status to completed
-        async with factory() as session:
-            group = await session.get(VoterListGroup, group_id)
-            group.status = "completed"
-            await session.commit()
-
-        logger.info("voter_list_processed", file_id=file_id, group_id=str(group_id), voter_count=len(voters))
+        logger.info("pdf_downloaded", size=len(pdf_bytes))
 
     except Exception as e:
-        logger.error("voter_list_processing_failed", file_id=file_id, error=str(e))
-        # Update group status to failed
-        try:
-            async with factory() as session:
-                group = await session.get(VoterListGroup, group_id)
-                if group:
-                    group.status = "failed"
-                    await session.commit()
-        except Exception as db_err:
-            logger.error("failed_to_update_group_status", error=str(db_err))
+        logger.error("download_failed", error=str(e))
+        await _mark_failed(factory, group_id)
         raise
+
+    # --------------------------------------------------
+    # 3. OCR
+    # --------------------------------------------------
+    try:
+        text = extract_text(pdf_bytes, language)
+
+        if not text or len(text.strip()) < 100:
+            raise ValueError("OCR produced insufficient text")
+
+        logger.info("ocr_complete", chars=len(text))
+
+    except Exception as e:
+        logger.error("ocr_failed", error=str(e))
+        await _mark_failed(factory, group_id)
+        raise
+
+    # --------------------------------------------------
+    # 4. PARSE
+    # --------------------------------------------------
+    try:
+        voters = parse_voter_data(text, language)
+
+        if not voters:
+            logger.warning("no_voters_parsed", file_id=file_id)
+
+        logger.info("parsing_complete", count=len(voters))
+
+    except Exception as e:
+        logger.error("parsing_failed", error=str(e))
+        await _mark_failed(factory, group_id)
+        raise
+
+    # --------------------------------------------------
+    # 5. CLEAN OLD DATA (retry-safe)
+    # --------------------------------------------------
+    async with factory() as session:
+        await session.execute(
+            delete(VoterListEntry).where(
+                VoterListEntry.group_id == group_id
+            )
+        )
+        await session.commit()
+
+    # --------------------------------------------------
+    # 6. BULK INSERT
+    # --------------------------------------------------
+    try:
+        async with factory() as session:
+            for i in range(0, len(voters), BATCH_SIZE):
+                batch = voters[i:i + BATCH_SIZE]
+
+                rows = [
+                    {
+                        "group_id": group_id,
+                        "name": v["name"],
+                        "father_or_husband_name": v.get("father_or_husband_name"),
+                        "relation_type": v.get("relation_type"),
+                        "gender": v.get("gender"),
+                        "age": v.get("age"),
+                        "voter_no": v.get("voter_no"),
+                        "serial_no": v.get("serial_no"),
+                        "epic_no": v.get("epic_no"),
+                        "house_number": v.get("house_number"),
+                        "section": v.get("section"),
+                        "status": v.get("status"),
+                        "raw_text": v.get("raw_text"),
+                    }
+                    for v in batch
+                    if v.get("name")
+                ]
+
+                if rows:
+                    await session.execute(
+                        VoterListEntry.__table__.insert(),
+                        rows
+                    )
+
+            await session.commit()
+
+        logger.info("db_insert_complete", count=len(voters))
+
+    except Exception as e:
+        logger.error("db_insert_failed", error=str(e))
+        await _mark_failed(factory, group_id)
+        raise
+
+    # --------------------------------------------------
+    # 7. MARK COMPLETE
+    # --------------------------------------------------
+    async with factory() as session:
+        group = await session.get(VoterListGroup, group_id)
+        group.status = "completed"
+        await session.commit()
+
+    logger.info(
+        "processing_completed",
+        file_id=file_id,
+        group_id=str(group_id),
+        total=len(voters),
+    )
+
+
+# --------------------------------------------------
+# HELPERS
+# --------------------------------------------------
+
+async def _mark_failed(factory, group_id):
+    async with factory() as session:
+        group = await session.get(VoterListGroup, group_id)
+        if group:
+            group.status = "failed"
+            await session.commit()
 
 
 async def _get_tenant_constituency(tenant_id: str) -> str:
-    """Look up the tenant's constituency name. Returns code if no match found."""
     factory = get_session_factory()
+
     async with factory() as session:
         result = await session.execute(
-            select(Tenant.constituency_code).where(Tenant.id == tenant_id)
+            select(Tenant.constituency_code).where(
+                Tenant.id == tenant_id
+            )
         )
-        constituency_code = result.scalar_one_or_none()
+        code = result.scalar_one_or_none()
 
-    if constituency_code:
-        constituency = WB_CONSTITUENCY_BY_CODE.get(constituency_code)
-        if constituency:
-            return constituency["name"]
-        return constituency_code
+    if not code:
+        return "unknown"
 
-    return "unknown"
+    from sentinel_shared.data.wb_constituencies import WB_CONSTITUENCY_BY_CODE
+
+    return WB_CONSTITUENCY_BY_CODE.get(code, {}).get("name", code)
