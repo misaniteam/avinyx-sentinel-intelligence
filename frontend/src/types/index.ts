@@ -215,11 +215,15 @@ export interface VoterEntryItem {
   id: string;
   name: string;
   father_or_husband_name: string | null;
+  relation_type: string | null;
   gender: string | null;
   age: number | null;
   voter_no: string | null;
+  serial_no: number | null;
+  epic_no: string | null;
   house_number: string | null;
-  relation_type: string | null;
+  section: string | null;
+  status: string | null;
   created_at: string;
 }
 
