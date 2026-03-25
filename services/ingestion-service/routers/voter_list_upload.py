@@ -21,6 +21,8 @@ class VoterListUploadResponse(BaseModel):
     s3_key: str
     year: int
     language: str
+    part_no: str | None = None
+    part_name: str | None = None
     status: str
 
 
@@ -50,6 +52,8 @@ async def upload_voter_list(
     file: UploadFile = File(...),
     year: int = Form(...),
     language: Literal["en", "bn", "hi"] = Form(default="en"),
+    part_no: str | None = Form(default=None, max_length=50),
+    part_name: str | None = Form(default=None, max_length=255),
     tenant_id: str = Depends(get_current_tenant_required),
     user: dict = Depends(require_permissions("voters:write")),
 ):
@@ -127,6 +131,8 @@ async def upload_voter_list(
             "s3_key": s3_key,
             "year": year,
             "language": language,
+            "part_no": part_no,
+            "part_name": part_name,
             "tenant_id": tenant_id,
         })
         logger.info(
@@ -150,5 +156,7 @@ async def upload_voter_list(
         s3_key=s3_key,
         year=year,
         language=language,
+        part_no=part_no,
+        part_name=part_name,
         status="processing",
     )

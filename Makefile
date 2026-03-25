@@ -1,6 +1,7 @@
-.PHONY: up down build logs up-prod down-prod build-prod logs-prod test test-backend test-frontend migrate migrate-create seed lint format clean sentry-setup sentry-up sentry-down sentry-logs
+.PHONY: up down build logs up-gpu down-gpu logs-gpu up-prod down-prod build-prod logs-prod test test-backend test-frontend migrate migrate-create seed lint format clean sentry-setup sentry-up sentry-down sentry-logs
 
 COMPOSE_PROD := docker compose -f docker-compose.yml -f docker-compose.prod.yml
+COMPOSE_GPU := docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.gpu.yml
 
 # Development (uses docker-compose.override.yml automatically)
 up:
@@ -14,6 +15,16 @@ build:
 
 logs:
 	docker compose logs -f
+
+# Development with GPU (requires nvidia-container-toolkit)
+up-gpu:
+	$(COMPOSE_GPU) up -d
+
+down-gpu:
+	$(COMPOSE_GPU) down
+
+logs-gpu:
+	$(COMPOSE_GPU) logs -f
 
 # Production
 up-prod:

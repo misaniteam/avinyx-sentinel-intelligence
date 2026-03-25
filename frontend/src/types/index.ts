@@ -199,6 +199,8 @@ export interface VoterListGroupItem {
   constituency: string;
   file_id: string;
   status: string;
+  part_no: string | null;
+  part_name: string | null;
   created_at: string;
   updated_at: string;
   voter_count: number;
@@ -227,6 +229,8 @@ export interface VoterListGroupDetail {
   constituency: string;
   file_id: string;
   status: string;
+  part_no: string | null;
+  part_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -242,6 +246,8 @@ export interface VoterListUploadResponse {
   s3_key: string;
   year: number;
   language: string;
+  part_no: string | null;
+  part_name: string | null;
   status: string;
 }
 

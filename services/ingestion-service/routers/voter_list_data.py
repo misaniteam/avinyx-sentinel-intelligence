@@ -19,6 +19,8 @@ class VoterListGroupItem(BaseModel):
     constituency: str
     file_id: str
     status: str
+    part_no: str | None = None
+    part_name: str | None = None
     created_at: datetime
     updated_at: datetime
     voter_count: int
@@ -49,6 +51,8 @@ class VoterListGroupDetail(BaseModel):
     constituency: str
     file_id: str
     status: str
+    part_no: str | None = None
+    part_name: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -120,6 +124,8 @@ async def list_voter_list_groups(
                 constituency=group.constituency,
                 file_id=group.file_id,
                 status=group.status,
+                part_no=group.part_no,
+                part_name=group.part_name,
                 created_at=group.created_at,
                 updated_at=group.updated_at,
                 voter_count=voter_count,
@@ -187,6 +193,8 @@ async def get_voter_list_group(
             constituency=group.constituency,
             file_id=group.file_id,
             status=group.status,
+            part_no=group.part_no,
+            part_name=group.part_name,
             created_at=group.created_at,
             updated_at=group.updated_at,
         ),

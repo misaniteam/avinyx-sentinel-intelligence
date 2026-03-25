@@ -18,6 +18,8 @@ async def process_voter_list(message: dict):
     s3_key = message["s3_key"]
     year = message["year"]
     language = message.get("language", "en")
+    part_no = message.get("part_no")
+    part_name = message.get("part_name")
     tenant_id = message["tenant_id"]
 
     tenant_context.set(tenant_id)
@@ -50,6 +52,8 @@ async def process_voter_list(message: dict):
             constituency=constituency,
             file_id=file_id,
             status="processing",
+            part_no=part_no,
+            part_name=part_name,
         )
         session.add(group)
         await session.commit()

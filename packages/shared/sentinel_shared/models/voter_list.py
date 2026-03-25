@@ -14,6 +14,8 @@ class VoterListGroup(Base, TimestampMixin, TenantMixin):
     constituency = Column(String(255), nullable=False)
     file_id = Column(String(255), nullable=False)
     status = Column(String(50), default="processing", server_default="processing")
+    part_no = Column(String(50), nullable=True)
+    part_name = Column(String(255), nullable=True)
 
 
 class VoterListEntry(Base, TimestampMixin):
