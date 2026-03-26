@@ -15,7 +15,7 @@ export default function VotersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t("title")}</h1>
-        <Button><Plus className="mr-2 h-4 w-4" /> {t("addVoter")}</Button>
+        <Button><Plus className="mr-1 h-4 w-4 text-theme-primary" /> {t("addVoter")}</Button>
       </div>
       <Card>
         <CardHeader>

@@ -16,19 +16,15 @@ import { LogOut, Bell } from "lucide-react";
 import { ModeToggle } from "../shared/mode-toggle";
 
 export function Topbar() {
-  const { user, logout } = useAuth();
   const { notifications, isLoading: notificationsLoading } = useNotifications();
   const unreadCount = useNotificationCount(notifications);
   const t = useTranslations("common");
 
   return (
-    <header className="flex h-16 items-center justify-between border-b px-6">
+    <header className="flex h-[90px] items-center justify-between border-b px-6 bg-card">
       <div />
       <div className="flex items-center gap-4">
-        
         <ModeToggle />
-        <LocaleSwitcher />
-
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
@@ -41,15 +37,13 @@ export function Topbar() {
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="p-0 w-80">
-            <NotificationPanel notifications={notifications} isLoading={notificationsLoading} />
+            <NotificationPanel
+              notifications={notifications}
+              isLoading={notificationsLoading}
+            />
           </PopoverContent>
         </Popover>
-        <div className="text-sm text-muted-foreground">
-          {user?.is_super_admin ? t("superAdmin") : user?.roles?.[0] || t("user")}
-        </div>
-        <Button variant="ghost" size="icon" onClick={logout}>
-          <LogOut className="h-5 w-5" />
-        </Button>
+        <LocaleSwitcher />      
       </div>
     </header>
   );

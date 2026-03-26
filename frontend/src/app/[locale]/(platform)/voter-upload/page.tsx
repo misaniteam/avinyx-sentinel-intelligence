@@ -223,12 +223,12 @@ function UploadForm() {
           >
             {uploadMutation.isPending ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-1 h-4 w-4 text-theme-primary animate-spin" />
                 {t("uploading")}
               </>
             ) : (
               <>
-                <Upload className="mr-2 h-4 w-4" />
+                <Upload className="mr-1 h-4 w-4 text-theme-primary" />
                 {t("upload")}
               </>
             )}

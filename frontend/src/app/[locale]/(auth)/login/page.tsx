@@ -7,11 +7,17 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2 } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import Link from "next/link";
 import { toast } from "sonner";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
+import Image from "next/image";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -45,10 +51,18 @@ export default function LoginPage() {
       <div className="absolute top-4 right-4">
         <LocaleSwitcher />
       </div>
-      <Card className="w-full max-w-md border-input"> 
+      <Card className="w-full max-w-md border">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
+          <div className="mx-auto mb-2 flex items-center justify-center">
+            <Link href={"/"}>
+              <Image
+                src="logo/logo-white.svg"
+                width={120}
+                height={50}
+                alt="Avinyx AI"
+                className="mx-auto"
+              />
+            </Link>
           </div>
           <CardTitle className="text-2xl">{t("appTitle")}</CardTitle>
           <CardDescription>{t("signInDescription")}</CardDescription>
@@ -64,6 +78,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="focus-visible:ring-0 focus-visible:outline-none"
               />
             </div>
             <div className="space-y-2">
@@ -74,6 +89,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="focus-visible:ring-0 focus-visible:outline-none"
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
