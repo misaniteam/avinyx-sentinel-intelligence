@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, or_
 
@@ -34,6 +34,31 @@ class VoterEntryItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class VoterEntryWithGroup(BaseModel):
+    id: UUID
+    group_id: UUID
+    name: str
+    father_or_husband_name: Optional[str]
+    relation_type: Optional[str]
+    gender: Optional[str]
+    age: Optional[int]
+    voter_no: Optional[str]
+    serial_no: Optional[int]
+    epic_no: Optional[str]
+    house_number: Optional[str]
+    section: Optional[str]
+    status: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AllVoterEntriesResponse(BaseModel):
+    items: List[VoterEntryWithGroup]
+    total: int
 
 
 class VoterListGroupItem(BaseModel):
@@ -148,6 +173,77 @@ async def list_voter_list_groups(
 
 
 # -------------------------
+# ALL ENTRIES (across groups)
+# -------------------------
+
+@router.get("/entries/all", response_model=AllVoterEntriesResponse)
+async def list_all_voter_entries(
+    db: AsyncSession = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant_required),
+    user: dict = Depends(require_permissions("voters:read")),
+    search: str | None = None,
+    gender: str | None = None,
+    status: str | None = None,
+    section: str | None = None,
+    group_id: UUID | None = None,
+    age_min: int | None = Query(None, ge=0),
+    age_max: int | None = Query(None, ge=0),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=10000),
+):
+    # Join with VoterListGroup for tenant isolation
+    conditions = [VoterListGroup.tenant_id == tenant_id]
+
+    if group_id:
+        conditions.append(VoterListEntry.group_id == group_id)
+
+    if age_min is not None:
+        conditions.append(VoterListEntry.age >= age_min)
+
+    if age_max is not None:
+        conditions.append(VoterListEntry.age <= age_max)
+
+    if search:
+        conditions.append(
+            or_(
+                VoterListEntry.name.ilike(f"%{search}%"),
+                VoterListEntry.epic_no.ilike(f"%{search}%"),
+                VoterListEntry.voter_no.ilike(f"%{search}%"),
+            )
+        )
+
+    if gender:
+        conditions.append(VoterListEntry.gender == gender)
+
+    if status:
+        conditions.append(VoterListEntry.status == status)
+
+    if section:
+        conditions.append(VoterListEntry.section.ilike(f"%{section}%"))
+
+    base_query = (
+        select(VoterListEntry)
+        .join(VoterListGroup, VoterListEntry.group_id == VoterListGroup.id)
+        .where(*conditions)
+    )
+
+    total = await db.scalar(
+        select(func.count()).select_from(base_query.subquery())
+    ) or 0
+
+    result = await db.execute(
+        base_query
+        .order_by(VoterListEntry.serial_no.nulls_last())
+        .offset(skip)
+        .limit(limit)
+    )
+
+    entries = result.scalars().all()
+
+    return AllVoterEntriesResponse(items=entries, total=total)
+
+
+# -------------------------
 # GET GROUP + ENTRIES
 # -------------------------
 
@@ -223,3 +319,28 @@ async def get_voter_list_group(
         entries=entries,
         total_entries=total_entries,
     )
+
+
+# -------------------------
+# DELETE GROUP
+# -------------------------
+
+@router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_voter_list_group(
+    group_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant_required),
+    user: dict = Depends(require_permissions("voters:write")),
+):
+    group = await db.scalar(
+        select(VoterListGroup).where(
+            VoterListGroup.id == group_id,
+            VoterListGroup.tenant_id == tenant_id,
+        )
+    )
+
+    if not group:
+        raise HTTPException(status_code=404, detail="Voter list group not found")
+
+    await db.delete(group)
+    await db.commit()

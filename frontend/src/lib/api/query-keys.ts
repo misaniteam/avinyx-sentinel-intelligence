@@ -58,6 +58,7 @@ export const queryKeys = {
   voterLists: {
     all: ["voter-lists"] as const,
     detail: (groupId: string) => ["voter-lists", groupId] as const,
+    entries: ["voter-list-entries"] as const,
   },
   settings: {
     tenant: (tenantId: string) => ["settings", tenantId] as const,

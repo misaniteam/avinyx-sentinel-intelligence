@@ -56,5 +56,17 @@
   "languageEn": "English",
   "languageBn": "Bengali",
   "languageHi": "Hindi",
-  "maxFileSize": "Maximum file size: 50MB. Only PDF files are accepted."
+  "maxFileSize": "Maximum file size: 50MB. Only PDF files are accepted.",
+  "deleteTitle": "Delete Voter List",
+  "deleteDescription": "Are you sure? This will permanently delete this voter list and all voter entries under it.",
+  "deleteSuccess": "Voter list deleted successfully",
+  "deleteFailed": "Failed to delete voter list",
+  "searchVoterEntries": "Search name, EPIC no, or voter no...",
+  "allGroups": "All Voter Lists",
+  "ageMin": "Min",
+  "ageMax": "Max",
+  "exportPdf": "Export PDF",
+  "exportExcel": "Export Excel",
+  "exportSuccess": "Export completed successfully",
+  "exportFailed": "Export failed"
 }

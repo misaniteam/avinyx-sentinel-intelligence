@@ -1,5 +1,5 @@
 import structlog
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 
 from sentinel_shared.database.session import get_session_factory, tenant_context
 from sentinel_shared.models.voter_list import VoterListGroup, VoterListEntry
@@ -102,23 +102,7 @@ async def process_voter_list(message: dict):
         raise
 
     # --------------------------------------------------
-    # 3. EXTRACT VOTER DATA (Textract OCR + parse)
-    # --------------------------------------------------
-    try:
-        voters = await extract_voters_from_pdf(pdf_bytes, language)
-
-        if not voters:
-            logger.warning("no_voters_extracted", file_id=file_id)
-
-        logger.info("extraction_complete", count=len(voters))
-
-    except Exception as e:
-        logger.error("extraction_failed", error=str(e))
-        await _mark_failed(factory, group_id)
-        raise
-
-    # --------------------------------------------------
-    # 4. CLEAN OLD DATA (retry-safe)
+    # 3. CLEAN OLD DATA (retry-safe)
     # --------------------------------------------------
     async with factory() as session:
         await session.execute(
@@ -129,50 +113,82 @@ async def process_voter_list(message: dict):
         await session.commit()
 
     # --------------------------------------------------
-    # 5. BULK INSERT
+    # 4. EXTRACT + INSERT PER CHUNK
     # --------------------------------------------------
+    total_inserted = 0
+
     try:
-        async with factory() as session:
-            for i in range(0, len(voters), BATCH_SIZE):
-                batch = voters[i:i + BATCH_SIZE]
+        async for chunk_voters in extract_voters_from_pdf(pdf_bytes, language):
+            if not chunk_voters:
+                continue
 
-                rows = [
-                    {
-                        "group_id": group_id,
-                        "name": v["name"],
-                        "father_or_husband_name": v.get("father_or_husband_name"),
-                        "relation_type": v.get("relation_type"),
-                        "gender": v.get("gender"),
-                        "age": v.get("age"),
-                        "voter_no": v.get("voter_no"),
-                        "serial_no": v.get("serial_no"),
-                        "epic_no": v.get("epic_no"),
-                        "house_number": v.get("house_number"),
-                        "section": v.get("section"),
-                        "status": v.get("status"),
-                        "raw_text": v.get("raw_text"),
-                    }
-                    for v in batch
-                    if v.get("name")
-                ]
+            # Insert this chunk to DB immediately
+            try:
+                # Separate new inserts from replacements (overlap upgrades with EPIC)
+                to_insert = [v for v in chunk_voters if v.get("name") and not v.get("_replace_serial")]
+                to_update = [v for v in chunk_voters if v.get("_replace_serial")]
 
-                if rows:
-                    await session.execute(
-                        VoterListEntry.__table__.insert(),
-                        rows
-                    )
+                async with factory() as session:
+                    # Insert new entries
+                    for i in range(0, len(to_insert), BATCH_SIZE):
+                        batch = to_insert[i:i + BATCH_SIZE]
+                        rows = [
+                            {
+                                "group_id": group_id,
+                                "name": v["name"],
+                                "father_or_husband_name": v.get("father_or_husband_name"),
+                                "relation_type": v.get("relation_type"),
+                                "gender": v.get("gender"),
+                                "age": v.get("age"),
+                                "voter_no": v.get("voter_no"),
+                                "serial_no": v.get("serial_no"),
+                                "epic_no": v.get("epic_no"),
+                                "house_number": v.get("house_number"),
+                                "section": v.get("section"),
+                                "status": v.get("status"),
+                                "raw_text": v.get("raw_text"),
+                            }
+                            for v in batch
+                        ]
+                        if rows:
+                            await session.execute(
+                                VoterListEntry.__table__.insert(),
+                                rows
+                            )
 
-            await session.commit()
+                    # Update entries where a better version was found in overlap
+                    for v in to_update:
+                        await session.execute(
+                            update(VoterListEntry)
+                            .where(
+                                VoterListEntry.group_id == group_id,
+                                VoterListEntry.serial_no == v.get("serial_no"),
+                            )
+                            .values(epic_no=v.get("epic_no"))
+                        )
+                        if to_update:
+                            logger.info("overlap_epic_updated", count=len(to_update))
 
-        logger.info("db_insert_complete", count=len(voters))
+                    await session.commit()
+
+                total_inserted += len(chunk_voters)
+                logger.info("db_chunk_inserted", chunk_voters=len(chunk_voters), total_so_far=total_inserted)
+
+            except Exception as e:
+                logger.error("db_chunk_insert_failed", error=str(e), total_saved=total_inserted)
+                # Continue processing remaining chunks — already-saved data is preserved
 
     except Exception as e:
-        logger.error("db_insert_failed", error=str(e))
-        await _mark_failed(factory, group_id)
-        raise
+        logger.error("extraction_failed", error=str(e), total_saved=total_inserted)
+        if total_inserted == 0:
+            await _mark_failed(factory, group_id)
+            raise
+
+    if total_inserted == 0:
+        logger.warning("no_voters_extracted", file_id=file_id)
 
     # --------------------------------------------------
-    # 6. MARK COMPLETE
+    # 5. MARK COMPLETE
     # --------------------------------------------------
     async with factory() as session:
         group = await session.get(VoterListGroup, group_id)
@@ -183,7 +199,7 @@ async def process_voter_list(message: dict):
         "processing_completed",
         file_id=file_id,
         group_id=str(group_id),
-        total=len(voters),
+        total=total_inserted,
     )
 
 

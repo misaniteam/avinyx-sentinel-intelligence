@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useTranslations, useFormatter } from "next-intl";
-import { useVoterListGroups, useVoterListGroupDetail, useUploadVoterList } from "@/lib/api/hooks";
+import { useVoterListGroups, useVoterListGroupDetail, useUploadVoterList, useDeleteVoterListGroup } from "@/lib/api/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +26,11 @@ import {
   Loader2,
   X,
   Users,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import type { VoterListGroupItem } from "@/types";
 
 const PAGE_SIZE = 50;
@@ -421,6 +423,21 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<VoterListGroupItem | undefined>();
+  const deleteGroup = useDeleteVoterListGroup();
+
+  async function handleDeleteConfirm() {
+    if (!groupToDelete) return;
+    try {
+      await deleteGroup.mutateAsync(groupToDelete.id);
+      toast.success(t("deleteSuccess"));
+      setDeleteDialogOpen(false);
+      setGroupToDelete(undefined);
+    } catch {
+      toast.error(t("deleteFailed"));
+    }
+  }
 
   const { data, isLoading } = useVoterListGroups({
     search: searchQuery || undefined,
@@ -523,9 +540,21 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
                     </td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(item.created_at)}</td>
                     <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm" onClick={() => onSelectGroup(item.id)}>
-                        {t("viewDetails")}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => onSelectGroup(item.id)}>
+                          {t("viewDetails")}
+                        </Button>
+                        <PermissionGate permission="voters:write">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => { setGroupToDelete(item); setDeleteDialogOpen(true); }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </PermissionGate>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -549,6 +578,15 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
           </div>
         </>
       )}
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={t("deleteTitle")}
+        description={t("deleteDescription")}
+        onConfirm={handleDeleteConfirm}
+        isPending={deleteGroup.isPending}
+      />
     </div>
   );
 }

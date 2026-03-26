@@ -1,3 +1,4 @@
 pymupdf>=1.24
 aiobotocore>=2.12
+Pillow>=10.0
 sentinel-shared @ file:///${PWD}/../../packages/shared

@@ -245,6 +245,15 @@ export interface VoterListGroupDetailResponse {
   total_entries: number;
 }
 
+export interface VoterEntryWithGroup extends VoterEntryItem {
+  group_id: string;
+}
+
+export interface AllVoterEntriesResponse {
+  items: VoterEntryWithGroup[];
+  total: number;
+}
+
 export interface VoterListUploadResponse {
   file_id: string;
   s3_key: string;

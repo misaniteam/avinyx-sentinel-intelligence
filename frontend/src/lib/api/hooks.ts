@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import { queryKeys } from "./query-keys";
-import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus, VoterListGroupsResponse, VoterListGroupDetailResponse, VoterListUploadResponse } from "@/types";
+import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus, VoterListGroupsResponse, VoterListGroupDetailResponse, VoterListUploadResponse, AllVoterEntriesResponse } from "@/types";
 
 // Dashboard
 export function useDashboardSummary() {
@@ -130,6 +130,42 @@ export function useUploadVoterList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.voterLists.all });
     },
+  });
+}
+
+export function useAllVoterEntries(params?: {
+  search?: string;
+  gender?: string;
+  status?: string;
+  section?: string;
+  group_id?: string;
+  age_min?: number;
+  age_max?: number;
+  skip?: number;
+  limit?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params?.search) searchParams.set("search", params.search);
+  if (params?.gender) searchParams.set("gender", params.gender);
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.section) searchParams.set("section", params.section);
+  if (params?.group_id) searchParams.set("group_id", params.group_id);
+  if (params?.age_min) searchParams.set("age_min", String(params.age_min));
+  if (params?.age_max) searchParams.set("age_max", String(params.age_max));
+  if (params?.skip) searchParams.set("skip", String(params.skip));
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return useQuery({
+    queryKey: [...queryKeys.voterLists.entries, params],
+    queryFn: () => api.get(`api/ingestion/voter-lists/entries/all${qs ? `?${qs}` : ""}`).json<AllVoterEntriesResponse>(),
+  });
+}
+
+export function useDeleteVoterListGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`api/ingestion/voter-lists/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.voterLists.all }),
   });
 }
 
