@@ -69,6 +69,9 @@ class VoterListGroupItem(BaseModel):
     status: str
     part_no: Optional[str]
     part_name: Optional[str]
+    location_name: Optional[str]
+    location_lat: Optional[float]
+    location_lng: Optional[float]
     created_at: datetime
     updated_at: Optional[datetime]
     voter_count: int
@@ -87,6 +90,9 @@ class VoterListGroupDetail(BaseModel):
     status: str
     part_no: Optional[str]
     part_name: Optional[str]
+    location_name: Optional[str]
+    location_lat: Optional[float]
+    location_lng: Optional[float]
     created_at: datetime
     updated_at: Optional[datetime]
 
@@ -162,6 +168,9 @@ async def list_voter_list_groups(
                 status=g.status,
                 part_no=g.part_no,
                 part_name=g.part_name,
+                location_name=g.location_name,
+                location_lat=g.location_lat,
+                location_lng=g.location_lng,
                 created_at=g.created_at,
                 updated_at=g.updated_at,
                 voter_count=count,
@@ -313,6 +322,9 @@ async def get_voter_list_group(
             status=group.status,
             part_no=group.part_no,
             part_name=group.part_name,
+            location_name=group.location_name,
+            location_lat=group.location_lat,
+            location_lng=group.location_lng,
             created_at=group.created_at,
             updated_at=group.updated_at,
         ),

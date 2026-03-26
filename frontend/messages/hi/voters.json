@@ -68,5 +68,7 @@
   "exportPdf": "PDF निर्यात",
   "exportExcel": "Excel निर्यात",
   "exportSuccess": "निर्यात सफलतापूर्वक पूरा हुआ",
-  "exportFailed": "निर्यात विफल रहा"
+  "exportFailed": "निर्यात विफल रहा",
+  "location": "स्थान",
+  "searchLocation": "मानचित्र पर स्थान खोजें..."
 }

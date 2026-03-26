@@ -201,6 +201,9 @@ export interface VoterListGroupItem {
   status: string;
   part_no: string | null;
   part_name: string | null;
+  location_name: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
   created_at: string;
   updated_at: string;
   voter_count: number;
@@ -235,6 +238,9 @@ export interface VoterListGroupDetail {
   status: string;
   part_no: string | null;
   part_name: string | null;
+  location_name: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
   created_at: string;
   updated_at: string;
 }

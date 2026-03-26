@@ -77,17 +77,20 @@ export function useVoterListGroups(params?: {
   search?: string;
   skip?: number;
   limit?: number;
+  refetchInterval?: number | false;
 }) {
+  const { refetchInterval, ...queryParams } = params || {};
   const searchParams = new URLSearchParams();
-  if (params?.year) searchParams.set("year", String(params.year));
-  if (params?.status) searchParams.set("status", params.status);
-  if (params?.search) searchParams.set("search", params.search);
-  if (params?.skip) searchParams.set("skip", String(params.skip));
-  if (params?.limit) searchParams.set("limit", String(params.limit));
+  if (queryParams?.year) searchParams.set("year", String(queryParams.year));
+  if (queryParams?.status) searchParams.set("status", queryParams.status);
+  if (queryParams?.search) searchParams.set("search", queryParams.search);
+  if (queryParams?.skip) searchParams.set("skip", String(queryParams.skip));
+  if (queryParams?.limit) searchParams.set("limit", String(queryParams.limit));
   const qs = searchParams.toString();
   return useQuery({
-    queryKey: [...queryKeys.voterLists.all, params],
+    queryKey: [...queryKeys.voterLists.all, queryParams],
     queryFn: () => api.get(`api/ingestion/voter-lists${qs ? `?${qs}` : ""}`).json<VoterListGroupsResponse>(),
+    refetchInterval: refetchInterval ?? false,
   });
 }
 

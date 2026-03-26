@@ -170,31 +170,46 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 ## Voter List Upload
 
 - **Upload endpoint:** `POST /api/ingestion/voter-list-upload` (multipart/form-data)
-  - Fields: `file` (PDF, max 50MB), `year` (int), `language` ("en"/"bn"/"hi"), `part_no` (string, optional, max 50), `part_name` (string, optional, max 255)
+  - Fields: `file` (PDF, max 50MB), `year` (int), `language` ("en"/"bn"/"hi"), `part_no` (string, optional, max 50), `part_name` (string, optional, max 255), `location_name` (string, optional, max 500), `location_lat` (float, optional), `location_lng` (float, optional)
   - Validates PDF magic bytes, uploads to S3, dispatches SQS message to `sentinel-voter-list` queue
   - Permission: `voters:write`
-- **List endpoint:** `GET /api/ingestion/voter-lists` — paginated list of `VoterListGroup` records with `part_no`, `part_name`, `constituency`, `year`, `status`, `voter_count`
+- **List endpoint:** `GET /api/ingestion/voter-lists` — paginated list of `VoterListGroup` records with location, part info, constituency, year, status, voter_count
 - **Detail endpoint:** `GET /api/ingestion/voter-lists/{group_id}` — group info + paginated voter entries
+- **All entries endpoint:** `GET /api/ingestion/voter-lists/entries/all` — all voter entries across groups, filters: `search`, `gender`, `status`, `section`, `group_id`, `age_min`, `age_max`, limit up to 10000 for export
+- **Delete endpoint:** `DELETE /api/ingestion/voter-lists/{group_id}` — deletes group + cascade deletes all entries (requires `voters:write`)
 - **Models:**
-  - `VoterListGroup` — upload metadata: `tenant_id`, `year`, `constituency`, `file_id`, `status`, `part_no`, `part_name`
-  - `VoterListEntry` — individual voter: `name`, `father_or_husband_name`, `gender`, `age`, `voter_no`, `house_number`, `relation_type`
-- **Frontend page:** `/voter-upload` — UploadForm (PDF dropzone + year/language/part_no/part_name fields), GroupsListView (table with Part No/Part Name columns), GroupDetailView (group info card + voter entries table)
-- **i18n keys:** `voters.partNo`, `voters.partName` in en/bn/hi
+  - `VoterListGroup` — upload metadata: `tenant_id`, `year`, `constituency`, `file_id`, `status`, `part_no`, `part_name`, `location_name`, `location_lat`, `location_lng`
+  - `VoterListEntry` — individual voter: `name`, `father_or_husband_name`, `relation_type`, `gender`, `age`, `voter_no`, `serial_no`, `epic_no`, `house_number`, `section`, `status`
+- **Frontend `/voter-upload` page:** UploadForm (PDF dropzone + year/language/part_no/part_name + Google Maps location search via PlaceAutocompleteElement), GroupsListView (table with delete button, auto-refresh polling every 5s while any group is processing), GroupDetailView (group info card with location + voter entries table)
+- **Frontend `/voters` page:** Shows ALL voter entries across groups with search (name/EPIC/voter_no), filters (gender, status, age range min/max, voter list group), pagination, PDF export (html2canvas + jsPDF), Excel export (SheetJS xlsx — up to 10K rows with translated column headers)
+- **Cross-upload EPIC deduplication:** Processor loads existing tenant EPICs from DB before insertion, skips entries whose EPIC already exists
+- **i18n keys:** `voters.partNo`, `voters.partName`, `voters.location`, `voters.searchLocation`, `voters.ageMin`, `voters.ageMax`, `voters.exportPdf`, `voters.exportExcel`, `voters.deleteTitle`, `voters.deleteDescription` in en/bn/hi
 
-## Voter Service (Textract + Bedrock)
+## Voter Service (Textract + Bedrock Vision)
 
 - **Service:** `services/voter-service/` — SQS consumer that processes uploaded voter list PDFs
-- **Docker image:** `python:3.12-slim` — lightweight, no GPU required
-- **Extraction pipeline:** Textract OCR → Bedrock LLM → JSON → DB
-  1. pymupdf splits PDF into single pages
-  2. Textract `detect_document_text` extracts raw text from each page
-  3. Pages grouped into chunks (`BEDROCK_VOTER_PAGES_PER_CHUNK`, default 5)
-  4. Each chunk sent to Bedrock LLM (`invoke_model`) which returns structured JSON voter records
-  5. Deduplicated by EPIC number and inserted into DB
+- **Docker image:** `python:3.12-slim` + Pillow — lightweight, no GPU required
+- **Dependencies:** pymupdf, aiobotocore, Pillow (image enhancement)
+- **Dual extraction pipeline by language:**
+  - **English (`en`):** Textract OCR → Bedrock text extraction (Textract `detect_document_text` → group into chunks → Bedrock `invoke_model` with text prompt)
+  - **Bengali/Hindi (`bn`/`hi`):** PDF → PNG strip images → Bedrock vision extraction (bypasses Textract which can't handle Bengali/Hindi script)
+- **Vision pipeline details (Bengali/Hindi):**
+  1. pymupdf splits PDF into single pages; first 2 pages skipped (cover/map — no voter data)
+  2. Each voter page split into 3 horizontal strips with 4% overlap (avoids cutting through entries)
+  3. Each strip enhanced via Pillow: grayscale → contrast boost (1.8x) → sharpening (2x zoom render)
+  4. Each strip sent individually to Bedrock `invoke_model` with base64 image + `VISION_SYSTEM_PROMPT`
+  5. 2-second delay between API calls to avoid Bedrock throttling
+  6. Vision retries: 4 attempts with exponential backoff (base 3: 3s, 9s, 27s, 81s)
+- **VISION_SYSTEM_PROMPT:** Describes Indian electoral roll box layout (serial number position, EPIC, voter name line, relative name line, age/gender/house number) to help model distinguish fields accurately
+- **Async generator pattern:** `extract_voters_from_pdf()` yields `list[dict]` per chunk; processor inserts to DB incrementally after each chunk (not all-or-nothing)
+- **Deduplication:** By both EPIC number AND serial number across chunks; handles overlap duplicates by preferring the version with more data (EPIC filled); cross-upload dedup loads all existing tenant EPICs from DB before insertion
+- **Phantom entry filter:** Rejects entries without serial_no or voter_no (misread page elements)
+- **Field truncation:** All string fields truncated to DB column limits (name: 255, section: 50, epic_no: 50, house_number: 100, etc.)
+- **Gender normalization:** Bengali পুরুষ/মহিলা and Hindi पुरुष/महिला → English Male/Female via `GENDER_NORMALIZE` dict
+- **Truncation recovery:** `_salvage_truncated_json()` recovers complete voter objects from truncated LLM responses (max_tokens: 65536)
 - **Model:** Configurable via `BEDROCK_VOTER_MODEL_ID` (default: Claude Sonnet)
 - **AWS credentials:** Shared IAM user for both Textract and Bedrock (`AWS_TEXTRACT_*` env vars)
 - **AWS permissions:** `textract:DetectDocumentText` + `bedrock:InvokeModel`
-- **Error handling:** Per-page Textract retries + per-chunk Bedrock retries (2x with exponential backoff); failed pages/chunks skipped
 - **SQS visibility timeout:** 600s (10 minutes) to accommodate OCR + LLM processing
 
 ## Adding a New AI Provider
@@ -245,6 +260,7 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - `<ExportableContainer title="...">` — Wraps content with PDF/PNG export buttons
 - `<DeleteConfirmDialog>` — Reusable confirmation dialog for delete actions
 - `<TagInput>` — Pill-style tag input (Enter/comma to add, Backspace/X to remove) used for hashtag/topic entry
+- `<LocationSearch>` — Google Places Autocomplete (`PlaceAutocompleteElement` API) for location search; falls back to plain text input when `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is missing
 - Sidebar items auto-filtered by user permissions
 
 ## Charts & Visualizations
@@ -269,16 +285,17 @@ All chart components live in `components/charts/` and are **pure presentational*
 
 ## Google Maps Heatmap
 
-- Uses `@vis.gl/react-google-maps` with `visualization` library
+- Uses `@vis.gl/react-google-maps` with `visualization` + `places` libraries
 - Requires `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` env var (shows warning if missing)
-- Components: `MapProvider` (APIProvider wrapper), `SentimentHeatmap` (map + heatmap layer), `HeatmapControls` (sentiment filter, date range)
+- Components: `MapProvider` (APIProvider wrapper, supports `fallthrough` prop for graceful degradation), `SentimentHeatmap` (map + heatmap layer), `HeatmapControls` (sentiment filter, date range)
 - Default center: India (20.59, 78.96), zoom 5
 
 ## Export System
 
-- **Client-side:** `html2canvas-pro` + `jsPDF` via `useExport()` hook — captures DOM to PDF/PNG
+- **Client-side PDF/PNG:** `html2canvas-pro` + `jsPDF` via `useExport()` hook — captures DOM to PDF/PNG
 - `ExportableContainer` component wraps content with export buttons (auto-hidden during capture via `data-export-hide`)
 - Pure utilities in `lib/export/client-export.ts`: `captureElement`, `canvasToPdf`, `canvasToPng`, `downloadBlob`
+- **Client-side Excel:** SheetJS `xlsx` library — used on `/voters` page to export up to 10K filtered entries as `.xlsx` with translated column headers; reuses `downloadBlob()` for file download
 
 ## Analytics Service Endpoints
 
@@ -444,8 +461,10 @@ All admin forms follow the same dialog-based pattern:
 
 Copy `.env.example` to `.env` for local dev. LocalStack provides SQS/SNS/S3 at `localhost:4566`.
 
-Required for heatmap: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+Required for heatmap + location search: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
 Required for Firebase: `NEXT_PUBLIC_FIREBASE_CONFIG` (JSON string with apiKey, authDomain, projectId, databaseURL)
+
+**Local frontend dev:** Copy `NEXT_PUBLIC_*` vars from root `.env` to `frontend/.env.local` — Next.js only reads client-side env vars from this file, not the root `.env`.
 
 ## Terraform Infrastructure
 
@@ -496,6 +515,7 @@ Current migrations:
 - `c5d3e4f6a7b9` — Add `voter_list_groups` and `voter_list_entries` tables
 - `d6e4f5a7b8c0` — Add `house_number` and `relation_type` columns to voter list entries
 - `e7f5a6b8c9d1` — Add `part_no` and `part_name` columns to voter list groups
+- `f8a6b9c0d1e2` — Add `location_name`, `location_lat`, `location_lng` columns to voter list groups
 
 ## Implementation Status
 
@@ -511,3 +531,4 @@ Current migrations:
 - [x] Phase 10 — Internationalization & Theming (next-intl with English/Bengali/Hindi locales, cookie-based locale switching, `[locale]` App Router segment, next-themes dark/light/system mode toggle, multi-script Google Fonts)
 - [x] Phase 11 — File Upload Ingestion (PDF/Excel file upload as data source, S3 storage with SSE, text extraction via pymupdf/openpyxl/xlrd, one-shot ingestion, magic byte validation, cross-tenant S3 key protection)
 - [x] Phase 12 — Voter List Processing (voter-service SQS worker with Textract OCR + Bedrock LLM structured extraction, PDF page splitting via pymupdf, Part No/Part Name upload metadata fields, voter list upload/list/detail endpoints)
+- [x] Phase 13 — Voter List Enhancements (Bedrock vision extraction for Bengali/Hindi with strip splitting + Pillow image enhancement, incremental DB inserts per chunk via async generator, cross-upload EPIC deduplication, serial_no dedup for strip overlaps, voter list delete with cascade, voters page with all-entries search/filters/age-range/PDF+Excel export, Google Maps PlaceAutocompleteElement location search on upload, auto-refresh polling during processing, gender normalization, field truncation, phantom entry filtering)

@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, ForeignKey, Index, text
+from sqlalchemy import Column, String, Integer, Float, ForeignKey, Index, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -38,6 +38,11 @@ class VoterListGroup(Base, TimestampMixin, TenantMixin):
 
     part_no = Column(String(50))
     part_name = Column(String(255))
+
+    # Location (from Google Maps Places search)
+    location_name = Column(String(500))
+    location_lat = Column(Float)
+    location_lng = Column(Float)
 
     # Relationship
     entries = relationship(

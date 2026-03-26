@@ -5,12 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface MapProviderProps {
   children: React.ReactNode;
+  /** If true, renders children as-is when API key is missing instead of error card */
+  fallthrough?: boolean;
 }
 
-export default function MapProvider({ children }: MapProviderProps) {
+export default function MapProvider({ children, fallthrough }: MapProviderProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   if (!apiKey) {
+    if (fallthrough) return <>{children}</>;
     return (
       <Card>
         <CardHeader>
@@ -24,7 +27,7 @@ export default function MapProvider({ children }: MapProviderProps) {
   }
 
   return (
-    <APIProvider apiKey={apiKey} libraries={['visualization']}>
+    <APIProvider apiKey={apiKey} libraries={['visualization', 'places']}>
       {children}
     </APIProvider>
   );

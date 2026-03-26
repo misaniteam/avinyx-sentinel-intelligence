@@ -32,6 +32,9 @@ async def process_voter_list(message: dict):
     language = message.get("language", "en")
     part_no = message.get("part_no")
     part_name = message.get("part_name")
+    location_name = message.get("location_name")
+    location_lat = message.get("location_lat")
+    location_lng = message.get("location_lng")
 
     tenant_context.set(tenant_id)
     factory = get_session_factory()
@@ -71,6 +74,9 @@ async def process_voter_list(message: dict):
                 status="processing",
                 part_no=part_no,
                 part_name=part_name,
+                location_name=location_name,
+                location_lat=location_lat,
+                location_lng=location_lng,
             )
             session.add(group)
             await session.commit()
@@ -113,13 +119,43 @@ async def process_voter_list(message: dict):
         await session.commit()
 
     # --------------------------------------------------
-    # 4. EXTRACT + INSERT PER CHUNK
+    # 4. LOAD EXISTING EPICs (cross-upload dedup)
+    # --------------------------------------------------
+    existing_epics: set[str] = set()
+    async with factory() as session:
+        # All EPICs for this tenant across all groups
+        tenant_groups = select(VoterListGroup.id).where(
+            VoterListGroup.tenant_id == tenant_id
+        )
+        result = await session.execute(
+            select(VoterListEntry.epic_no).where(
+                VoterListEntry.group_id.in_(tenant_groups),
+                VoterListEntry.epic_no.isnot(None),
+                VoterListEntry.epic_no != "",
+            )
+        )
+        existing_epics = {row[0] for row in result.all()}
+
+    if existing_epics:
+        logger.info("existing_epics_loaded", count=len(existing_epics))
+
+    # --------------------------------------------------
+    # 5. EXTRACT + INSERT PER CHUNK
     # --------------------------------------------------
     total_inserted = 0
 
     try:
         async for chunk_voters in extract_voters_from_pdf(pdf_bytes, language):
             if not chunk_voters:
+                continue
+
+            # Filter out voters whose EPIC already exists in other groups
+            chunk_voters = [
+                v for v in chunk_voters
+                if not v.get("epic_no") or v["epic_no"] not in existing_epics
+            ]
+            if not chunk_voters:
+                logger.info("chunk_all_duplicates_skipped")
                 continue
 
             # Insert this chunk to DB immediately
@@ -171,8 +207,13 @@ async def process_voter_list(message: dict):
 
                     await session.commit()
 
-                total_inserted += len(chunk_voters)
-                logger.info("db_chunk_inserted", chunk_voters=len(chunk_voters), total_so_far=total_inserted)
+                # Track inserted EPICs to prevent cross-upload duplicates
+                for v in chunk_voters:
+                    if v.get("epic_no"):
+                        existing_epics.add(v["epic_no"])
+
+                total_inserted += len(to_insert)
+                logger.info("db_chunk_inserted", chunk_voters=len(to_insert), updated=len(to_update), total_so_far=total_inserted)
 
             except Exception as e:
                 logger.error("db_chunk_insert_failed", error=str(e), total_saved=total_inserted)
