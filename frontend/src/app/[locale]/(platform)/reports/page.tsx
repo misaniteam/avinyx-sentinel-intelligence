@@ -85,7 +85,7 @@ export default function ReportsPage() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-2 h-4 w-4" /> {t("createReport")}
+              <Plus className="mr-1 h-4 w-4 text-theme-primary" /> {t("createReport")}
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -123,7 +123,7 @@ export default function ReportsPage() {
                 disabled={!name.trim() || createReport.isPending}
               >
                 {createReport.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin text-theme-primary" />
                 ) : null}
                 {tc("create")}
               </Button>

@@ -183,11 +183,11 @@ export function DashboardGrid() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-end gap-2">
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Plus className="mr-2 h-4 w-4" />
+            <Button>
+              <Plus className="mr-1 h-4 w-4 text-theme-primary" />
               {t('addWidget')}
             </Button>
           </DialogTrigger>
@@ -217,8 +217,8 @@ export function DashboardGrid() {
           </DialogContent>
         </Dialog>
 
-        <Button variant="outline" size="sm" onClick={handleResetLayout}>
-          <RotateCcw className="mr-2 h-4 w-4" />
+        <Button onClick={handleResetLayout}>
+          <RotateCcw className="mr-1 h-4 w-4 text-theme-primary" />
           {t('resetLayout')}
         </Button>
       </div>

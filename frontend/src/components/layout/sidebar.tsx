@@ -21,10 +21,21 @@ import {
   Shield,
   Building2,
   Server,
+  User,
+  ChevronRightIcon,
+  ChevronLeftIcon,
+  LogOut,
   Tags,
   ShieldCheck,
   Activity,
 } from "lucide-react";
+import { useTheme } from "next-themes";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { ProgressiveBlur } from "../ui/progressive-blur";
+import { useUIStore } from "@/store/uiStore";
+import { useAuth } from "@/lib/auth/auth-provider";
+import { Button } from "../ui/button";
 
 interface NavItem {
   titleKey: string;
@@ -61,7 +72,11 @@ const adminNavItems: NavItem[] = [
 
 const superAdminNavItems: NavItem[] = [
   { titleKey: "tenants", href: "/super-admin/tenants", icon: Shield },
-  { titleKey: "infrastructure", href: "/super-admin/infrastructure", icon: Server },
+  {
+    titleKey: "infrastructure",
+    href: "/super-admin/infrastructure",
+    icon: Server,
+  },
 ];
 
 function NavLink({ item, pathname, t }: { item: NavItem; pathname: string; t: (key: string) => string }) {
@@ -87,6 +102,12 @@ export function Sidebar() {
   const { hasPermission } = usePermission();
   const { isSuperAdmin } = useTenant();
   const t = useTranslations("navigation");
+  const { theme, setTheme } = useTheme();
+  const [showTopBlur, setShowTopBlur] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [showBottomBlur, setShowBottomBlur] = useState(false);
+  const { isOpen, toggleSidebar } = useUIStore();
+  const { user, logout } = useAuth();
 
   function filterByPermission(items: NavItem[]) {
     return items.filter((item) => {
@@ -114,6 +135,22 @@ export function Sidebar() {
   const visibleMain = filterByPermission(mainNavItems);
   const visibleAdmin = filterByPermission(adminNavItems);
 
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = el;
+
+    const newTop = scrollTop > 0;
+    const newBottom = scrollTop + clientHeight < scrollHeight - 1;
+
+    setShowTopBlur((prev) => (prev !== newTop ? newTop : prev));
+    setShowBottomBlur((prev) => (prev !== newBottom ? newBottom : prev));
+  };
+
+  useEffect(() => {
+    handleScroll();
+  }, []);
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-sidebar">
       <div className="flex h-16 items-center border-b px-6">
