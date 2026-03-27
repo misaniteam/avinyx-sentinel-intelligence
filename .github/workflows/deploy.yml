@@ -182,6 +182,12 @@ jobs:
           - service: notification-service
             context: .
             dockerfile: services/notification-service/Dockerfile
+          - service: logging-service
+            context: .
+            dockerfile: services/logging-service/Dockerfile
+          - service: voter-service
+            context: .
+            dockerfile: services/voter-service/Dockerfile
           - service: frontend
             context: frontend
             dockerfile: frontend/Dockerfile
@@ -281,6 +287,8 @@ jobs:
           - analytics-service
           - campaign-service
           - notification-service
+          - logging-service
+          - voter-service
           - frontend
     steps:
       - uses: actions/checkout@v4

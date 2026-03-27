@@ -90,6 +90,12 @@ variable "http_services" {
       memory        = 512
       desired_count = 1
     }
+    "logging-service" = {
+      port          = 8008
+      cpu           = 256
+      memory        = 512
+      desired_count = 1
+    }
   }
 }
 
@@ -109,6 +115,11 @@ variable "worker_services" {
     "ai-pipeline-service" = {
       cpu           = 1024
       memory        = 2048
+      desired_count = 1
+    }
+    "voter-service" = {
+      cpu           = 512
+      memory        = 1024
       desired_count = 1
     }
   }

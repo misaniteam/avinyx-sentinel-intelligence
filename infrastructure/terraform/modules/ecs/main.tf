@@ -347,6 +347,66 @@ resource "aws_ecs_task_definition" "worker" {
 }
 
 ################################################################################
+# Task Definition — Database Migration (one-off task)
+################################################################################
+
+resource "aws_cloudwatch_log_group" "migrate" {
+  name              = "/ecs/${var.project_name}-migrate"
+  retention_in_days = var.log_retention_days
+  tags              = var.tags
+}
+
+resource "aws_ecs_task_definition" "migrate" {
+  family                   = "${var.project_name}-migrate-${var.environment}"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.task_execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "migrate"
+      image     = "${var.ecr_repository_urls["auth-service"]}:latest"
+      essential = true
+
+      command = ["alembic", "upgrade", "head"]
+
+      environment = [
+        for key, value in merge(var.service_environment, {
+          SERVICE_NAME = "migrate"
+          ENVIRONMENT  = var.environment
+        }) : {
+          name  = key
+          value = value
+        }
+      ]
+
+      secrets = [
+        for key, arn in var.secrets_arns : {
+          name      = key
+          valueFrom = arn
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.migrate.name
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+    }
+  ])
+
+  tags = merge(var.tags, {
+    Service = "migrate"
+  })
+}
+
+################################################################################
 # ECS Services — HTTP
 ################################################################################
 

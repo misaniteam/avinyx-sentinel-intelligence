@@ -21,6 +21,8 @@ variable "service_names" {
     "analytics-service",
     "campaign-service",
     "notification-service",
+    "logging-service",
+    "voter-service",
     "frontend",
   ]
 }
