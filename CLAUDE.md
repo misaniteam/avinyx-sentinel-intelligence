@@ -16,13 +16,13 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 ```
 ├── packages/shared/          # sentinel_shared — Python package used by all backend services
 │   └── sentinel_shared/
-│       ├── models/           # SQLAlchemy models (11 models)
+│       ├── models/           # SQLAlchemy models (13 models)
 │       ├── schemas/          # Pydantic request/response schemas
 │       ├── auth/             # JWT, bcrypt password hashing, FastAPI RBAC dependencies
 │       ├── database/         # Async session, tenant context filtering
 │       ├── messaging/        # SQS client
 │       ├── storage/          # S3 async client (aiobotocore)
-│       ├── ai/               # Provider factory + Claude/OpenAI implementations
+│       ├── ai/               # Provider factory + Claude/OpenAI/Bedrock implementations
 │       ├── firebase/         # RTDB client
 │       ├── logging/          # Sentry SDK init, structlog processors, log shipper
 │       ├── data/             # Static data (wb_constituencies.py — 294 WB assembly constituencies)
@@ -212,11 +212,68 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - **AWS permissions:** `textract:DetectDocumentText` + `bedrock:InvokeModel`
 - **SQS visibility timeout:** 600s (10 minutes) to accommodate OCR + LLM processing
 
-## Adding a New AI Provider
+## AI Pipeline Service
+
+- **Service:** `services/ai-pipeline-service/main.py` — SQS consumer that processes `RawMediaItem` records through AI providers
+- **Queue:** `sentinel-ai-pipeline` — receives messages after ingestion worker completes
+- **Processing flow:**
+  1. Receives SQS message with `tenant_id`
+  2. Queries `RawMediaItem` records with `ai_status='pending'` for that tenant
+  3. Fetches tenant's active `TopicKeyword` records for sentiment guidance
+  4. Marks items as `processing`, calls tenant's configured AI provider via `analyze_and_extract(topic_keywords=...)`
+  5. Creates `SentimentAnalysis` records and upserts `MediaFeed` records with enriched content
+  6. Marks items as `completed` (or `failed` on error)
+- **Batch size:** 5 items per processing cycle
+- **AI status tracking:** `RawMediaItem.ai_status` column tracks pipeline state: `pending` → `processing` → `completed`/`failed`
+
+### AI Provider Base
+
+- **Base class:** `BaseAIProvider` in `sentinel_shared/ai/base.py`
+- **Abstract methods:** `analyze_sentiment()`, `extract_topics()`, `analyze_and_extract(topic_keywords=None)` (combined sentiment + content extraction with optional keyword guidance)
+- **Result models:** `SentimentResult` (score -1.0 to 1.0, label, topics, entities, summary), `ContentExtractionResult` (title, description, image_url, source_link, external_links)
+- **Keyword prompt builder:** `build_topic_keywords_prompt()` — generates prompt section from tenant's topic keyword definitions, instructing AI to weight sentiment toward defined directions when content matches keywords
+
+### Registered Providers
+
+- **Claude:** `ClaudeProvider` — Uses `claude-sonnet-4-20250514`, Anthropic messaging API
+- **OpenAI:** `OpenAIProvider` — Uses `gpt-4o`, JSON response format for structured outputs
+- **Bedrock:** `BedrockProvider` — Uses aiobotocore async client, configurable model via tenant settings, exponential backoff retry (4 attempts), 1s inter-request delay to avoid throttling
+
+### Adding a New AI Provider
 
 1. Create `packages/shared/sentinel_shared/ai/{provider}_provider.py`
-2. Implement `BaseAIProvider` (analyze_sentiment, extract_topics)
+2. Implement `BaseAIProvider` (`analyze_sentiment`, `extract_topics`, `analyze_and_extract`)
 3. Register via `AIProviderFactory.register("name", ProviderClass)` in ai-pipeline-service main.py
+
+## Media Feeds
+
+- **Model:** `MediaFeed` in `sentinel_shared/models/media.py` — stores AI-enriched, analyzed media content
+  - Foreign key to `RawMediaItem` via `media_item_id` (one-to-one, unique)
+  - Denormalized fields: `platform`, `author`, `published_at`, `engagement`
+  - AI-extracted: `title`, `description`, `image_url`, `source_link`, `external_links`
+  - Sentiment: `sentiment_score`, `sentiment_label`, `priority_score`
+  - AI metadata: `ai_provider`, `topics`, `entities`, `summary`
+- **Backend endpoint:** `GET /api/campaigns/media-feeds` (`services/campaign-service/routers/media_feeds.py`)
+  - Filters: `platform` (optional), `skip`/`limit` pagination (max 100)
+  - Permission: `media:read`
+- **Frontend page:** `/media-feeds` — Card-based view showing AI-enriched content with sentiment badges, topic pills, images, and external links
+- **Frontend hook:** `useMediaFeeds()` in `lib/api/hooks.ts`
+
+## Topic Keywords (Sentiment Guidance)
+
+- **Purpose:** Tenants define topics with associated keywords and sentiment direction (positive/negative/neutral) to guide AI pipeline sentiment classification
+- **Model:** `TopicKeyword` in `sentinel_shared/models/topic_keyword.py` — tenant-scoped with name, keywords (JSONB array), sentiment_direction, category, is_active
+- **Unique constraint:** `uq_topic_keywords_tenant_name` — topic names unique per tenant
+- **Schemas:** `TopicKeywordCreate`, `TopicKeywordUpdate`, `TopicKeywordResponse` in `sentinel_shared/schemas/topic_keyword.py` — validates max 100 keywords per topic, `extra="forbid"`
+- **Backend CRUD:** `services/campaign-service/routers/topic_keywords.py` — 5 endpoints at `/api/campaigns/topic-keywords`
+  - `GET /` — List (filterable by `is_active`, `category`, `search`), permission: `topics:read`
+  - `POST /` — Create (validates unique name per tenant), permission: `topics:write`
+  - `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` — Standard CRUD
+- **AI integration:** `ai-pipeline-service` fetches active topic keywords before calling AI provider; `build_topic_keywords_prompt()` in `sentinel_shared/ai/base.py` generates prompt context instructing the AI to weight sentiment toward the defined direction when content matches keywords (guidance, not hard override)
+- **Frontend page:** `/admin/topics` — Table view with name, keyword pills, sentiment direction badges, category, active status, search/filter, dialog-based CRUD using `TagInput` for keyword entry
+- **Frontend hooks:** `useTopicKeywords()`, `useCreateTopicKeyword()`, `useUpdateTopicKeyword()`, `useDeleteTopicKeyword()` in `lib/api/hooks.ts`
+- **Permissions:** `topics:read`, `topics:write`
+- **i18n keys:** `admin.topics.*` in en/bn/hi, `navigation.topics` in en/bn/hi
 
 ## Frontend State Management
 
@@ -374,6 +431,7 @@ All admin forms follow the same dialog-based pattern:
 - `/admin/roles` — Table view with search, RoleDialog (create/edit), PermissionSelect with per-module select all/deselect all + global select all + "X of Y selected" counter
 - `/admin/data-sources` — Table view with platform badges/icons, DataSourceDialog (create/edit) with General + Credentials sections, per-platform config forms (password inputs for secrets, tag inputs for hashtags/topics), active/inactive toggle, SSRF-safe URL validation
 - `/admin/ingested-data` — Read-only table of raw ingested items with platform filter, content search, date range, pagination, expandable row details
+- `/admin/topics` — TopicKeywordDialog (create/edit), TagInput for keywords, sentiment direction select, category, active toggle
 - `/admin/settings` — AI provider form, notification prefs, general settings
 - `/admin/workers` — Live worker status cards via Firebase RTDB
 - `/super-admin/tenants` — TenantDialog (onboard/edit), suspend/activate, constituency assignment
@@ -443,8 +501,8 @@ All admin forms follow the same dialog-based pattern:
 - **Backend:** `GET /ingestion/ingested-data` (`services/ingestion-service/routers/ingested_data.py`)
   - Filters: `platform`, `content` (search), `start_date`, `end_date`
   - Pagination: `skip`/`limit` (default 50, max 100)
-  - Returns: `IngestedDataResponse` with items (id, platform, external_id, content, author, published_at, url, geo_region, engagement, created_at) + total count
-- **Frontend page:** `/admin/ingested-data` — Read-only table view with platform filter dropdown, content search, date range, pagination, and expandable row details (full content, URL link, engagement breakdown)
+  - Returns: `IngestedDataResponse` with items (id, platform, external_id, content, author, published_at, url, geo_region, engagement, ai_status, created_at) + total count
+- **Frontend page:** `/admin/ingested-data` — Read-only table view with platform filter dropdown, content search, date range, pagination, AI status badges (pending/processing/completed/failed), and expandable row details (full content, URL link, engagement breakdown)
 - **Frontend hook:** `useIngestedData()` in `lib/api/hooks.ts`, query key `ingestedData`
 - **Sidebar:** "Ingested Data" link with `FileSearch` icon, gated by `data_sources:read`
 - **Permission:** `data_sources:read`
@@ -516,6 +574,10 @@ Current migrations:
 - `d6e4f5a7b8c0` — Add `house_number` and `relation_type` columns to voter list entries
 - `e7f5a6b8c9d1` — Add `part_no` and `part_name` columns to voter list groups
 - `f8a6b9c0d1e2` — Add `location_name`, `location_lat`, `location_lng` columns to voter list groups
+- `g9b7c0d1e2f3` — Increase `raw_media_items` column lengths (external_id 255→1024, author/author_id 255→512)
+- `h0c8d1e2f3g4` — Add `media_feeds` table (AI-enriched content with sentiment, topics, extracted metadata)
+- `i1d9e2f3g4h5` — Add `ai_status` column to `raw_media_items` (indexed, default 'pending')
+- `j2e0f3g4h5i6` — Add `topic_keywords` table (tenant-scoped, unique name constraint)
 
 ## Implementation Status
 
@@ -532,3 +594,5 @@ Current migrations:
 - [x] Phase 11 — File Upload Ingestion (PDF/Excel file upload as data source, S3 storage with SSE, text extraction via pymupdf/openpyxl/xlrd, one-shot ingestion, magic byte validation, cross-tenant S3 key protection)
 - [x] Phase 12 — Voter List Processing (voter-service SQS worker with Textract OCR + Bedrock LLM structured extraction, PDF page splitting via pymupdf, Part No/Part Name upload metadata fields, voter list upload/list/detail endpoints)
 - [x] Phase 13 — Voter List Enhancements (Bedrock vision extraction for Bengali/Hindi with strip splitting + Pillow image enhancement, incremental DB inserts per chunk via async generator, cross-upload EPIC deduplication, serial_no dedup for strip overlaps, voter list delete with cascade, voters page with all-entries search/filters/age-range/PDF+Excel export, Google Maps PlaceAutocompleteElement location search on upload, auto-refresh polling during processing, gender normalization, field truncation, phantom entry filtering)
+- [x] Phase 14 — AI Pipeline & Media Feeds (ai-pipeline-service SQS consumer with multi-provider support via factory pattern, Claude/OpenAI/Bedrock provider implementations with sentiment + content extraction, MediaFeed model for AI-enriched content, ai_status tracking on RawMediaItem, media feeds endpoint with sentiment/topics display, Bedrock provider with exponential backoff retry, ingested data AI status badges)
+- [x] Phase 15 — Topic Keywords & Sentiment Guidance (TopicKeyword model for tenant-defined topics with keywords and sentiment direction, CRUD router in campaign-service, AI pipeline integration via prompt augmentation with build_topic_keywords_prompt, admin page with TagInput keyword entry and sentiment direction badges, i18n in en/bn/hi)

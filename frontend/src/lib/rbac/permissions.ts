@@ -11,6 +11,7 @@ export const PERMISSION_GROUPS = [
   { resource: "settings", actions: ["read", "write"] },
   { resource: "workers", actions: ["read", "manage"] },
   { resource: "data_sources", actions: ["read", "write"] },
+  { resource: "topics", actions: ["read", "write"] },
 ] as const;
 
 export function formatPermission(resource: string, action: string): string {

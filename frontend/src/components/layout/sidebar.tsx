@@ -21,6 +21,7 @@ import {
   Shield,
   Building2,
   Server,
+  Tags,
 } from "lucide-react";
 
 interface NavItem {
@@ -41,6 +42,7 @@ const tenantNavItems: NavItem[] = [
   { titleKey: "campaigns", href: "/campaigns", icon: Megaphone, permission: "campaigns:read" },
   { titleKey: "dataSources", href: "/admin/data-sources", icon: Database, permission: "data_sources:read" },
   { titleKey: "ingestedData", href: "/admin/ingested-data", icon: FileSearch, permission: "data_sources:read" },
+  { titleKey: "topics", href: "/admin/topics", icon: Tags, permission: "topics:read" },
   { titleKey: "admin", href: "/admin/users", icon: Settings, permission: "users:read" },
 ];
 

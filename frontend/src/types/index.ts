@@ -57,13 +57,24 @@ export interface Voter {
 export interface MediaFeedItem {
   id: string;
   platform: string;
-  content: string | null;
+  title: string | null;
+  description: string | null;
+  image_url: string | null;
+  source_link: string | null;
+  external_links: string[];
   author: string | null;
   published_at: string | null;
-  url: string | null;
   engagement: Record<string, number>;
   sentiment_score: number | null;
   sentiment_label: string | null;
+  priority_score: number | null;
+  topics: string[];
+  summary: string | null;
+}
+
+export interface MediaFeedListResponse {
+  items: MediaFeedItem[];
+  total: number;
 }
 
 export interface DataSource {
@@ -167,6 +178,7 @@ export interface IngestedDataItem {
   url: string | null;
   geo_region: string | null;
   engagement: Record<string, number>;
+  ai_status: "pending" | "processing" | "completed" | "failed";
   created_at: string;
 }
 
@@ -268,6 +280,17 @@ export interface VoterListUploadResponse {
   part_no: string | null;
   part_name: string | null;
   status: string;
+}
+
+export interface TopicKeyword {
+  id: string;
+  name: string;
+  keywords: string[];
+  sentiment_direction: "positive" | "negative" | "neutral";
+  category: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface TenantOnboardRequest {
