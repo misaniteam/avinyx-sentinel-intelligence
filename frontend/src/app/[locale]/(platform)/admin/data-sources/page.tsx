@@ -98,7 +98,7 @@ export default function AdminDataSourcesPage() {
         </h1>
         <PermissionGate permission="data_sources:write">
           <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" /> {t("addDataSource")}
+            <Plus className="mr-1 h-4 w-4 text-theme-primary" /> {t("addDataSource")}
           </Button>
         </PermissionGate>
       </div>
@@ -139,7 +139,7 @@ export default function AdminDataSourcesPage() {
           </p>
           <PermissionGate permission="data_sources:write">
             <Button onClick={handleCreate}>
-              <Plus className="mr-2 h-4 w-4" /> {t("addDataSource")}
+              <Plus className="mr-1 h-4 w-4 text-theme-primary" /> {t("addDataSource")}
             </Button>
           </PermissionGate>
         </div>
@@ -205,14 +205,14 @@ export default function AdminDataSourcesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleEdit(ds)}>
-                              <Pencil className="mr-2 h-4 w-4" />
+                              <Pencil className="mr-1 h-4 w-4 text-theme-primary" />
                               {tc("edit")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDeleteClick(ds)}
                               className="text-destructive"
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
+                              <Trash2 className="mr-1 h-4 w-4 text-theme-primary" />
                               {tc("delete")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>

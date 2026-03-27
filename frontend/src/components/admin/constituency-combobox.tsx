@@ -86,7 +86,7 @@ export function ConstituencyCombobox({
                   >
                     <Check
                       className={cn(
-                        "mr-2 h-4 w-4",
+                        "mr-1 h-4 w-4 text-theme-primary",
                         value === c.code ? "opacity-100" : "opacity-0"
                       )}
                     />
