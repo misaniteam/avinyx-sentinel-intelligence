@@ -223,7 +223,10 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
   4. Marks items as `processing`, calls tenant's configured AI provider via `analyze_and_extract(topic_keywords=...)`
   5. Creates `SentimentAnalysis` records and upserts `MediaFeed` records with enriched content
   6. Marks items as `completed` (or `failed` on error)
-- **Batch size:** 5 items per processing cycle
+- **Batch size:** 3 items per processing cycle
+- **Inter-batch delay:** 10s cooldown between batches to avoid Bedrock throttling
+- **Batch loop:** Processes ALL pending items for a tenant per SQS message (loops until none remain), not just one batch
+- **Failure handling:** On AI provider error, items are marked `failed` (not reset to `pending`) to prevent retry storms
 - **AI status tracking:** `RawMediaItem.ai_status` column tracks pipeline state: `pending` → `processing` → `completed`/`failed`
 
 ### AI Provider Base
@@ -237,7 +240,11 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 
 - **Claude:** `ClaudeProvider` — Uses `claude-sonnet-4-20250514`, Anthropic messaging API
 - **OpenAI:** `OpenAIProvider` — Uses `gpt-4o`, JSON response format for structured outputs
-- **Bedrock:** `BedrockProvider` — Uses aiobotocore async client, configurable model via tenant settings, exponential backoff retry (4 attempts), 1s inter-request delay to avoid throttling
+- **Bedrock:** `BedrockProvider` — Uses aiobotocore async client, configurable model via tenant settings
+  - **Throttle detection:** `_is_throttling_error()` identifies Bedrock rate limit errors by error message patterns
+  - **Retry backoff:** 5 retries — throttle errors use aggressive backoff (4s, 8s, 16s, 32s, 64s), other errors use standard (2s, 4s, 8s, 16s, 32s)
+  - **Inter-request delay:** 3s between API calls within a batch
+  - **Per-item error handling:** All methods (`analyze_sentiment`, `extract_topics`, `analyze_and_extract`) catch exceptions per-item with fallback results instead of failing the entire batch; throttle errors trigger a 30s cooldown before the next item
 
 ### Adding a New AI Provider
 
@@ -318,6 +325,7 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - `<DeleteConfirmDialog>` — Reusable confirmation dialog for delete actions
 - `<TagInput>` — Pill-style tag input (Enter/comma to add, Backspace/X to remove) used for hashtag/topic entry
 - `<LocationSearch>` — Google Places Autocomplete (`PlaceAutocompleteElement` API) for location search; falls back to plain text input when `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is missing
+- Sidebar split into two groups: **Main navigation** (Dashboard, Voters, Voter Upload, Heatmap, Media Feeds, Analytics, Reports, Campaigns) and **Administration** section with separator label (Data Sources, Ingested Data, Topics, Users, Roles, Workers, Settings)
 - Sidebar items auto-filtered by user permissions
 
 ## Charts & Visualizations
@@ -502,7 +510,7 @@ All admin forms follow the same dialog-based pattern:
   - Filters: `platform`, `content` (search), `start_date`, `end_date`
   - Pagination: `skip`/`limit` (default 50, max 100)
   - Returns: `IngestedDataResponse` with items (id, platform, external_id, content, author, published_at, url, geo_region, engagement, ai_status, created_at) + total count
-- **Frontend page:** `/admin/ingested-data` — Read-only table view with platform filter dropdown, content search, date range, pagination, AI status badges (pending/processing/completed/failed), and expandable row details (full content, URL link, engagement breakdown)
+- **Frontend page:** `/admin/ingested-data` — Read-only table view (`table-fixed` layout with explicit column widths, `overflow-hidden text-ellipsis` on content/author/region columns) with platform filter dropdown, content search, date range, pagination, AI status badges (pending/processing/completed/failed), and expandable row details (full content, URL link, engagement breakdown)
 - **Frontend hook:** `useIngestedData()` in `lib/api/hooks.ts`, query key `ingestedData`
 - **Sidebar:** "Ingested Data" link with `FileSearch` icon, gated by `data_sources:read`
 - **Permission:** `data_sources:read`

@@ -232,18 +232,18 @@ export default function AdminIngestedDataPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-md border">
-            <table className="w-full text-sm">
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium w-8"></th>
-                  <th className="px-4 py-3 text-left font-medium">{tc("platform")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("content")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("author")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("published")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{tc("region")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{tc("status")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("ingestedAt")}</th>
+                  <th className="px-4 py-3 text-left font-medium w-10"></th>
+                  <th className="px-4 py-3 text-left font-medium w-28">{tc("platform")}</th>
+                  <th className="px-4 py-3 text-left font-medium w-[40%]">{t("content")}</th>
+                  <th className="px-4 py-3 text-left font-medium w-28">{t("author")}</th>
+                  <th className="px-4 py-3 text-left font-medium w-36">{t("published")}</th>
+                  <th className="px-4 py-3 text-left font-medium w-28">{tc("region")}</th>
+                  <th className="px-4 py-3 text-left font-medium w-24">{tc("status")}</th>
+                  <th className="px-4 py-3 text-left font-medium w-36">{t("ingestedAt")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,10 +274,10 @@ export default function AdminIngestedDataPage() {
                             {platform.label}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 max-w-xs">{truncate(item.content, 120)}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{item.author || "—"}</td>
+                        <td className="px-4 py-3 overflow-hidden text-ellipsis whitespace-nowrap">{truncate(item.content, 120)}</td>
+                        <td className="px-4 py-3 text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap">{item.author || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(item.published_at)}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{item.geo_region || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap">{item.geo_region || "—"}</td>
                         <td className="px-4 py-3">
                           <Badge variant="secondary" className={
                             item.ai_status === "completed" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" :
