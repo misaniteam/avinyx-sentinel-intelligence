@@ -17,7 +17,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "sentinel-terraform-state"
+    bucket         = "avinyx-sentinel-terraform-state"
     key            = "infrastructure/terraform.tfstate"
     region         = "ap-south-1"
     dynamodb_table = "sentinel-terraform-locks"
