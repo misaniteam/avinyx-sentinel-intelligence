@@ -60,6 +60,8 @@
     "feedUrls": "फ़ीड URLs",
     "keywords": "कीवर्ड",
     "sources": "स्रोत",
+    "categories": "श्रेणियां",
+    "domains": "डोमेन",
     "language": "भाषा",
     "clientId": "क्लाइंट ID",
     "clientSecret": "क्लाइंट सीक्रेट",
@@ -71,6 +73,8 @@
     "feedUrls": "प्रति पंक्ति एक URL",
     "keywords": "कॉमा से अलग कीवर्ड",
     "sources": "कॉमा से अलग स्रोत IDs",
+    "categories": "business, tech, politics, health",
+    "domains": "example.com, bbc.co.uk",
     "subreddits": "कॉमा से अलग सबरेडिट नाम"
   },
   "languages": {

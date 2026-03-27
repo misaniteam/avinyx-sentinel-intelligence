@@ -1,7 +1,9 @@
 import asyncio
 import json
+import uuid
 import traceback
 import structlog
+from datetime import datetime, timezone
 from sentinel_shared.config import get_settings
 from sentinel_shared.messaging.sqs import SQSClient
 from sentinel_shared.database.session import get_session_factory, tenant_context
@@ -12,8 +14,9 @@ from sentinel_shared.ai.factory import AIProviderFactory
 from sentinel_shared.ai.claude_provider import ClaudeProvider
 from sentinel_shared.ai.openai_provider import OpenAIProvider
 from sentinel_shared.ai.bedrock_provider import BedrockProvider
+from sentinel_shared.firebase.client import update_worker_status
 from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
-from sqlalchemy import select, update
+from sqlalchemy import select, update as sa_update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 logger = structlog.get_logger()
@@ -33,7 +36,7 @@ async def process_batch(session, factory, provider, ai_provider_name, tenant_id,
 
     # Mark items as processing
     await session.execute(
-        update(RawMediaItem)
+        sa_update(RawMediaItem)
         .where(RawMediaItem.id.in_(item_ids))
         .values(ai_status="processing")
     )
@@ -50,7 +53,7 @@ async def process_batch(session, factory, provider, ai_provider_name, tenant_id,
             # Mark items as failed — don't set back to pending to avoid retry storms
             logger.error("ai_provider_failed", tenant_id=tenant_id, error=str(e), items=len(items))
             await process_session.execute(
-                update(RawMediaItem)
+                sa_update(RawMediaItem)
                 .where(RawMediaItem.id.in_(item_ids))
                 .values(ai_status="failed")
             )
@@ -103,7 +106,7 @@ async def process_batch(session, factory, provider, ai_provider_name, tenant_id,
 
         # Mark items as completed
         await process_session.execute(
-            update(RawMediaItem)
+            sa_update(RawMediaItem)
             .where(RawMediaItem.id.in_(item_ids))
             .values(ai_status="completed")
         )
@@ -117,6 +120,18 @@ async def process_message(message: dict):
 
     tenant_context.set(tenant_id)
     factory = get_session_factory()
+    worker_run_id = f"ai-{uuid.uuid4()}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    await update_worker_status(tenant_id, worker_run_id, {
+        "worker_run_id": worker_run_id,
+        "tenant_id": tenant_id,
+        "platform": "ai-pipeline",
+        "status": "running",
+        "items_fetched": 0,
+        "started_at": now,
+        "updated_at": now,
+    })
 
     async with factory() as session:
         # Get tenant settings for AI provider
@@ -124,6 +139,11 @@ async def process_message(message: dict):
         tenant = tenant_result.scalar_one_or_none()
         if not tenant:
             logger.error("tenant_not_found", tenant_id=tenant_id)
+            await update_worker_status(tenant_id, worker_run_id, {
+                "status": "failed",
+                "error": "Tenant not found",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            })
             return
 
         ai_provider_name = (tenant.settings or {}).get("ai_provider", "bedrock")
@@ -145,34 +165,57 @@ async def process_message(message: dict):
 
         # Process ALL pending items in batches (not just one batch per message)
         total_processed = 0
-        while True:
-            items_result = await session.execute(
-                select(RawMediaItem)
-                .where(
-                    RawMediaItem.tenant_id == tenant_id,
-                    RawMediaItem.ai_status == "pending",
+        try:
+            while True:
+                items_result = await session.execute(
+                    select(RawMediaItem)
+                    .where(
+                        RawMediaItem.tenant_id == tenant_id,
+                        RawMediaItem.ai_status == "pending",
+                    )
+                    .order_by(RawMediaItem.created_at)
+                    .limit(BATCH_SIZE)
                 )
-                .order_by(RawMediaItem.created_at)
-                .limit(BATCH_SIZE)
-            )
-            items = items_result.scalars().all()
+                items = items_result.scalars().all()
 
-            if not items:
-                break
+                if not items:
+                    break
 
-            await process_batch(session, factory, provider, ai_provider_name, tenant_id, topic_keywords, items)
-            total_processed += len(items)
+                await process_batch(session, factory, provider, ai_provider_name, tenant_id, topic_keywords, items)
+                total_processed += len(items)
 
-            # Delay between batches to avoid Bedrock throttling
-            await asyncio.sleep(INTER_BATCH_DELAY)
+                await update_worker_status(tenant_id, worker_run_id, {
+                    "items_fetched": total_processed,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                })
 
-            # Re-query with a fresh session state to pick up remaining pending items
-            await session.rollback()
+                # Delay between batches to avoid Bedrock throttling
+                await asyncio.sleep(INTER_BATCH_DELAY)
+
+                # Re-query with a fresh session state to pick up remaining pending items
+                await session.rollback()
+        except Exception as e:
+            await update_worker_status(tenant_id, worker_run_id, {
+                "status": "failed",
+                "error": str(e)[:500],
+                "items_fetched": total_processed,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            })
+            raise
 
         if total_processed == 0:
             logger.debug("no_pending_items", tenant_id=tenant_id)
+            await update_worker_status(tenant_id, worker_run_id, {
+                "status": "completed",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            })
         else:
             logger.info("analysis_complete", tenant_id=tenant_id, total_items=total_processed)
+            await update_worker_status(tenant_id, worker_run_id, {
+                "status": "completed",
+                "items_fetched": total_processed,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            })
 
 
 async def main():

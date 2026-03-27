@@ -1,6 +1,8 @@
 import asyncio
 import json
+import uuid
 import structlog
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sentinel_shared.config import get_settings
@@ -8,6 +10,7 @@ from sentinel_shared.messaging.sqs import SQSClient
 from sentinel_shared.database.session import get_session_factory, tenant_context
 from sentinel_shared.models.tenant import Tenant
 from sentinel_shared.data.wb_constituencies import WB_CONSTITUENCY_BY_CODE
+from sentinel_shared.firebase.client import update_worker_status
 from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
 from handlers import get_handler
 
@@ -21,10 +24,28 @@ async def process_message(message: dict):
     since = body.get("since")
 
     tenant_context.set(tenant_id)
+    worker_run_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Report running status to Firebase
+    await update_worker_status(tenant_id, worker_run_id, {
+        "worker_run_id": worker_run_id,
+        "tenant_id": tenant_id,
+        "platform": platform,
+        "status": "running",
+        "items_fetched": 0,
+        "started_at": now,
+        "updated_at": now,
+    })
 
     handler = get_handler(platform)
     if not handler:
         logger.error("unknown_platform", platform=platform)
+        await update_worker_status(tenant_id, worker_run_id, {
+            "status": "failed",
+            "error": f"Unknown platform: {platform}",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
         return
 
     try:
@@ -50,6 +71,11 @@ async def process_message(message: dict):
 
         items = await handler.fetch(config, since, location_context=location_context)
         logger.info("fetched_items", platform=platform, count=len(items), tenant_id=tenant_id)
+
+        await update_worker_status(tenant_id, worker_run_id, {
+            "items_fetched": len(items),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
 
         # Set geo data on items that lack it
         if location_context:
@@ -84,8 +110,19 @@ async def process_message(message: dict):
                 "tenant_id": tenant_id,
                 "media_item_ids": item_ids,
             })
+
+        await update_worker_status(tenant_id, worker_run_id, {
+            "status": "completed",
+            "items_fetched": len(saved_items),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
     except Exception as e:
         logger.error("processing_failed", platform=platform, error=str(e), tenant_id=tenant_id)
+        await update_worker_status(tenant_id, worker_run_id, {
+            "status": "failed",
+            "error": str(e)[:500],
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
         raise
 
 async def main():

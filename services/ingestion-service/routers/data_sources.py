@@ -42,7 +42,7 @@ PLATFORM_CONFIG_SCHEMA: dict[str, dict] = {
     },
     "news_api": {
         "required": ["api_key"],
-        "optional": ["keywords", "sources", "language"],
+        "optional": ["keywords", "categories", "domains", "language"],
     },
     "reddit": {
         "required": ["client_id", "client_secret"],
