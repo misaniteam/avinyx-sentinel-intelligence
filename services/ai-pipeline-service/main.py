@@ -26,92 +26,89 @@ AIProviderFactory.register("claude", ClaudeProvider)
 AIProviderFactory.register("openai", OpenAIProvider)
 AIProviderFactory.register("bedrock", BedrockProvider)
 
-BATCH_SIZE = 3
-INTER_BATCH_DELAY = 10  # seconds between batches to avoid Bedrock throttling
+INTER_ITEM_DELAY = 5  # seconds between individual API calls to avoid Bedrock throttling
 
 
-async def process_batch(session, factory, provider, ai_provider_name, tenant_id, topic_keywords, items):
-    """Process a single batch of items through the AI provider."""
-    item_ids = [item.id for item in items]
+async def process_single_item(factory, provider, ai_provider_name, tenant_id, topic_keywords, item):
+    """Process a single item through the AI provider."""
+    async with factory() as session:
+        # Mark item as processing
+        await session.execute(
+            sa_update(RawMediaItem)
+            .where(RawMediaItem.id == item.id)
+            .values(ai_status="processing")
+        )
+        await session.commit()
 
-    # Mark items as processing
-    await session.execute(
-        sa_update(RawMediaItem)
-        .where(RawMediaItem.id.in_(item_ids))
-        .values(ai_status="processing")
-    )
-    await session.commit()
-
-    # Process outside the marking transaction
-    async with factory() as process_session:
-        texts = [item.content or "" for item in items]
-        raw_payloads = [item.raw_payload for item in items]
-
+    async with factory() as session:
         try:
-            results = await provider.analyze_and_extract(texts, raw_payloads, topic_keywords=topic_keywords or None)
+            results = await provider.analyze_and_extract(
+                [item.content or ""],
+                [item.raw_payload],
+                topic_keywords=topic_keywords or None,
+            )
+            sentiment, extraction = results[0]
         except Exception as e:
-            # Mark items as failed — don't set back to pending to avoid retry storms
-            logger.error("ai_provider_failed", tenant_id=tenant_id, error=str(e), items=len(items))
-            await process_session.execute(
+            logger.error("ai_item_failed", tenant_id=tenant_id, item_id=str(item.id), error=str(e))
+            await session.execute(
                 sa_update(RawMediaItem)
-                .where(RawMediaItem.id.in_(item_ids))
+                .where(RawMediaItem.id == item.id)
                 .values(ai_status="failed")
             )
-            await process_session.commit()
-            return
+            await session.commit()
+            return False
 
-        for item, (sentiment, extraction) in zip(items, results):
-            entities = [e if isinstance(e, dict) else {"name": str(e)} for e in sentiment.entities]
+        entities = [e if isinstance(e, dict) else {"name": str(e)} for e in sentiment.entities]
 
-            # Create SentimentAnalysis
-            analysis = SentimentAnalysis(
-                tenant_id=tenant_id,
-                media_item_id=item.id,
-                ai_provider=ai_provider_name,
-                sentiment_score=sentiment.sentiment_score,
-                sentiment_label=sentiment.sentiment_label,
-                topics=sentiment.topics,
-                entities=entities,
-                summary=sentiment.summary,
-            )
-            process_session.add(analysis)
+        # Create SentimentAnalysis
+        analysis = SentimentAnalysis(
+            tenant_id=tenant_id,
+            media_item_id=item.id,
+            ai_provider=ai_provider_name,
+            sentiment_score=sentiment.sentiment_score,
+            sentiment_label=sentiment.sentiment_label,
+            topics=sentiment.topics,
+            entities=entities,
+            summary=sentiment.summary,
+        )
+        session.add(analysis)
 
-            # Upsert MediaFeed record
-            feed_values = dict(
-                tenant_id=tenant_id,
-                media_item_id=item.id,
-                platform=item.platform,
-                author=item.author,
-                published_at=item.published_at,
-                engagement=item.engagement or {},
-                title=extraction.title or None,
-                description=extraction.description or None,
-                image_url=extraction.image_url or None,
-                source_link=extraction.source_link or item.url,
-                external_links=extraction.external_links,
-                sentiment_score=sentiment.sentiment_score,
-                sentiment_label=sentiment.sentiment_label,
-                ai_provider=ai_provider_name,
-                topics=sentiment.topics,
-                entities=entities,
-                summary=sentiment.summary,
-            )
-            stmt = pg_insert(MediaFeed).values(**feed_values)
-            update_keys = [k for k in feed_values if k != "media_item_id"]
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["media_item_id"],
-                set_={k: stmt.excluded[k] for k in update_keys},
-            )
-            await process_session.execute(stmt)
+        # Upsert MediaFeed record
+        feed_values = dict(
+            tenant_id=tenant_id,
+            media_item_id=item.id,
+            platform=item.platform,
+            author=item.author,
+            published_at=item.published_at,
+            engagement=item.engagement or {},
+            title=extraction.title or None,
+            description=extraction.description or None,
+            image_url=extraction.image_url or None,
+            source_link=extraction.source_link or item.url,
+            external_links=extraction.external_links,
+            sentiment_score=sentiment.sentiment_score,
+            sentiment_label=sentiment.sentiment_label,
+            ai_provider=ai_provider_name,
+            topics=sentiment.topics,
+            entities=entities,
+            summary=sentiment.summary,
+        )
+        stmt = pg_insert(MediaFeed).values(**feed_values)
+        update_keys = [k for k in feed_values if k != "media_item_id"]
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["media_item_id"],
+            set_={k: stmt.excluded[k] for k in update_keys},
+        )
+        await session.execute(stmt)
 
-        # Mark items as completed
-        await process_session.execute(
+        # Mark item as completed
+        await session.execute(
             sa_update(RawMediaItem)
-            .where(RawMediaItem.id.in_(item_ids))
+            .where(RawMediaItem.id == item.id)
             .values(ai_status="completed")
         )
-        await process_session.commit()
-        logger.info("batch_complete", tenant_id=tenant_id, items=len(items))
+        await session.commit()
+        return True
 
 
 async def process_message(message: dict):
@@ -163,59 +160,66 @@ async def process_message(message: dict):
             for tk in tk_result.scalars().all()
         ]
 
-        # Process ALL pending items in batches (not just one batch per message)
-        total_processed = 0
-        try:
-            while True:
-                items_result = await session.execute(
+    # Process items one by one
+    total_processed = 0
+    total_failed = 0
+    try:
+        while True:
+            async with factory() as session:
+                result = await session.execute(
                     select(RawMediaItem)
                     .where(
                         RawMediaItem.tenant_id == tenant_id,
                         RawMediaItem.ai_status == "pending",
                     )
                     .order_by(RawMediaItem.created_at)
-                    .limit(BATCH_SIZE)
+                    .limit(1)
                 )
-                items = items_result.scalars().all()
+                item = result.scalar_one_or_none()
 
-                if not items:
-                    break
+            if not item:
+                break
 
-                await process_batch(session, factory, provider, ai_provider_name, tenant_id, topic_keywords, items)
-                total_processed += len(items)
+            # Delay before each API call (skip first)
+            if total_processed + total_failed > 0:
+                await asyncio.sleep(INTER_ITEM_DELAY)
 
+            success = await process_single_item(
+                factory, provider, ai_provider_name, tenant_id, topic_keywords, item,
+            )
+
+            if success:
+                total_processed += 1
+                logger.info("item_complete", tenant_id=tenant_id, item_id=str(item.id), progress=total_processed)
+            else:
+                total_failed += 1
+
+            # Update worker status periodically
+            if (total_processed + total_failed) % 5 == 0 or not success:
                 await update_worker_status(tenant_id, worker_run_id, {
                     "items_fetched": total_processed,
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 })
 
-                # Delay between batches to avoid Bedrock throttling
-                await asyncio.sleep(INTER_BATCH_DELAY)
+    except Exception as e:
+        await update_worker_status(tenant_id, worker_run_id, {
+            "status": "failed",
+            "error": str(e)[:500],
+            "items_fetched": total_processed,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+        raise
 
-                # Re-query with a fresh session state to pick up remaining pending items
-                await session.rollback()
-        except Exception as e:
-            await update_worker_status(tenant_id, worker_run_id, {
-                "status": "failed",
-                "error": str(e)[:500],
-                "items_fetched": total_processed,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            })
-            raise
+    if total_processed == 0 and total_failed == 0:
+        logger.debug("no_pending_items", tenant_id=tenant_id)
+    else:
+        logger.info("analysis_complete", tenant_id=tenant_id, processed=total_processed, failed=total_failed)
 
-        if total_processed == 0:
-            logger.debug("no_pending_items", tenant_id=tenant_id)
-            await update_worker_status(tenant_id, worker_run_id, {
-                "status": "completed",
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            })
-        else:
-            logger.info("analysis_complete", tenant_id=tenant_id, total_items=total_processed)
-            await update_worker_status(tenant_id, worker_run_id, {
-                "status": "completed",
-                "items_fetched": total_processed,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            })
+    await update_worker_status(tenant_id, worker_run_id, {
+        "status": "completed",
+        "items_fetched": total_processed,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    })
 
 
 async def main():
