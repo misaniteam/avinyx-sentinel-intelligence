@@ -60,6 +60,8 @@
     "feedUrls": "ফিড URL",
     "keywords": "কীওয়ার্ড",
     "sources": "সোর্স",
+    "categories": "বিভাগ",
+    "domains": "ডোমেইন",
     "language": "ভাষা",
     "clientId": "ক্লায়েন্ট আইডি",
     "clientSecret": "ক্লায়েন্ট সিক্রেট",
@@ -71,6 +73,8 @@
     "feedUrls": "প্রতি লাইনে একটি URL",
     "keywords": "কমা দিয়ে আলাদা কীওয়ার্ড",
     "sources": "কমা দিয়ে আলাদা সোর্স আইডি",
+    "categories": "business, tech, politics, health",
+    "domains": "example.com, bbc.co.uk",
     "subreddits": "কমা দিয়ে আলাদা সাবরেডিট নাম"
   },
   "languages": {

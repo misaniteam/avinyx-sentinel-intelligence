@@ -54,6 +54,9 @@ async def upload_voter_list(
     language: Literal["en", "bn", "hi"] = Form(default="en"),
     part_no: str | None = Form(default=None, max_length=50),
     part_name: str | None = Form(default=None, max_length=255),
+    location_name: str | None = Form(default=None, max_length=500),
+    location_lat: float | None = Form(default=None),
+    location_lng: float | None = Form(default=None),
     tenant_id: str = Depends(get_current_tenant_required),
     user: dict = Depends(require_permissions("voters:write")),
 ):
@@ -133,6 +136,9 @@ async def upload_voter_list(
             "language": language,
             "part_no": part_no,
             "part_name": part_name,
+            "location_name": location_name,
+            "location_lat": location_lat,
+            "location_lng": location_lng,
             "tenant_id": tenant_id,
         })
         logger.info(

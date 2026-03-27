@@ -20,6 +20,7 @@ async function loadMessages(locale: string) {
   const adminIngestedData = (await import(`../../messages/${locale}/admin/ingestedData.json`)).default;
   const adminSettings = (await import(`../../messages/${locale}/admin/settings.json`)).default;
   const adminWorkers = (await import(`../../messages/${locale}/admin/workers.json`)).default;
+  const adminTopics = (await import(`../../messages/${locale}/admin/topics.json`)).default;
 
   return {
     common,
@@ -40,6 +41,7 @@ async function loadMessages(locale: string) {
       ingestedData: adminIngestedData,
       settings: adminSettings,
       workers: adminWorkers,
+      topics: adminTopics,
     },
   };
 }

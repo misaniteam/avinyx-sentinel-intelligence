@@ -17,6 +17,7 @@ VALID_PERMISSIONS = frozenset({
     "workers:read", "workers:manage",
     "data_sources:read", "data_sources:write",
     "notifications:read", "notifications:write",
+    "topics:read", "topics:write",
 })
 
 

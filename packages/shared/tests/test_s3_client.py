@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 def mock_settings():
     with patch("sentinel_shared.storage.s3.get_settings") as mock_fn:
         settings = MagicMock()
-        settings.aws_region = "us-east-1"
+        settings.aws_region = "ap-south-1"
         settings.aws_endpoint_url = None
         mock_fn.return_value = settings
         yield settings
@@ -90,7 +90,7 @@ async def test_upload_file_with_endpoint_url(mock_settings):
     client = S3Client()
 
     kwargs = client._get_client_kwargs()
-    assert kwargs["region_name"] == "us-east-1"
+    assert kwargs["region_name"] == "ap-south-1"
     assert kwargs["endpoint_url"] == "http://localhost:4566"
 
 
@@ -103,5 +103,5 @@ async def test_upload_file_without_endpoint_url(mock_settings):
     client = S3Client()
 
     kwargs = client._get_client_kwargs()
-    assert kwargs["region_name"] == "us-east-1"
+    assert kwargs["region_name"] == "ap-south-1"
     assert "endpoint_url" not in kwargs

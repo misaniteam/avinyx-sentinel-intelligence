@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslations, useFormatter } from "next-intl";
-import { useVoterListGroups, useVoterListGroupDetail, useUploadVoterList } from "@/lib/api/hooks";
+import { useVoterListGroups, useVoterListGroupDetail, useUploadVoterList, useDeleteVoterListGroup } from "@/lib/api/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +26,13 @@ import {
   Loader2,
   X,
   Users,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
+import { LocationSearch, type LocationResult } from "@/components/shared/location-search";
+import MapProvider from "@/components/heatmap/map-provider";
 import type { VoterListGroupItem } from "@/types";
 
 const PAGE_SIZE = 50;
@@ -65,6 +69,7 @@ function UploadForm() {
   const [language, setLanguage] = useState("en");
   const [partNo, setPartNo] = useState("");
   const [partName, setPartName] = useState("");
+  const [location, setLocation] = useState<LocationResult | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const uploadMutation = useUploadVoterList();
 
@@ -95,6 +100,11 @@ function UploadForm() {
     formData.append("language", language);
     if (partNo.trim()) formData.append("part_no", partNo.trim());
     if (partName.trim()) formData.append("part_name", partName.trim());
+    if (location) {
+      formData.append("location_name", location.name);
+      formData.append("location_lat", String(location.lat));
+      formData.append("location_lng", String(location.lng));
+    }
 
     try {
       await uploadMutation.mutateAsync(formData);
@@ -102,6 +112,7 @@ function UploadForm() {
       setSelectedFile(null);
       setPartNo("");
       setPartName("");
+      setLocation(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch {
       toast.error(t("uploadError"));
@@ -217,6 +228,16 @@ function UploadForm() {
             />
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("location")}</label>
+            <MapProvider fallthrough>
+              <LocationSearch
+                placeholder={t("searchLocation")}
+                onChange={setLocation}
+              />
+            </MapProvider>
+          </div>
+
           <Button
             onClick={handleUpload}
             disabled={!selectedFile || uploadMutation.isPending}
@@ -311,6 +332,12 @@ function GroupDetailView({
                   <p className="text-muted-foreground">{t("createdAt")}</p>
                   <p className="font-medium">{formatDate(group.created_at)}</p>
                 </div>
+                {group.location_name && (
+                  <div>
+                    <p className="text-muted-foreground">{t("location")}</p>
+                    <p className="font-medium">{group.location_name}</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -359,25 +386,31 @@ function GroupDetailView({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left font-medium">{t("voterNo")}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t("serialNo")}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t("epicNo")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("name")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("fatherOrHusbandName")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("relationType")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("gender")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("age")}</th>
                       <th className="px-4 py-3 text-left font-medium">{t("houseNumber")}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t("section")}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t("entryStatus")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {entries.map((entry) => (
                       <tr key={entry.id} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-3 font-mono text-xs">{entry.voter_no || "—"}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{entry.serial_no ?? "—"}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{entry.epic_no || "—"}</td>
                         <td className="px-4 py-3 font-medium">{entry.name}</td>
                         <td className="px-4 py-3 text-muted-foreground">{entry.father_or_husband_name || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{entry.relation_type || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{entry.gender || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{entry.age ?? "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{entry.house_number || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{entry.section || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{entry.status ? <Badge variant="outline">{entry.status}</Badge> : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -415,13 +448,37 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<VoterListGroupItem | undefined>();
+  const deleteGroup = useDeleteVoterListGroup();
+
+  async function handleDeleteConfirm() {
+    if (!groupToDelete) return;
+    try {
+      await deleteGroup.mutateAsync(groupToDelete.id);
+      toast.success(t("deleteSuccess"));
+      setDeleteDialogOpen(false);
+      setGroupToDelete(undefined);
+    } catch {
+      toast.error(t("deleteFailed"));
+    }
+  }
+
+  const [isPolling, setIsPolling] = useState(false);
 
   const { data, isLoading } = useVoterListGroups({
     search: searchQuery || undefined,
     status: statusFilter || undefined,
     skip: page * PAGE_SIZE,
     limit: PAGE_SIZE,
+    refetchInterval: isPolling ? 5000 : false,
   });
+
+  // Start/stop polling based on whether any group is processing
+  const hasProcessing = data?.items?.some((g) => g.status === "processing") ?? false;
+  useEffect(() => {
+    setIsPolling(hasProcessing);
+  }, [hasProcessing]);
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -517,9 +574,21 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
                     </td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(item.created_at)}</td>
                     <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm" onClick={() => onSelectGroup(item.id)}>
-                        {t("viewDetails")}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => onSelectGroup(item.id)}>
+                          {t("viewDetails")}
+                        </Button>
+                        <PermissionGate permission="voters:write">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => { setGroupToDelete(item); setDeleteDialogOpen(true); }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </PermissionGate>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -543,6 +612,15 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
           </div>
         </>
       )}
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={t("deleteTitle")}
+        description={t("deleteDescription")}
+        onConfirm={handleDeleteConfirm}
+        isPending={deleteGroup.isPending}
+      />
     </div>
   );
 }

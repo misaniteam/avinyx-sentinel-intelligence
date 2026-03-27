@@ -16,13 +16,13 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 ```
 ├── packages/shared/          # sentinel_shared — Python package used by all backend services
 │   └── sentinel_shared/
-│       ├── models/           # SQLAlchemy models (11 models)
+│       ├── models/           # SQLAlchemy models (13 models)
 │       ├── schemas/          # Pydantic request/response schemas
 │       ├── auth/             # JWT, bcrypt password hashing, FastAPI RBAC dependencies
 │       ├── database/         # Async session, tenant context filtering
 │       ├── messaging/        # SQS client
 │       ├── storage/          # S3 async client (aiobotocore)
-│       ├── ai/               # Provider factory + Claude/OpenAI implementations
+│       ├── ai/               # Provider factory + Claude/OpenAI/Bedrock implementations
 │       ├── firebase/         # RTDB client
 │       ├── logging/          # Sentry SDK init, structlog processors, log shipper
 │       ├── data/             # Static data (wb_constituencies.py — 294 WB assembly constituencies)
@@ -36,7 +36,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │   ├── ingestion-worker/     # SQS consumer — connector plugin pattern
 │   ├── ai-pipeline-service/  # SQS consumer — sentiment/topic/entity analysis
 │   ├── analytics-service/    # Port 8005 — Dashboard, heatmap, reports, platforms, topics
-│   ├── voter-service/        # SQS consumer — PDF voter list OCR + parsing (GPU-accelerated)
+│   ├── voter-service/        # SQS consumer — PDF voter list extraction via AWS Bedrock LLM
 │   ├── campaign-service/     # Port 8006 — Campaigns, voters, media feeds
 │   ├── notification-service/ # Port 8007 — Firebase notifications, list/mark-read
 │   └── logging-service/     # Port 8008 — Centralized log collection, Sentry integration
@@ -72,9 +72,6 @@ make seed                  # Create default super admin (admin@sentinel.dev / ch
 make test                  # Run backend + frontend tests
 make lint                  # ruff + eslint
 make format                # ruff format + prettier
-make up-gpu                # Start all services with GPU support (voter-service)
-make down-gpu              # Stop GPU-enabled services
-make logs-gpu              # Tail GPU-enabled service logs
 make sentry-setup          # First-time Sentry init (migrations + admin user)
 make sentry-up             # Start Sentry services (profile-based)
 make sentry-down           # Stop Sentry services
@@ -173,40 +170,117 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 ## Voter List Upload
 
 - **Upload endpoint:** `POST /api/ingestion/voter-list-upload` (multipart/form-data)
-  - Fields: `file` (PDF, max 50MB), `year` (int), `language` ("en"/"bn"/"hi"), `part_no` (string, optional, max 50), `part_name` (string, optional, max 255)
+  - Fields: `file` (PDF, max 50MB), `year` (int), `language` ("en"/"bn"/"hi"), `part_no` (string, optional, max 50), `part_name` (string, optional, max 255), `location_name` (string, optional, max 500), `location_lat` (float, optional), `location_lng` (float, optional)
   - Validates PDF magic bytes, uploads to S3, dispatches SQS message to `sentinel-voter-list` queue
   - Permission: `voters:write`
-- **List endpoint:** `GET /api/ingestion/voter-lists` — paginated list of `VoterListGroup` records with `part_no`, `part_name`, `constituency`, `year`, `status`, `voter_count`
+- **List endpoint:** `GET /api/ingestion/voter-lists` — paginated list of `VoterListGroup` records with location, part info, constituency, year, status, voter_count
 - **Detail endpoint:** `GET /api/ingestion/voter-lists/{group_id}` — group info + paginated voter entries
+- **All entries endpoint:** `GET /api/ingestion/voter-lists/entries/all` — all voter entries across groups, filters: `search`, `gender`, `status`, `section`, `group_id`, `age_min`, `age_max`, limit up to 10000 for export
+- **Delete endpoint:** `DELETE /api/ingestion/voter-lists/{group_id}` — deletes group + cascade deletes all entries (requires `voters:write`)
 - **Models:**
-  - `VoterListGroup` — upload metadata: `tenant_id`, `year`, `constituency`, `file_id`, `status`, `part_no`, `part_name`
-  - `VoterListEntry` — individual voter: `name`, `father_or_husband_name`, `gender`, `age`, `voter_no`, `house_number`, `relation_type`
-- **Frontend page:** `/voter-upload` — UploadForm (PDF dropzone + year/language/part_no/part_name fields), GroupsListView (table with Part No/Part Name columns), GroupDetailView (group info card + voter entries table)
-- **i18n keys:** `voters.partNo`, `voters.partName` in en/bn/hi
+  - `VoterListGroup` — upload metadata: `tenant_id`, `year`, `constituency`, `file_id`, `status`, `part_no`, `part_name`, `location_name`, `location_lat`, `location_lng`
+  - `VoterListEntry` — individual voter: `name`, `father_or_husband_name`, `relation_type`, `gender`, `age`, `voter_no`, `serial_no`, `epic_no`, `house_number`, `section`, `status`
+- **Frontend `/voter-upload` page:** UploadForm (PDF dropzone + year/language/part_no/part_name + Google Maps location search via PlaceAutocompleteElement), GroupsListView (table with delete button, auto-refresh polling every 5s while any group is processing), GroupDetailView (group info card with location + voter entries table)
+- **Frontend `/voters` page:** Shows ALL voter entries across groups with search (name/EPIC/voter_no), filters (gender, status, age range min/max, voter list group), pagination, PDF export (html2canvas + jsPDF), Excel export (SheetJS xlsx — up to 10K rows with translated column headers)
+- **Cross-upload EPIC deduplication:** Processor loads existing tenant EPICs from DB before insertion, skips entries whose EPIC already exists
+- **i18n keys:** `voters.partNo`, `voters.partName`, `voters.location`, `voters.searchLocation`, `voters.ageMin`, `voters.ageMax`, `voters.exportPdf`, `voters.exportExcel`, `voters.deleteTitle`, `voters.deleteDescription` in en/bn/hi
 
-## Voter Service (OCR)
+## Voter Service (Textract + Bedrock Vision)
 
 - **Service:** `services/voter-service/` — SQS consumer that processes uploaded voter list PDFs
-- **Docker image:** `nvidia/cuda:12.6.3-runtime-ubuntu24.04` with PyTorch CUDA 12.4 + EasyOCR
-- **OCR strategy:** PyMuPDF first (fast, for digital PDFs) → EasyOCR fallback (for scanned/image PDFs)
-- **GPU support:** Auto-detects via `torch.cuda.is_available()` at startup; logs `ocr_device_detected gpu_available=True/False`
-- **Languages:** English (`en`), Bengali (`bn`), Hindi (`hi`) — EasyOCR models pre-downloaded in Docker image
-- **Parser:** Extracts voter records from Indian Electoral Roll format — name, voter ID, gender, age, house number, relation type
-- **Enabling GPU locally:**
-  ```bash
-  sudo apt-get install -y nvidia-container-toolkit
-  sudo nvidia-ctk runtime configure --runtime=docker
-  sudo systemctl restart docker
-  make up-gpu  # uses docker-compose.gpu.yml overlay
-  ```
-  GPU is opt-in via `make up-gpu`. The default `make up` runs voter-service on CPU (slower but works everywhere).
-- **SQS visibility timeout:** 600s (10 minutes) to accommodate CPU-mode OCR processing
+- **Docker image:** `python:3.12-slim` + Pillow — lightweight, no GPU required
+- **Dependencies:** pymupdf, aiobotocore, Pillow (image enhancement)
+- **Dual extraction pipeline by language:**
+  - **English (`en`):** Textract OCR → Bedrock text extraction (Textract `detect_document_text` → group into chunks → Bedrock `invoke_model` with text prompt)
+  - **Bengali/Hindi (`bn`/`hi`):** PDF → PNG strip images → Bedrock vision extraction (bypasses Textract which can't handle Bengali/Hindi script)
+- **Vision pipeline details (Bengali/Hindi):**
+  1. pymupdf splits PDF into single pages; first 2 pages skipped (cover/map — no voter data)
+  2. Each voter page split into 3 horizontal strips with 4% overlap (avoids cutting through entries)
+  3. Each strip enhanced via Pillow: grayscale → contrast boost (1.8x) → sharpening (2x zoom render)
+  4. Each strip sent individually to Bedrock `invoke_model` with base64 image + `VISION_SYSTEM_PROMPT`
+  5. 2-second delay between API calls to avoid Bedrock throttling
+  6. Vision retries: 4 attempts with exponential backoff (base 3: 3s, 9s, 27s, 81s)
+- **VISION_SYSTEM_PROMPT:** Describes Indian electoral roll box layout (serial number position, EPIC, voter name line, relative name line, age/gender/house number) to help model distinguish fields accurately
+- **Async generator pattern:** `extract_voters_from_pdf()` yields `list[dict]` per chunk; processor inserts to DB incrementally after each chunk (not all-or-nothing)
+- **Deduplication:** By both EPIC number AND serial number across chunks; handles overlap duplicates by preferring the version with more data (EPIC filled); cross-upload dedup loads all existing tenant EPICs from DB before insertion
+- **Phantom entry filter:** Rejects entries without serial_no or voter_no (misread page elements)
+- **Field truncation:** All string fields truncated to DB column limits (name: 255, section: 50, epic_no: 50, house_number: 100, etc.)
+- **Gender normalization:** Bengali পুরুষ/মহিলা and Hindi पुरुष/महिला → English Male/Female via `GENDER_NORMALIZE` dict
+- **Truncation recovery:** `_salvage_truncated_json()` recovers complete voter objects from truncated LLM responses (max_tokens: 65536)
+- **Model:** Configurable via `BEDROCK_VOTER_MODEL_ID` (default: Claude Sonnet)
+- **AWS credentials:** Shared IAM user for both Textract and Bedrock (`AWS_TEXTRACT_*` env vars)
+- **AWS permissions:** `textract:DetectDocumentText` + `bedrock:InvokeModel`
+- **SQS visibility timeout:** 600s (10 minutes) to accommodate OCR + LLM processing
 
-## Adding a New AI Provider
+## AI Pipeline Service
+
+- **Service:** `services/ai-pipeline-service/main.py` — SQS consumer that processes `RawMediaItem` records through AI providers
+- **Queue:** `sentinel-ai-pipeline` — receives messages after ingestion worker completes
+- **Processing flow:**
+  1. Receives SQS message with `tenant_id`
+  2. Queries `RawMediaItem` records with `ai_status='pending'` for that tenant
+  3. Fetches tenant's active `TopicKeyword` records for sentiment guidance
+  4. Marks items as `processing`, calls tenant's configured AI provider via `analyze_and_extract(topic_keywords=...)`
+  5. Creates `SentimentAnalysis` records and upserts `MediaFeed` records with enriched content
+  6. Marks items as `completed` (or `failed` on error)
+- **Batch size:** 3 items per processing cycle
+- **Inter-batch delay:** 10s cooldown between batches to avoid Bedrock throttling
+- **Batch loop:** Processes ALL pending items for a tenant per SQS message (loops until none remain), not just one batch
+- **Failure handling:** On AI provider error, items are marked `failed` (not reset to `pending`) to prevent retry storms
+- **AI status tracking:** `RawMediaItem.ai_status` column tracks pipeline state: `pending` → `processing` → `completed`/`failed`
+
+### AI Provider Base
+
+- **Base class:** `BaseAIProvider` in `sentinel_shared/ai/base.py`
+- **Abstract methods:** `analyze_sentiment()`, `extract_topics()`, `analyze_and_extract(topic_keywords=None)` (combined sentiment + content extraction with optional keyword guidance)
+- **Result models:** `SentimentResult` (score -1.0 to 1.0, label, topics, entities, summary), `ContentExtractionResult` (title, description, image_url, source_link, external_links)
+- **Keyword prompt builder:** `build_topic_keywords_prompt()` — generates prompt section from tenant's topic keyword definitions, instructing AI to weight sentiment toward defined directions when content matches keywords
+
+### Registered Providers
+
+- **Claude:** `ClaudeProvider` — Uses `claude-sonnet-4-20250514`, Anthropic messaging API
+- **OpenAI:** `OpenAIProvider` — Uses `gpt-4o`, JSON response format for structured outputs
+- **Bedrock:** `BedrockProvider` — Uses aiobotocore async client, configurable model via tenant settings
+  - **Throttle detection:** `_is_throttling_error()` identifies Bedrock rate limit errors by error message patterns
+  - **Retry backoff:** 5 retries — throttle errors use aggressive backoff (4s, 8s, 16s, 32s, 64s), other errors use standard (2s, 4s, 8s, 16s, 32s)
+  - **Inter-request delay:** 3s between API calls within a batch
+  - **Per-item error handling:** All methods (`analyze_sentiment`, `extract_topics`, `analyze_and_extract`) catch exceptions per-item with fallback results instead of failing the entire batch; throttle errors trigger a 30s cooldown before the next item
+
+### Adding a New AI Provider
 
 1. Create `packages/shared/sentinel_shared/ai/{provider}_provider.py`
-2. Implement `BaseAIProvider` (analyze_sentiment, extract_topics)
+2. Implement `BaseAIProvider` (`analyze_sentiment`, `extract_topics`, `analyze_and_extract`)
 3. Register via `AIProviderFactory.register("name", ProviderClass)` in ai-pipeline-service main.py
+
+## Media Feeds
+
+- **Model:** `MediaFeed` in `sentinel_shared/models/media.py` — stores AI-enriched, analyzed media content
+  - Foreign key to `RawMediaItem` via `media_item_id` (one-to-one, unique)
+  - Denormalized fields: `platform`, `author`, `published_at`, `engagement`
+  - AI-extracted: `title`, `description`, `image_url`, `source_link`, `external_links`
+  - Sentiment: `sentiment_score`, `sentiment_label`, `priority_score`
+  - AI metadata: `ai_provider`, `topics`, `entities`, `summary`
+- **Backend endpoint:** `GET /api/campaigns/media-feeds` (`services/campaign-service/routers/media_feeds.py`)
+  - Filters: `platform` (optional), `skip`/`limit` pagination (max 100)
+  - Permission: `media:read`
+- **Frontend page:** `/media-feeds` — Card-based view showing AI-enriched content with sentiment badges, topic pills, images, and external links
+- **Frontend hook:** `useMediaFeeds()` in `lib/api/hooks.ts`
+
+## Topic Keywords (Sentiment Guidance)
+
+- **Purpose:** Tenants define topics with associated keywords and sentiment direction (positive/negative/neutral) to guide AI pipeline sentiment classification
+- **Model:** `TopicKeyword` in `sentinel_shared/models/topic_keyword.py` — tenant-scoped with name, keywords (JSONB array), sentiment_direction, category, is_active
+- **Unique constraint:** `uq_topic_keywords_tenant_name` — topic names unique per tenant
+- **Schemas:** `TopicKeywordCreate`, `TopicKeywordUpdate`, `TopicKeywordResponse` in `sentinel_shared/schemas/topic_keyword.py` — validates max 100 keywords per topic, `extra="forbid"`
+- **Backend CRUD:** `services/campaign-service/routers/topic_keywords.py` — 5 endpoints at `/api/campaigns/topic-keywords`
+  - `GET /` — List (filterable by `is_active`, `category`, `search`), permission: `topics:read`
+  - `POST /` — Create (validates unique name per tenant), permission: `topics:write`
+  - `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` — Standard CRUD
+- **AI integration:** `ai-pipeline-service` fetches active topic keywords before calling AI provider; `build_topic_keywords_prompt()` in `sentinel_shared/ai/base.py` generates prompt context instructing the AI to weight sentiment toward the defined direction when content matches keywords (guidance, not hard override)
+- **Frontend page:** `/admin/topics` — Table view with name, keyword pills, sentiment direction badges, category, active status, search/filter, dialog-based CRUD using `TagInput` for keyword entry
+- **Frontend hooks:** `useTopicKeywords()`, `useCreateTopicKeyword()`, `useUpdateTopicKeyword()`, `useDeleteTopicKeyword()` in `lib/api/hooks.ts`
+- **Permissions:** `topics:read`, `topics:write`
+- **i18n keys:** `admin.topics.*` in en/bn/hi, `navigation.topics` in en/bn/hi
 
 ## Frontend State Management
 
@@ -250,6 +324,8 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 - `<ExportableContainer title="...">` — Wraps content with PDF/PNG export buttons
 - `<DeleteConfirmDialog>` — Reusable confirmation dialog for delete actions
 - `<TagInput>` — Pill-style tag input (Enter/comma to add, Backspace/X to remove) used for hashtag/topic entry
+- `<LocationSearch>` — Google Places Autocomplete (`PlaceAutocompleteElement` API) for location search; falls back to plain text input when `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is missing
+- Sidebar split into two groups: **Main navigation** (Dashboard, Voters, Voter Upload, Heatmap, Media Feeds, Analytics, Reports, Campaigns) and **Administration** section with separator label (Data Sources, Ingested Data, Topics, Users, Roles, Workers, Settings)
 - Sidebar items auto-filtered by user permissions
 
 ## Charts & Visualizations
@@ -274,16 +350,17 @@ All chart components live in `components/charts/` and are **pure presentational*
 
 ## Google Maps Heatmap
 
-- Uses `@vis.gl/react-google-maps` with `visualization` library
+- Uses `@vis.gl/react-google-maps` with `visualization` + `places` libraries
 - Requires `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` env var (shows warning if missing)
-- Components: `MapProvider` (APIProvider wrapper), `SentimentHeatmap` (map + heatmap layer), `HeatmapControls` (sentiment filter, date range)
+- Components: `MapProvider` (APIProvider wrapper, supports `fallthrough` prop for graceful degradation), `SentimentHeatmap` (map + heatmap layer), `HeatmapControls` (sentiment filter, date range)
 - Default center: India (20.59, 78.96), zoom 5
 
 ## Export System
 
-- **Client-side:** `html2canvas-pro` + `jsPDF` via `useExport()` hook — captures DOM to PDF/PNG
+- **Client-side PDF/PNG:** `html2canvas-pro` + `jsPDF` via `useExport()` hook — captures DOM to PDF/PNG
 - `ExportableContainer` component wraps content with export buttons (auto-hidden during capture via `data-export-hide`)
 - Pure utilities in `lib/export/client-export.ts`: `captureElement`, `canvasToPdf`, `canvasToPng`, `downloadBlob`
+- **Client-side Excel:** SheetJS `xlsx` library — used on `/voters` page to export up to 10K filtered entries as `.xlsx` with translated column headers; reuses `downloadBlob()` for file download
 
 ## Analytics Service Endpoints
 
@@ -362,6 +439,7 @@ All admin forms follow the same dialog-based pattern:
 - `/admin/roles` — Table view with search, RoleDialog (create/edit), PermissionSelect with per-module select all/deselect all + global select all + "X of Y selected" counter
 - `/admin/data-sources` — Table view with platform badges/icons, DataSourceDialog (create/edit) with General + Credentials sections, per-platform config forms (password inputs for secrets, tag inputs for hashtags/topics), active/inactive toggle, SSRF-safe URL validation
 - `/admin/ingested-data` — Read-only table of raw ingested items with platform filter, content search, date range, pagination, expandable row details
+- `/admin/topics` — TopicKeywordDialog (create/edit), TagInput for keywords, sentiment direction select, category, active toggle
 - `/admin/settings` — AI provider form, notification prefs, general settings
 - `/admin/workers` — Live worker status cards via Firebase RTDB
 - `/super-admin/tenants` — TenantDialog (onboard/edit), suspend/activate, constituency assignment
@@ -431,8 +509,8 @@ All admin forms follow the same dialog-based pattern:
 - **Backend:** `GET /ingestion/ingested-data` (`services/ingestion-service/routers/ingested_data.py`)
   - Filters: `platform`, `content` (search), `start_date`, `end_date`
   - Pagination: `skip`/`limit` (default 50, max 100)
-  - Returns: `IngestedDataResponse` with items (id, platform, external_id, content, author, published_at, url, geo_region, engagement, created_at) + total count
-- **Frontend page:** `/admin/ingested-data` — Read-only table view with platform filter dropdown, content search, date range, pagination, and expandable row details (full content, URL link, engagement breakdown)
+  - Returns: `IngestedDataResponse` with items (id, platform, external_id, content, author, published_at, url, geo_region, engagement, ai_status, created_at) + total count
+- **Frontend page:** `/admin/ingested-data` — Read-only table view (`table-fixed` layout with explicit column widths, `overflow-hidden text-ellipsis` on content/author/region columns) with platform filter dropdown, content search, date range, pagination, AI status badges (pending/processing/completed/failed), and expandable row details (full content, URL link, engagement breakdown)
 - **Frontend hook:** `useIngestedData()` in `lib/api/hooks.ts`, query key `ingestedData`
 - **Sidebar:** "Ingested Data" link with `FileSearch` icon, gated by `data_sources:read`
 - **Permission:** `data_sources:read`
@@ -449,8 +527,10 @@ All admin forms follow the same dialog-based pattern:
 
 Copy `.env.example` to `.env` for local dev. LocalStack provides SQS/SNS/S3 at `localhost:4566`.
 
-Required for heatmap: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+Required for heatmap + location search: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
 Required for Firebase: `NEXT_PUBLIC_FIREBASE_CONFIG` (JSON string with apiKey, authDomain, projectId, databaseURL)
+
+**Local frontend dev:** Copy `NEXT_PUBLIC_*` vars from root `.env` to `frontend/.env.local` — Next.js only reads client-side env vars from this file, not the root `.env`.
 
 ## Terraform Infrastructure
 
@@ -501,6 +581,11 @@ Current migrations:
 - `c5d3e4f6a7b9` — Add `voter_list_groups` and `voter_list_entries` tables
 - `d6e4f5a7b8c0` — Add `house_number` and `relation_type` columns to voter list entries
 - `e7f5a6b8c9d1` — Add `part_no` and `part_name` columns to voter list groups
+- `f8a6b9c0d1e2` — Add `location_name`, `location_lat`, `location_lng` columns to voter list groups
+- `g9b7c0d1e2f3` — Increase `raw_media_items` column lengths (external_id 255→1024, author/author_id 255→512)
+- `h0c8d1e2f3g4` — Add `media_feeds` table (AI-enriched content with sentiment, topics, extracted metadata)
+- `i1d9e2f3g4h5` — Add `ai_status` column to `raw_media_items` (indexed, default 'pending')
+- `j2e0f3g4h5i6` — Add `topic_keywords` table (tenant-scoped, unique name constraint)
 
 ## Implementation Status
 
@@ -515,4 +600,7 @@ Current migrations:
 - [x] Phase 9 — Logging & Observability (centralized logging service with PostgreSQL storage, Sentry SDK integration across all services, structlog processors for error forwarding and log shipping, self-hosted Sentry Docker setup)
 - [x] Phase 10 — Internationalization & Theming (next-intl with English/Bengali/Hindi locales, cookie-based locale switching, `[locale]` App Router segment, next-themes dark/light/system mode toggle, multi-script Google Fonts)
 - [x] Phase 11 — File Upload Ingestion (PDF/Excel file upload as data source, S3 storage with SSE, text extraction via pymupdf/openpyxl/xlrd, one-shot ingestion, magic byte validation, cross-tenant S3 key protection)
-- [x] Phase 12 — Voter List Processing (voter-service SQS worker with PyMuPDF + EasyOCR, GPU auto-detection via CUDA/PyTorch, NVIDIA CUDA runtime Docker image, Part No/Part Name upload metadata fields, voter list upload/list/detail endpoints, electoral roll PDF parsing with multilingual OCR support)
+- [x] Phase 12 — Voter List Processing (voter-service SQS worker with Textract OCR + Bedrock LLM structured extraction, PDF page splitting via pymupdf, Part No/Part Name upload metadata fields, voter list upload/list/detail endpoints)
+- [x] Phase 13 — Voter List Enhancements (Bedrock vision extraction for Bengali/Hindi with strip splitting + Pillow image enhancement, incremental DB inserts per chunk via async generator, cross-upload EPIC deduplication, serial_no dedup for strip overlaps, voter list delete with cascade, voters page with all-entries search/filters/age-range/PDF+Excel export, Google Maps PlaceAutocompleteElement location search on upload, auto-refresh polling during processing, gender normalization, field truncation, phantom entry filtering)
+- [x] Phase 14 — AI Pipeline & Media Feeds (ai-pipeline-service SQS consumer with multi-provider support via factory pattern, Claude/OpenAI/Bedrock provider implementations with sentiment + content extraction, MediaFeed model for AI-enriched content, ai_status tracking on RawMediaItem, media feeds endpoint with sentiment/topics display, Bedrock provider with exponential backoff retry, ingested data AI status badges)
+- [x] Phase 15 — Topic Keywords & Sentiment Guidance (TopicKeyword model for tenant-defined topics with keywords and sentiment direction, CRUD router in campaign-service, AI pipeline integration via prompt augmentation with build_topic_keywords_prompt, admin page with TagInput keyword entry and sentiment direction badges, i18n in en/bn/hi)

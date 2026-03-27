@@ -60,6 +60,8 @@
     "feedUrls": "Feed URLs",
     "keywords": "Keywords",
     "sources": "Sources",
+    "categories": "Categories",
+    "domains": "Domains",
     "language": "Language",
     "clientId": "Client ID",
     "clientSecret": "Client Secret",
@@ -71,6 +73,8 @@
     "feedUrls": "One URL per line",
     "keywords": "Comma-separated keywords",
     "sources": "Comma-separated source IDs",
+    "categories": "business, tech, politics, health",
+    "domains": "example.com, bbc.co.uk",
     "subreddits": "Comma-separated subreddit names"
   },
   "languages": {

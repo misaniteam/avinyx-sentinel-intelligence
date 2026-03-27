@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import { queryKeys } from "./query-keys";
-import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus, VoterListGroupsResponse, VoterListGroupDetailResponse, VoterListUploadResponse } from "@/types";
+import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, MediaFeedListResponse, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus, VoterListGroupsResponse, VoterListGroupDetailResponse, VoterListUploadResponse, AllVoterEntriesResponse, TopicKeyword } from "@/types";
 
 // Dashboard
 export function useDashboardSummary() {
@@ -77,17 +77,20 @@ export function useVoterListGroups(params?: {
   search?: string;
   skip?: number;
   limit?: number;
+  refetchInterval?: number | false;
 }) {
+  const { refetchInterval, ...queryParams } = params || {};
   const searchParams = new URLSearchParams();
-  if (params?.year) searchParams.set("year", String(params.year));
-  if (params?.status) searchParams.set("status", params.status);
-  if (params?.search) searchParams.set("search", params.search);
-  if (params?.skip) searchParams.set("skip", String(params.skip));
-  if (params?.limit) searchParams.set("limit", String(params.limit));
+  if (queryParams?.year) searchParams.set("year", String(queryParams.year));
+  if (queryParams?.status) searchParams.set("status", queryParams.status);
+  if (queryParams?.search) searchParams.set("search", queryParams.search);
+  if (queryParams?.skip) searchParams.set("skip", String(queryParams.skip));
+  if (queryParams?.limit) searchParams.set("limit", String(queryParams.limit));
   const qs = searchParams.toString();
   return useQuery({
-    queryKey: [...queryKeys.voterLists.all, params],
+    queryKey: [...queryKeys.voterLists.all, queryParams],
     queryFn: () => api.get(`api/ingestion/voter-lists${qs ? `?${qs}` : ""}`).json<VoterListGroupsResponse>(),
+    refetchInterval: refetchInterval ?? false,
   });
 }
 
@@ -133,11 +136,51 @@ export function useUploadVoterList() {
   });
 }
 
-// Media Feeds
-export function useMediaFeeds(platform?: string) {
+export function useAllVoterEntries(params?: {
+  search?: string;
+  gender?: string;
+  status?: string;
+  section?: string;
+  group_id?: string;
+  age_min?: number;
+  age_max?: number;
+  skip?: number;
+  limit?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params?.search) searchParams.set("search", params.search);
+  if (params?.gender) searchParams.set("gender", params.gender);
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.section) searchParams.set("section", params.section);
+  if (params?.group_id) searchParams.set("group_id", params.group_id);
+  if (params?.age_min) searchParams.set("age_min", String(params.age_min));
+  if (params?.age_max) searchParams.set("age_max", String(params.age_max));
+  if (params?.skip) searchParams.set("skip", String(params.skip));
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  const qs = searchParams.toString();
   return useQuery({
-    queryKey: [...queryKeys.mediaFeeds.all, platform],
-    queryFn: () => api.get(`api/campaigns/media-feeds${platform ? `?platform=${platform}` : ""}`).json<MediaFeedItem[]>(),
+    queryKey: [...queryKeys.voterLists.entries, params],
+    queryFn: () => api.get(`api/ingestion/voter-lists/entries/all${qs ? `?${qs}` : ""}`).json<AllVoterEntriesResponse>(),
+  });
+}
+
+export function useDeleteVoterListGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`api/ingestion/voter-lists/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.voterLists.all }),
+  });
+}
+
+// Media Feeds
+export function useMediaFeeds(platform?: string, skip = 0, limit = 50) {
+  const params = new URLSearchParams();
+  if (platform) params.set("platform", platform);
+  if (skip) params.set("skip", String(skip));
+  params.set("limit", String(limit));
+  return useQuery({
+    queryKey: [...queryKeys.mediaFeeds.all, platform, skip, limit],
+    queryFn: () => api.get(`api/campaigns/media-feeds?${params}`).json<MediaFeedListResponse>(),
   });
 }
 
@@ -371,5 +414,44 @@ export function useUpdateTenantSettings() {
     mutationFn: (data: { settings: Record<string, unknown> }) =>
       api.patch("api/auth/tenant-settings", { json: data }).json(),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["settings"] }),
+  });
+}
+
+// Topic Keywords
+export function useTopicKeywords(params?: { is_active?: boolean; category?: string; search?: string }) {
+  const searchParams = new URLSearchParams();
+  if (params?.is_active !== undefined) searchParams.set("is_active", String(params.is_active));
+  if (params?.category) searchParams.set("category", params.category);
+  if (params?.search) searchParams.set("search", params.search);
+  const qs = searchParams.toString();
+  return useQuery({
+    queryKey: [...queryKeys.topicKeywords.all, params],
+    queryFn: () => api.get(`api/campaigns/topic-keywords${qs ? `?${qs}` : ""}`).json<TopicKeyword[]>(),
+  });
+}
+
+export function useCreateTopicKeyword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; keywords: string[]; sentiment_direction: string; category?: string | null; is_active?: boolean }) =>
+      api.post("api/campaigns/topic-keywords", { json: data }).json<TopicKeyword>(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.topicKeywords.all }),
+  });
+}
+
+export function useUpdateTopicKeyword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; keywords?: string[]; sentiment_direction?: string; category?: string | null; is_active?: boolean }) =>
+      api.patch(`api/campaigns/topic-keywords/${id}`, { json: data }).json<TopicKeyword>(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.topicKeywords.all }),
+  });
+}
+
+export function useDeleteTopicKeyword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`api/campaigns/topic-keywords/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.topicKeywords.all }),
   });
 }

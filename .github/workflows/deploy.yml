@@ -13,7 +13,7 @@
 #   AWS_ACCOUNT_ID         — AWS account ID for ECR registry
 #
 # Required GitHub Variables:
-#   AWS_REGION             — AWS region (defaults to us-east-1)
+#   AWS_REGION             — AWS region (defaults to ap-south-1)
 # ============================================================================
 
 name: Deploy
@@ -41,8 +41,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION || 'us-east-1' }}.amazonaws.com
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION || 'ap-south-1' }}.amazonaws.com
   ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
   ECS_CLUSTER: sentinel-${{ github.event.inputs.environment || 'staging' }}
 

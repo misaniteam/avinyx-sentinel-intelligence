@@ -57,13 +57,24 @@ export interface Voter {
 export interface MediaFeedItem {
   id: string;
   platform: string;
-  content: string | null;
+  title: string | null;
+  description: string | null;
+  image_url: string | null;
+  source_link: string | null;
+  external_links: string[];
   author: string | null;
   published_at: string | null;
-  url: string | null;
   engagement: Record<string, number>;
   sentiment_score: number | null;
   sentiment_label: string | null;
+  priority_score: number | null;
+  topics: string[];
+  summary: string | null;
+}
+
+export interface MediaFeedListResponse {
+  items: MediaFeedItem[];
+  total: number;
 }
 
 export interface DataSource {
@@ -167,6 +178,7 @@ export interface IngestedDataItem {
   url: string | null;
   geo_region: string | null;
   engagement: Record<string, number>;
+  ai_status: "pending" | "processing" | "completed" | "failed";
   created_at: string;
 }
 
@@ -201,6 +213,9 @@ export interface VoterListGroupItem {
   status: string;
   part_no: string | null;
   part_name: string | null;
+  location_name: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
   created_at: string;
   updated_at: string;
   voter_count: number;
@@ -215,11 +230,15 @@ export interface VoterEntryItem {
   id: string;
   name: string;
   father_or_husband_name: string | null;
+  relation_type: string | null;
   gender: string | null;
   age: number | null;
   voter_no: string | null;
+  serial_no: number | null;
+  epic_no: string | null;
   house_number: string | null;
-  relation_type: string | null;
+  section: string | null;
+  status: string | null;
   created_at: string;
 }
 
@@ -231,6 +250,9 @@ export interface VoterListGroupDetail {
   status: string;
   part_no: string | null;
   part_name: string | null;
+  location_name: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -241,6 +263,15 @@ export interface VoterListGroupDetailResponse {
   total_entries: number;
 }
 
+export interface VoterEntryWithGroup extends VoterEntryItem {
+  group_id: string;
+}
+
+export interface AllVoterEntriesResponse {
+  items: VoterEntryWithGroup[];
+  total: number;
+}
+
 export interface VoterListUploadResponse {
   file_id: string;
   s3_key: string;
@@ -249,6 +280,17 @@ export interface VoterListUploadResponse {
   part_no: string | null;
   part_name: string | null;
   status: string;
+}
+
+export interface TopicKeyword {
+  id: string;
+  name: string;
+  keywords: string[];
+  sentiment_direction: "positive" | "negative" | "neutral";
+  category: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface TenantOnboardRequest {

@@ -79,7 +79,7 @@ variable "acm_certificate_arn" {
 ################################################################################
 
 variable "cloudfront_acm_certificate_arn" {
-  description = "ARN of ACM certificate in us-east-1 for CloudFront"
+  description = "ARN of ACM certificate in ap-south-1 for CloudFront"
   type        = string
   default     = ""
 }

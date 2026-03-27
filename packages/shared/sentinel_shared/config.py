@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_days: int = 7
 
     # AWS
-    aws_region: str = "us-east-1"
+    aws_region: str = "ap-south-1"
     aws_endpoint_url: str | None = None
     sqs_ingestion_queue: str = "sentinel-ingestion-jobs"
     sqs_ai_pipeline_queue: str = "sentinel-ai-pipeline"
@@ -32,7 +32,14 @@ class Settings(BaseSettings):
     # AI
     anthropic_api_key: str = ""
     openai_api_key: str = ""
-    aws_bedrock_region: str = "us-east-1"
+    aws_bedrock_region: str = "ap-south-1"
+    bedrock_voter_model_id: str = "anthropic.claude-sonnet-4-20250514-v1:0"
+    bedrock_voter_pages_per_chunk: int = 5
+
+    # Textract (real AWS — separate from LocalStack)
+    aws_textract_region: str = "ap-south-1"
+    aws_textract_access_key_id: str = ""
+    aws_textract_secret_access_key: str = ""
 
     # Service URLs
     auth_service_url: str = "http://auth-service:8001"

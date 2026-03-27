@@ -1,5 +1,7 @@
 import ipaddress
 import re
+import structlog
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,7 +10,11 @@ from sqlalchemy import select
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.data_source import DataSource
 from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.messaging.sqs import SQSClient
+from sentinel_shared.config import get_settings
 from pydantic import BaseModel, Field, field_validator
+
+logger = structlog.get_logger()
 
 router = APIRouter()
 
@@ -36,7 +42,7 @@ PLATFORM_CONFIG_SCHEMA: dict[str, dict] = {
     },
     "news_api": {
         "required": ["api_key"],
-        "optional": ["keywords", "sources", "language"],
+        "optional": ["keywords", "categories", "domains", "language"],
     },
     "reddit": {
         "required": ["client_id", "client_secret"],
@@ -239,6 +245,26 @@ async def create_data_source(
     db.add(ds)
     await db.commit()
     await db.refresh(ds)
+
+    # Trigger immediate ingestion for active sources (skip file_upload — handled separately)
+    if ds.is_active and ds.platform != "file_upload":
+        try:
+            sqs = SQSClient()
+            settings = get_settings()
+            await sqs.send_message(settings.sqs_ingestion_queue, {
+                "tenant_id": str(ds.tenant_id),
+                "platform": ds.platform,
+                "config": ds.config or {},
+                "since": None,
+            })
+            # Mark as polled so scheduler doesn't double-dispatch
+            ds.last_polled_at = datetime.now(timezone.utc)
+            await db.commit()
+            await db.refresh(ds)
+            logger.info("immediate_ingestion_dispatched", data_source_id=str(ds.id), platform=ds.platform)
+        except Exception as exc:
+            logger.error("immediate_ingestion_dispatch_failed", data_source_id=str(ds.id), error=str(exc))
+
     return DataSourceResponse.from_model(ds)
 
 

@@ -96,7 +96,8 @@ const newsRssConfigSchema = z.object({
 const newsApiConfigSchema = z.object({
   api_key: z.string().min(1, "API key is required"),
   keywords: z.string().optional(),
-  sources: z.string().optional(),
+  categories: z.string().optional(),
+  domains: z.string().optional(),
   language: z.string().optional(),
 });
 
@@ -187,7 +188,8 @@ const PLATFORM_CONFIG_FIELDS: Record<string, ConfigFieldDef[]> = {
   news_api: [
     { name: "api_key", labelKey: "fields.apiKey", type: "password", required: true },
     { name: "keywords", labelKey: "fields.keywords", type: "textarea", placeholderKey: "placeholders.keywords" },
-    { name: "sources", labelKey: "fields.sources", type: "text", placeholderKey: "placeholders.sources" },
+    { name: "categories", labelKey: "fields.categories", type: "text", placeholderKey: "placeholders.categories" },
+    { name: "domains", labelKey: "fields.domains", type: "text", placeholderKey: "placeholders.domains" },
     { name: "language", labelKey: "fields.language", type: "select", hasLanguageOptions: true },
   ],
   reddit: [

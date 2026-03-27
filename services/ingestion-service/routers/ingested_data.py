@@ -21,6 +21,7 @@ class IngestedDataItem(BaseModel):
     url: str | None
     geo_region: str | None
     engagement: dict
+    ai_status: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -83,6 +84,7 @@ async def list_ingested_data(
                 url=item.url,
                 geo_region=item.geo_region,
                 engagement=item.engagement or {},
+                ai_status=item.ai_status,
                 created_at=item.created_at,
             )
             for item in items
