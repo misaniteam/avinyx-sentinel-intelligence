@@ -90,7 +90,7 @@ export default function MediaFeedsPage() {
                         <div className="flex items-center gap-1">
                           {item.external_links.slice(0, 3).map((link, i) => (
                             <a key={i} href={link} target="_blank" rel="noopener noreferrer" className="hover:text-foreground" title={link}>
-                              <ExternalLink className="h-3 w-3" />
+                              <ExternalLink className="h-3 w-3" /> External Link
                             </a>
                           ))}
                         </div>
