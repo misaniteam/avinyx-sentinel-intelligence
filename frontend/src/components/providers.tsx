@@ -1,12 +1,12 @@
 "use client";
-import { NextIntlClientProvider } from 'next-intl';
+import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { AuthProvider } from "@/lib/auth/auth-provider";
 import { TenantProvider } from "@/lib/tenant/tenant-provider";
 import { RBACProvider } from "@/lib/rbac/rbac-provider";
 import { Toaster } from "sonner";
-import { ThemeProvider } from './theme-provider';
+import { ThemeProvider } from "./theme-provider";
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -24,11 +24,15 @@ export function Providers({ children, locale, messages }: ProvidersProps) {
             retry: 1,
           },
         },
-      })
+      }),
   );
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
+    <NextIntlClientProvider
+      locale={locale}
+      messages={messages}
+      timeZone="Asia/Kolkata"
+    >
       <ThemeProvider
         attribute="class"
         defaultTheme="system"
