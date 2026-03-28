@@ -44,5 +44,10 @@
   "permissions": "permissions",
   "clear": "Clear",
   "to": "to",
-  "open": "Open"
+  "open": "Open",
+  "showNeutral": "Show neutral items",
+  "topHighlights": "Top Highlights",
+  "allFeeds": "All Feeds",
+  "neutralItems": "Neutral Items",
+  "onlyNeutralItems": "All items are neutral. Check \"Show neutral items\" to see them."
 }

@@ -9,10 +9,14 @@
     "platformBreakdown": "प्लेटफ़ॉर्म विश्लेषण",
     "topTopics": "शीर्ष विषय",
     "engagementMetrics": "सहभागिता मेट्रिक्स",
-    "sentimentDistribution": "भावना वितरण"
+    "sentimentDistribution": "भावना वितरण",
+    "topFeeds": "शीर्ष समाचार और वीडियो"
   },
   "totalMentions": "कुल उल्लेख",
   "avgSentiment": "औसत भावना",
   "positive": "सकारात्मक",
-  "negative": "नकारात्मक"
+  "negative": "नकारात्मक",
+  "topYouTube": "शीर्ष यूट्यूब",
+  "topNews": "शीर्ष समाचार",
+  "noTopFeeds": "अभी तक कोई शीर्ष समाचार या वीडियो नहीं"
 }

@@ -9,10 +9,14 @@
     "platformBreakdown": "প্ল্যাটফর্ম বিশ্লেষণ",
     "topTopics": "শীর্ষ বিষয়",
     "engagementMetrics": "এনগেজমেন্ট মেট্রিক্স",
-    "sentimentDistribution": "মনোভাব বণ্টন"
+    "sentimentDistribution": "মনোভাব বণ্টন",
+    "topFeeds": "শীর্ষ সংবাদ ও ভিডিও"
   },
   "totalMentions": "মোট উল্লেখ",
   "avgSentiment": "গড় মনোভাব",
   "positive": "ইতিবাচক",
-  "negative": "নেতিবাচক"
+  "negative": "নেতিবাচক",
+  "topYouTube": "শীর্ষ ইউটিউব",
+  "topNews": "শীর্ষ সংবাদ",
+  "noTopFeeds": "এখনো কোনো শীর্ষ সংবাদ বা ভিডিও নেই"
 }
