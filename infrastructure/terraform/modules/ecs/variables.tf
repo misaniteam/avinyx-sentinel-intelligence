@@ -96,6 +96,12 @@ variable "http_services" {
       memory        = 512
       desired_count = 1
     }
+    "frontend" = {
+      port          = 3000
+      cpu           = 512
+      memory        = 1024
+      desired_count = 1
+    }
   }
 }
 
