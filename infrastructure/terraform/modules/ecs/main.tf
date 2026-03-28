@@ -189,6 +189,7 @@ resource "aws_iam_role_policy" "task_sqs_sns_s3" {
         Resource = [
           "arn:aws:bedrock:*::foundation-model/anthropic.claude-*",
           "arn:aws:bedrock:*::foundation-model/amazon.titan-*",
+          "arn:aws:bedrock:*:*:inference-profile/apac.anthropic.*",
         ]
       },
       {
