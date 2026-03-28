@@ -218,6 +218,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/avinyx-sentinel-${{ matrix.service }}:latest
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_CONFIG=${{ vars.NEXT_PUBLIC_FIREBASE_CONFIG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
