@@ -2,64 +2,326 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==================================================
+   THEME VARIABLES
+================================================== */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 224 71% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 224 71% 4%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 71% 4%;
-    --primary: 220 70% 50%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 9% 46%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 220 14% 96%;
-    --accent-foreground: 224 71% 4%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 220 70% 50%;
-    --radius: 0.5rem;
-    --sidebar: 220 14% 96%;
-    --sidebar-foreground: 224 71% 4%;
-    --sidebar-accent: 220 70% 50%;
+      --radius: 8px;
+    --background: #f1f1f1;
+    --foreground: #030303;
+
+    --card: #f9f9f9;
+    --card-foreground: #161616;
+
+    --card2: #ffffff;
+    --card2-foreground: #242424;
+
+    --popover: #f1f1f1;
+    --popover-foreground: #161616;
+
+    --primary: #0d0d0d;
+    --primary-foreground: #f1f1f1;
+
+    --secondary: #333333;
+    --secondary-foreground: #d7d7d7;
+
+    --muted: #616161;
+    --muted-foreground: #838383;
+
+    --accent: #f6d8c5;
+    --accent-foreground: #ec5901;
+
+    --destructive: #ec5901;
+
+    --border: #cecece;
+    --input: #cecece;
+    --ring: #ec5901;
+
+    --sidebar: #e4e4e4;
+    --sidebar-foreground: #0d0d0d;
+    --sidebar-primary: #ec5901;
+    --sidebar-primary-foreground: #e4e4e4;
+    --sidebar-accent: #f1f1f1;
+    --sidebar-accent-foreground: #616161;
+    --sidebar-border: #cecece;
+    --sidebar-ring: #ec5901;
+
+    /* Custom Theme */
+    --theme-blur: rgb(236 89 1 / 4%);
+    --theme-primary: #f27624;
+    --theme-primary-foreground: #ec5901;
+
+    --theme-primary-light-1: #ec5901;
+    --theme-primary-light-1-foreground: #f6d8c5;
+
+    --theme-primary-light-2: #ec5901;
+    --theme-primary-light-2-foreground: #f49b67;
+
+    --theme-primary-dark-1: #f49b67;
+    --theme-primary-dark-1-foreground: #8e3501;
+
+    --theme-primary-dark-2: #f6d8c5;
+    --theme-primary-dark-2-foreground: #2f1200;
+
+    --border-success: #008a41;
+    --border-success-secondary: #ccfbe3;
+    --border-warning: #ec0101;
+
+    --button-fill: rgba(236, 89, 1, 0.4);
+
+    --wave-1: #2f1200;
+    --wave-2: #f49b67;
+    --wave-3: #8e3501;
+    --wave-4: #ec5901;
+
+    --body-bg: #e4e4e4;
+
+    /* Fonts */
+    --font-body: ui-sans-serif, system-ui, sans-serif;
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 210 20% 98%;
-    --card: 224 71% 4%;
-    --card-foreground: 210 20% 98%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 220 70% 50%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 215 28% 17%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 28% 17%;
-    --muted-foreground: 218 11% 65%;
-    --accent: 215 28% 17%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
-    --ring: 220 70% 50%;
-    --sidebar: 215 28% 10%;
-    --sidebar-foreground: 210 20% 98%;
-    --sidebar-accent: 220 70% 50%;
-  }
-}
+     --radius: 8px;
+    --background: #030303;
+    --foreground: #f1f1f1;
 
-@layer base {
+    --card: #161616;
+    --card-foreground: #f9f9f9;
+
+    --card2: #242424;
+    --card2-foreground: #ffffff;
+
+    --popover: #242424;
+    --popover-foreground: #f9f9f9;
+
+    --primary: #f1f1f1;
+    --primary-foreground: #0d0d0d;
+
+    --secondary: #d7d7d7;
+    --secondary-foreground: #333333;
+
+    --muted: #838383;
+    --muted-foreground: #616161;
+
+    --accent: #ec5901;
+    --accent-foreground: #e4e4e4;
+
+    --destructive: #8e0101;
+
+    --border: #333333;
+    --input: #333333;
+    --ring: #ec5901;
+
+    --sidebar: #0d0d0d;
+    --sidebar-foreground: #e4e4e4;
+    --sidebar-primary: #ec5901;
+    --sidebar-primary-foreground: #e4e4e4;
+    --sidebar-accent: #242424;
+    --sidebar-accent-foreground: #d7d7d7;
+    --sidebar-border: #333333;
+    --sidebar-ring: #ec5901;
+
+    --theme-blur: rgb(236 89 1 / 4%);
+    --theme-primary: #ec5901;
+    --theme-primary-foreground: #f27624;
+
+    --theme-primary-light-1: #f6d8c5;
+    --theme-primary-light-1-foreground: #ec5901;
+
+    --theme-primary-light-2: #f49b67;
+    --theme-primary-light-2-foreground: #ec5901;
+
+    --theme-primary-dark-1: #8e3501;
+    --theme-primary-dark-1-foreground: #f49b67;
+
+    --theme-primary-dark-2: #2f1200;
+    --theme-primary-dark-2-foreground: #f6d8c5;
+
+    --border-success: #008a41;
+    --border-success-secondary: #ccfbe3;
+    --border-warning: #ec0101;
+
+    --button-fill: rgba(236, 89, 1, 0.4);
+
+    --wave-1: #f1f1f1;
+    --wave-2: #f49b67;
+    --wave-3: #f27624;
+    --wave-4: #ec5901;
+
+    --body-bg: #000000;
+  }
+
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body;
   }
+
+  .sideBar::-webkit-scrollbar {
+    display: none;
+  }
+  
+}
+
+/* ==================================================
+   CUSTOM UTILITIES
+================================================== */
+@layer utilities {
+  .font-body {
+    font-family: var(--font-body);
+  }
+}
+
+/* ==================================================
+   INPUT FIXES
+================================================== */
+input{
+  @apply h-11;
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* ==================================================
+   CUSTOM SCROLLBAR
+================================================== */
+.custom-scrollbar {
+  overflow-y: auto;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--card2);
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-primary-dark-1);
+}
+
+/* ==================================================
+   SIDEBAR FADE
+================================================== */
+.sidebar {
+  position: relative;
+}
+
+.sidebar.sidebar-no-fade::before {
+  opacity: 0 !important;
+}
+
+.sidebar::before {
+  content: "";
+  pointer-events: none;
+  z-index: 4;
+  background: linear-gradient(#0000, #060010);
+  height: 200px;
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+}
+
+/* ==================================================
+   MISC
+================================================== */
+.react-flow__panel {
+  display: none;
+}
+
+[data-name="nextstep-arrow"] path {
+  fill: var(--card2);
+}
+
+/* ==================================================
+   CUSTOM MARKERS
+================================================== */
+.custom-marker .circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.custom-marker.negative .circle {
+  background: #ef4444;
+}
+
+.custom-marker.neutral .circle {
+  background: #facc15;
+}
+
+.custom-marker.positive .circle {
+  background: #22c55e;
+}
+
+.custom-marker .circle::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  filter: blur(3px);
+}
+
+.custom-marker.negative .circle::after {
+  background: rgba(239, 68, 68, 0.6);
+  animation: ripple 1s infinite;
+}
+
+.custom-marker.neutral .circle::after {
+  background: rgba(250, 204, 21, 0.6);
+  animation: ripple 2s infinite;
+}
+
+.custom-marker.positive .circle::after {
+  background: rgba(34, 197, 94, 0.6);
+  animation: ripple 4s infinite;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(3.5);
+  }
+}
+
+/* ==================================================
+   APEX CHART TOOLTIP
+================================================== */
+.apexcharts-tooltip {
+  color: #060010 !important;
+}
+
+.apexcharts-tooltip-text {
+  color: var(--primary) !important;
+}
+
+.apexcharts-tooltip-y-group {
+  color: #060010 !important;
 }

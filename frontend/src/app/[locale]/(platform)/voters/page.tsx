@@ -181,7 +181,7 @@ export default function VotersPage() {
       </div>
 
       <Card>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 mt-4">
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3" data-export-hide>
             <div className="relative max-w-sm">

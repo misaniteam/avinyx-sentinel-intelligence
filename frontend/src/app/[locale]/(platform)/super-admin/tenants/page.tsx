@@ -75,7 +75,7 @@ export default function SuperAdminTenantsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t("title")}</h1>
         <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" /> {t("onboardTenant")}
+          <Plus className="mr-1 h-4 w-4 text-theme-primary" /> {t("onboardTenant")}
         </Button>
       </div>
       <Card>
@@ -130,16 +130,16 @@ export default function SuperAdminTenantsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(tenant)}>
-                          <Pencil className="mr-2 h-4 w-4" /> {tc("edit")}
+                          <Pencil className="mr-1 h-4 w-4 text-theme-primary" /> {tc("edit")}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleToggleStatus(tenant)}>
                           {tenant.status === "active" ? (
                             <>
-                              <Ban className="mr-2 h-4 w-4" /> {t("suspend")}
+                              <Ban className="mr-1 h-4 w-4 text-theme-primary" /> {t("suspend")}
                             </>
                           ) : (
                             <>
-                              <CheckCircle className="mr-2 h-4 w-4" /> {t("activate")}
+                              <CheckCircle className="mr-1 h-4 w-4 text-theme-primary" /> {t("activate")}
                             </>
                           )}
                         </DropdownMenuItem>
@@ -147,7 +147,7 @@ export default function SuperAdminTenantsPage() {
                           onClick={() => openDeleteDialog(tenant)}
                           className="text-destructive"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" /> {tc("delete")}
+                          <Trash2 className="mr-1 h-4 w-4 text-theme-primary" /> {tc("delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -29,7 +29,7 @@ export function generateStaticParams() {
 }
 
 export const metadata: Metadata = {
-  title: "Sentinel Intelligence",
+  title: "Avinyx Intelligence",
   description: "Political campaign sentiment intelligence platform",
 };
 

@@ -72,7 +72,7 @@ function PlainInput({ placeholder, onChange }: LocationSearchProps) {
       <input
         type="text"
         placeholder={placeholder}
-        className="flex h-9 w-64 rounded-md border border-input bg-transparent px-3 py-1 pl-9 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="flex h-9 w-64 rounded-md border border-input bg-transparent px-3 py-1 pl-9 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-ring"
         onChange={(e) => {
           if (e.target.value) {
             onChange({ name: e.target.value, lat: 0, lng: 0 });

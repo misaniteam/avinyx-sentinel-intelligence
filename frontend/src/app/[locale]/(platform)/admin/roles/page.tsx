@@ -79,7 +79,7 @@ export default function AdminRolesPage() {
         </h1>
         <PermissionGate permission="roles:write">
           <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" /> {t("createRole")}
+            <Plus className="mr-1 h-4 w-4 text-theme-primary" /> {t("createRole")}
           </Button>
         </PermissionGate>
       </div>
@@ -119,7 +119,7 @@ export default function AdminRolesPage() {
           </p>
           <PermissionGate permission="roles:write">
             <Button onClick={handleCreate}>
-              <Plus className="mr-2 h-4 w-4" /> {t("createRole")}
+              <Plus className="mr-1 h-4 w-4 text-theme-primary" /> {t("createRole")}
             </Button>
           </PermissionGate>
         </div>
@@ -170,14 +170,14 @@ export default function AdminRolesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleEdit(role)}>
-                            <Pencil className="mr-2 h-4 w-4" />
+                            <Pencil className="mr-1 h-4 w-4 text-theme-primary" />
                             {tc("edit")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(role)}
                             className="text-destructive"
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
+                            <Trash2 className="mr-1 h-4 w-4 text-theme-primary" />
                             {tc("delete")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>

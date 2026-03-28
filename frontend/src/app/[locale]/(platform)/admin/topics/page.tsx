@@ -112,7 +112,7 @@ export default function AdminTopicsPage() {
           <p className="text-muted-foreground mt-1">{t("description")}</p>
         </div>
         <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" /> {t("addTopic")}
+          <Plus className="mr-1 h-4 w-4 text-theme-primary" /> {t("addTopic")}
         </Button>
       </div>
 
@@ -232,13 +232,13 @@ export default function AdminTopicsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(topic)}>
-                          <Pencil className="mr-2 h-4 w-4" /> {tc("edit")}
+                          <Pencil className="mr-1 h-4 w-4 text-theme-primary" /> {tc("edit")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => handleDeleteClick(topic)}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" /> {tc("delete")}
+                          <Trash2 className="mr-1 h-4 w-4 text-theme-primary" /> {tc("delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
