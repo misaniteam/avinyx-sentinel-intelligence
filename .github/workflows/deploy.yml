@@ -26,7 +26,7 @@ on:
       environment:
         description: "Deployment environment"
         required: true
-        default: staging
+        default: production
         type: choice
         options:
           - staging
@@ -37,14 +37,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  group: deploy-${{ github.event.inputs.environment || 'production' }}
   cancel-in-progress: false
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION || 'ap-south-1' }}.amazonaws.com
-  ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
-  ECS_CLUSTER: sentinel-${{ github.event.inputs.environment || 'staging' }}
+  ENVIRONMENT: ${{ github.event.inputs.environment || 'production' }}
+  ECS_CLUSTER: sentinel-${{ github.event.inputs.environment || 'production' }}
 
 jobs:
   # ──────────────────────────────────────────────
@@ -151,6 +151,7 @@ jobs:
     name: Build & Push — ${{ matrix.service }}
     needs: [lint-backend, lint-frontend, test-backend, test-frontend]
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
     strategy:
       fail-fast: false
       matrix:
@@ -225,7 +226,7 @@ jobs:
     name: Run Migrations
     needs: [build-and-push]
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'staging' }}
+    environment: ${{ github.event.inputs.environment || 'production' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -272,7 +273,7 @@ jobs:
     name: Deploy — ${{ matrix.service }}
     needs: [migrate]
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'staging' }}
+    environment: ${{ github.event.inputs.environment || 'production' }}
     strategy:
       fail-fast: false
       max-parallel: 3
