@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     aws_bedrock_region: str = "ap-south-1"
-    bedrock_voter_model_id: str = "anthropic.claude-sonnet-4-20250514-v1:0"
+    bedrock_voter_model_id: str = "apac.anthropic.claude-sonnet-4-20250514-v1:0"
     bedrock_voter_pages_per_chunk: int = 5
 
     # Textract (real AWS — separate from LocalStack)
