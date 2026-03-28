@@ -365,10 +365,10 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
 
       try {
         await uploadFileDataSource.mutateAsync(formData);
-        toast.success(t("createSuccess"));
+        toast.success(t("dataSourceCreated"));
         onOpenChange(false);
       } catch {
-        toast.error(t("createFailed"));
+        toast.error(t("failedCreate"));
       }
       return;
     }
@@ -410,7 +410,7 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
           config,
           poll_interval_minutes: data.poll_interval_minutes,
         });
-        toast.success(t("createSuccess"));
+        toast.success(t("dataSourceCreated"));
       } else if (dataSource) {
         await updateDataSource.mutateAsync({
           id: dataSource.id,
@@ -419,15 +419,15 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
           poll_interval_minutes: data.poll_interval_minutes,
           is_active: data.is_active,
         });
-        toast.success(t("updateSuccess"));
+        toast.success(t("dataSourceUpdated"));
       }
       onOpenChange(false);
     } catch (error: unknown) {
       const detail = (error as { response?: { status?: number } })?.response?.status;
       if (detail === 409) {
-        toast.error(t("duplicateNameError"));
+        toast.error(t("nameExists"));
       } else {
-        toast.error(isCreate ? t("createFailed") : t("updateFailed"));
+        toast.error(isCreate ? t("failedCreate") : t("failedUpdate"));
       }
     }
   }
