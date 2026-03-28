@@ -177,8 +177,9 @@ module "ecs" {
   private_subnet_ids    = module.vpc.private_subnet_ids
   ecs_security_group_id = module.vpc.ecs_security_group_id
   ecr_repository_urls   = module.ecr.repository_urls
-  alb_target_group_arn  = module.alb.target_group_arn
-  tags                  = local.common_tags
+  alb_target_group_arn          = module.alb.target_group_arn
+  frontend_target_group_arn     = module.alb.frontend_target_group_arn
+  tags                          = local.common_tags
 
   # Non-sensitive environment variables only
   service_environment = {

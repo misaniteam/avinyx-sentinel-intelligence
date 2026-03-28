@@ -47,6 +47,36 @@ resource "aws_lb_target_group" "api_gateway" {
 }
 
 ################################################################################
+# Target Group — Frontend
+################################################################################
+
+resource "aws_lb_target_group" "frontend" {
+  name        = "${var.project_name}-${var.environment}-fe"
+  port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    matcher             = "200-399"
+  }
+
+  deregistration_delay = 30
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-frontend-tg"
+  })
+}
+
+################################################################################
 # HTTPS Listener (when certificate is provided)
 ################################################################################
 
@@ -61,7 +91,28 @@ resource "aws_lb_listener" "https" {
 
   default_action {
     type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+
+  tags = var.tags
+}
+
+# Route /api/* to API Gateway (HTTPS)
+resource "aws_lb_listener_rule" "api_https" {
+  count = var.acm_certificate_arn != "" ? 1 : 0
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = 100
+
+  action {
+    type             = "forward"
     target_group_arn = aws_lb_target_group.api_gateway.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
   }
 
   tags = var.tags
@@ -103,7 +154,28 @@ resource "aws_lb_listener" "http" {
 
   default_action {
     type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+
+  tags = var.tags
+}
+
+# Route /api/* to API Gateway (HTTP)
+resource "aws_lb_listener_rule" "api_http" {
+  count = var.acm_certificate_arn == "" ? 1 : 0
+
+  listener_arn = aws_lb_listener.http[0].arn
+  priority     = 100
+
+  action {
+    type             = "forward"
     target_group_arn = aws_lb_target_group.api_gateway.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
   }
 
   tags = var.tags

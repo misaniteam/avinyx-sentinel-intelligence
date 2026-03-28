@@ -429,11 +429,11 @@ resource "aws_ecs_service" "http" {
     registry_arn = aws_service_discovery_service.http[each.key].arn
   }
 
-  # Only api-gateway gets an ALB target group
+  # api-gateway and frontend get ALB target groups
   dynamic "load_balancer" {
-    for_each = each.key == "api-gateway" ? [1] : []
+    for_each = each.key == "api-gateway" ? [var.alb_target_group_arn] : each.key == "frontend" ? [var.frontend_target_group_arn] : []
     content {
-      target_group_arn = var.alb_target_group_arn
+      target_group_arn = load_balancer.value
       container_name   = each.key
       container_port   = each.value.port
     }

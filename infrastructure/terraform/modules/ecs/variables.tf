@@ -38,6 +38,11 @@ variable "alb_target_group_arn" {
   type        = string
 }
 
+variable "frontend_target_group_arn" {
+  description = "ARN of the ALB target group for frontend"
+  type        = string
+}
+
 variable "http_services" {
   description = "Configuration for HTTP-based ECS services"
   type = map(object({
