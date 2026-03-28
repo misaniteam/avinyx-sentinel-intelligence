@@ -22,5 +22,6 @@
   "markAllRead": "Mark all read",
   "noNotifications": "No notifications",
   "workerStatus": "Worker Status",
-  "noMediaItemsYet": "No media items yet. Configure data sources to start ingesting."
+  "noMediaItemsYet": "No media items yet. Configure data sources to start ingesting.",
+  "logout": "Log out"
 }

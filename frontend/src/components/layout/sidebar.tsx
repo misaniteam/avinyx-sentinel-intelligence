@@ -301,7 +301,7 @@ export function Sidebar() {
             <Button variant="ghost" size="icon">
               <LogOut className="h-5 w-5" />
             </Button>
-            <span className="text-muted">Log out</span>
+            <span className="text-muted">{t("logout")}</span>
           </div>
         </div>
       </div>
@@ -425,7 +425,7 @@ export function Sidebar() {
           <Button variant="ghost" size="icon">
             <LogOut className="h-5 w-5" />
           </Button>
-          <span className="text-muted">Log out</span>
+          <span className="text-muted">{t("logout")}</span>
         </div>
       </div>
     </div>
