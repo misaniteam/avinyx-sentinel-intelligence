@@ -106,6 +106,46 @@ resource "aws_s3_bucket_public_access_block" "uploads" {
 }
 
 ################################################################################
+# Voter Docs Bucket (voter list PDFs)
+################################################################################
+
+resource "aws_s3_bucket" "voter_docs" {
+  bucket = "${var.project_name}-voter-docs-${var.environment}"
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-voter-docs-${var.environment}"
+    Type = "voter-docs"
+  })
+}
+
+resource "aws_s3_bucket_versioning" "voter_docs" {
+  bucket = aws_s3_bucket.voter_docs.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "voter_docs" {
+  bucket = aws_s3_bucket.voter_docs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "voter_docs" {
+  bucket = aws_s3_bucket.voter_docs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+################################################################################
 # Frontend Bucket (CloudFront origin)
 ################################################################################
 

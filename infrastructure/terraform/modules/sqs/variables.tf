@@ -26,6 +26,10 @@ variable "queues" {
     "sentinel-notifications" = {
       enable_dlq = false
     }
+    "sentinel-voter-list-jobs" = {
+      visibility_timeout_seconds = 600
+      enable_dlq                 = true
+    }
   }
 }
 

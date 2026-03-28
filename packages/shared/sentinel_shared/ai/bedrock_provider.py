@@ -33,17 +33,21 @@ class BedrockProvider(BaseAIProvider):
         self._secret_key = settings.aws_textract_secret_access_key
 
     def _client_kwargs(self):
-        return {
+        kwargs = {
             "region_name": self._region,
-            "endpoint_url": f"https://bedrock-runtime.{self._region}.amazonaws.com",
-            "aws_access_key_id": self._access_key,
-            "aws_secret_access_key": self._secret_key,
             "config": AioConfig(
                 read_timeout=120,
                 connect_timeout=10,
                 retries={"max_attempts": 0},
             ),
         }
+        # Use explicit credentials if provided, otherwise fall back to
+        # default credential chain (ECS task role, instance profile, etc.)
+        if self._access_key and self._secret_key:
+            kwargs["endpoint_url"] = f"https://bedrock-runtime.{self._region}.amazonaws.com"
+            kwargs["aws_access_key_id"] = self._access_key
+            kwargs["aws_secret_access_key"] = self._secret_key
+        return kwargs
 
     @staticmethod
     def _is_throttling_error(error: Exception) -> bool:

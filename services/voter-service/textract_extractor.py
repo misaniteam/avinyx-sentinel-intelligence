@@ -123,12 +123,16 @@ class TextractClient:
 
     def _get_client_kwargs(self):
         region = self.settings.aws_textract_region
-        return {
+        kwargs = {
             "region_name": region,
-            "endpoint_url": f"https://textract.{region}.amazonaws.com",
-            "aws_access_key_id": self.settings.aws_textract_access_key_id,
-            "aws_secret_access_key": self.settings.aws_textract_secret_access_key,
         }
+        # Use explicit credentials if provided, otherwise fall back to
+        # default credential chain (ECS task role, instance profile, etc.)
+        if self.settings.aws_textract_access_key_id and self.settings.aws_textract_secret_access_key:
+            kwargs["endpoint_url"] = f"https://textract.{region}.amazonaws.com"
+            kwargs["aws_access_key_id"] = self.settings.aws_textract_access_key_id
+            kwargs["aws_secret_access_key"] = self.settings.aws_textract_secret_access_key
+        return kwargs
 
     async def detect_text(self, page_pdf_bytes: bytes, page_num: int) -> str:
         """Send a single-page PDF to Textract and return extracted text."""
@@ -180,19 +184,22 @@ class BedrockClient:
         self._session = get_session()
 
     def _get_client_kwargs(self):
-        # Use same IAM credentials as Textract, same region
         region = self.settings.aws_textract_region
-        return {
+        kwargs = {
             "region_name": region,
-            "endpoint_url": f"https://bedrock-runtime.{region}.amazonaws.com",
-            "aws_access_key_id": self.settings.aws_textract_access_key_id,
-            "aws_secret_access_key": self.settings.aws_textract_secret_access_key,
             "config": AioConfig(
                 read_timeout=600,
                 connect_timeout=10,
                 retries={"max_attempts": 0},  # we handle retries ourselves
             ),
         }
+        # Use explicit credentials if provided, otherwise fall back to
+        # default credential chain (ECS task role, instance profile, etc.)
+        if self.settings.aws_textract_access_key_id and self.settings.aws_textract_secret_access_key:
+            kwargs["endpoint_url"] = f"https://bedrock-runtime.{region}.amazonaws.com"
+            kwargs["aws_access_key_id"] = self.settings.aws_textract_access_key_id
+            kwargs["aws_secret_access_key"] = self.settings.aws_textract_secret_access_key
+        return kwargs
 
     async def extract_voters(
         self, text: str, chunk_index: int, language: str = "en"

@@ -176,6 +176,8 @@ resource "aws_iam_role_policy" "task_sqs_sns_s3" {
         Resource = [
           "arn:aws:s3:::sentinel-*",
           "arn:aws:s3:::sentinel-*/*",
+          "arn:aws:s3:::avinyx-sentinel-*",
+          "arn:aws:s3:::avinyx-sentinel-*/*",
         ]
       },
       {
@@ -188,6 +190,13 @@ resource "aws_iam_role_policy" "task_sqs_sns_s3" {
           "arn:aws:bedrock:*::foundation-model/anthropic.claude-*",
           "arn:aws:bedrock:*::foundation-model/amazon.titan-*",
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "textract:DetectDocumentText",
+        ]
+        Resource = "*"
       },
     ]
   })
