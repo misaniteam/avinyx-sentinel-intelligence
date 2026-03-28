@@ -76,7 +76,7 @@ export function TopTopicsBarChart({
               const total = sorted.reduce((sum, item) => sum + item.count, 0);
               const percent = (value / total) * 100;
 
-              if (percent < 5) return ""; // hide very small bars
+              // if (percent < 5) return ""; // hide very small bars
               return `${percent.toFixed(0)}%`;
             }}
             fill="#fff"
