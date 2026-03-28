@@ -14,8 +14,10 @@ from sentinel_shared.models import *  # noqa: F401,F403 — import all models to
 config = context.config
 
 # Override sqlalchemy.url from environment if available
-database_url = os.environ.get("DATABASE_URL_SYNC")
+database_url = os.environ.get("DATABASE_URL_SYNC") or os.environ.get("DATABASE_URL")
 if database_url:
+    # Convert async driver to sync for Alembic (psycopg2)
+    database_url = database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
     config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:
