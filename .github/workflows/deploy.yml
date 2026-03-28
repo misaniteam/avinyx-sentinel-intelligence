@@ -44,7 +44,7 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION || 'ap-south-1' }}.amazonaws.com
   ENVIRONMENT: ${{ github.event.inputs.environment || 'production' }}
-  ECS_CLUSTER: sentinel-${{ github.event.inputs.environment || 'production' }}
+  ECS_CLUSTER: avinyx-sentinel-${{ github.event.inputs.environment || 'production' }}
 
 jobs:
   # ──────────────────────────────────────────────
@@ -214,8 +214,8 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/sentinel-${{ matrix.service }}:${{ github.sha }}
-            ${{ env.ECR_REGISTRY }}/sentinel-${{ matrix.service }}:latest
+            ${{ env.ECR_REGISTRY }}/avinyx-sentinel-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/avinyx-sentinel-${{ matrix.service }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -240,7 +240,7 @@ jobs:
         run: |
           TASK_ARN=$(aws ecs run-task \
             --cluster "${{ env.ECS_CLUSTER }}" \
-            --task-definition "sentinel-migrate-${{ env.ENVIRONMENT }}" \
+            --task-definition "avinyx-sentinel-migrate-${{ env.ENVIRONMENT }}" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=${{ vars.PRIVATE_SUBNETS }},securityGroups=${{ vars.SECURITY_GROUPS }},assignPublicIp=DISABLED}" \
             --overrides '{"containerOverrides":[{"name":"migrate","command":["alembic","upgrade","head"]}]}' \
@@ -303,7 +303,7 @@ jobs:
       - name: Download current task definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition "sentinel-${{ matrix.service }}-${{ env.ENVIRONMENT }}" \
+            --task-definition "avinyx-sentinel-${{ matrix.service }}" \
             --query taskDefinition \
             > task-definition.json
 
@@ -313,13 +313,13 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: ${{ matrix.service }}
-          image: ${{ env.ECR_REGISTRY }}/sentinel-${{ matrix.service }}:${{ github.sha }}
+          image: ${{ env.ECR_REGISTRY }}/avinyx-sentinel-${{ matrix.service }}:${{ github.sha }}
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.render.outputs.task-definition }}
-          service: sentinel-${{ matrix.service }}-${{ env.ENVIRONMENT }}
+          service: ${{ matrix.service }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
           wait-for-minutes: 10
