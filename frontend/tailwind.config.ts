@@ -2,9 +2,7 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   darkMode: ["class"],
-  content: [
-    "./src/**/*.{ts,tsx}",
-  ],
+  content: ["./src/**/*.{ts,tsx}"],
   theme: {
     container: {
       center: true,
@@ -14,53 +12,111 @@ const config: Config = {
       },
     },
     fontFamily: {
-      sans: ["var(--font-inter)", "var(--font-noto-bengali)", "system-ui", "sans-serif"],
+      sans: [
+        "var(--font-inter)",
+        "var(--font-noto-bengali)",
+        "system-ui",
+        "sans-serif",
+      ],
     },
     extend: {
+      /* ==============================
+         COLORS (CSS VARIABLES BASED)
+      ============================== */
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
         },
+
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
         },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
+
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
         },
+
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
         },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
+
+        destructive: "var(--destructive)",
+
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
         },
+
+        card2: {
+          DEFAULT: "var(--card2)",
+          foreground: "var(--card2-foreground)",
+        },
+
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
+
         sidebar: {
-          DEFAULT: "hsl(var(--sidebar))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
+          DEFAULT: "var(--sidebar)",
+          foreground: "var(--sidebar-foreground)",
+          accent: "var(--sidebar-accent)",
         },
+
+        /* custom theme */
+        "theme-primary": "var(--theme-primary)",
+        "theme-primary-light-1": "var(--theme-primary-light-1)",
+        "theme-primary-light-2": "var(--theme-primary-light-2)",
+        "theme-primary-dark-1": "var(--theme-primary-dark-1)",
+        "theme-primary-dark-2": "var(--theme-primary-dark-2)",
+        "body-bg": "var(--body-bg)",
       },
+
+      /* ==============================
+         Z-INDEX SYSTEM
+      ============================== */
+      zIndex: {
+        base: "var(--z-base)",
+        low: "var(--z-low)",
+        normal: "var(--z-normal)",
+        high: "var(--z-high)",
+        overlay: "var(--z-overlay)",
+        dropdown: "var(--z-dropdown)",
+        sticky: "var(--z-sticky)",
+        sidebar: "var(--z-sidebar)",
+        header: "var(--z-header)",
+        modal: "var(--z-modal)",
+        popover: "var(--z-popover)",
+        toast: "var(--z-toast)",
+        tooltip: "var(--z-tooltip)",
+        top: "var(--z-top)",
+      },
+
+      /* ==============================
+         BORDER RADIUS
+      ============================== */
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+
+      /* ==============================
+         SHADOW (optional)
+      ============================== */
+      boxShadow: {
+        theme: "0 0 20px var(--theme-blur)",
       },
     },
   },

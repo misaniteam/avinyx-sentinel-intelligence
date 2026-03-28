@@ -22,12 +22,9 @@ export function Topbar() {
   const t = useTranslations("common");
 
   return (
-    <header className="flex h-16 items-center justify-between border-b px-6">
-      <div />
-      <div className="flex items-center gap-4">
-        
+    <header className="flex h-[80px] items-center justify-end border-b px-6 bg-card">
+      <div className="flex items-center justify-end gap-4">
         <ModeToggle />
-        <LocaleSwitcher />
 
         <Popover>
           <PopoverTrigger asChild>
@@ -41,15 +38,13 @@ export function Topbar() {
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="p-0 w-80">
-            <NotificationPanel notifications={notifications} isLoading={notificationsLoading} />
+            <NotificationPanel
+              notifications={notifications}
+              isLoading={notificationsLoading}
+            />
           </PopoverContent>
         </Popover>
-        <div className="text-sm text-muted-foreground">
-          {user?.is_super_admin ? t("superAdmin") : user?.roles?.[0] || t("user")}
-        </div>
-        <Button variant="ghost" size="icon" onClick={logout}>
-          <LogOut className="h-5 w-5" />
-        </Button>
+        <LocaleSwitcher />      
       </div>
     </header>
   );

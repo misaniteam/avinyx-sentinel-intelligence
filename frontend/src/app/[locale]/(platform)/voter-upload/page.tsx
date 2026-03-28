@@ -2,7 +2,12 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslations, useFormatter } from "next-intl";
-import { useVoterListGroups, useVoterListGroupDetail, useUploadVoterList, useDeleteVoterListGroup } from "@/lib/api/hooks";
+import {
+  useVoterListGroups,
+  useVoterListGroupDetail,
+  useUploadVoterList,
+  useDeleteVoterListGroup,
+} from "@/lib/api/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +36,10 @@ import {
 import { toast } from "sonner";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
-import { LocationSearch, type LocationResult } from "@/components/shared/location-search";
+import {
+  LocationSearch,
+  type LocationResult,
+} from "@/components/shared/location-search";
 import MapProvider from "@/components/heatmap/map-provider";
 import type { VoterListGroupItem } from "@/types";
 
@@ -55,8 +63,18 @@ function useFormatDate() {
 
 function StatusBadge({ status }: { status: string }) {
   const t = useTranslations("voters");
-  const variant = status === "completed" ? "default" : status === "failed" ? "destructive" : "secondary";
-  const label = status === "completed" ? t("completed") : status === "failed" ? t("failed") : t("processing");
+  const variant =
+    status === "completed"
+      ? "default"
+      : status === "failed"
+        ? "destructive"
+        : "secondary";
+  const label =
+    status === "completed"
+      ? t("completed")
+      : status === "failed"
+        ? t("failed")
+        : t("processing");
   return <Badge variant={variant}>{label}</Badge>;
 }
 
@@ -74,7 +92,10 @@ function UploadForm() {
   const uploadMutation = useUploadVoterList();
 
   const handleFileSelect = (file: File) => {
-    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    if (
+      file.type !== "application/pdf" &&
+      !file.name.toLowerCase().endsWith(".pdf")
+    ) {
       toast.error("Only PDF files are accepted");
       return;
     }
@@ -131,9 +152,14 @@ function UploadForm() {
         {/* Drop zone */}
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-            isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
+            isDragging
+              ? "border-primary bg-primary/5"
+              : "border-muted-foreground/25 hover:border-primary/50"
           }`}
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
@@ -170,14 +196,18 @@ function UploadForm() {
           ) : (
             <div>
               <Upload className="h-10 w-10 mx-auto mb-2 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">{t("dragDropPdf")}</p>
-              <p className="text-xs text-muted-foreground mt-1">{t("maxFileSize")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("dragDropPdf")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("maxFileSize")}
+              </p>
             </div>
           )}
         </div>
 
         {/* Year & Language */}
-        <div className="flex items-end gap-4">
+        <div className="flex items-end gap-4 justify-between">
           <div className="space-y-1.5">
             <label className="text-sm font-medium">{t("year")}</label>
             <Select value={year} onValueChange={setYear}>
@@ -186,7 +216,9 @@ function UploadForm() {
               </SelectTrigger>
               <SelectContent>
                 {YEAR_OPTIONS.map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  <SelectItem key={y} value={String(y)}>
+                    {y}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -237,19 +269,20 @@ function UploadForm() {
               />
             </MapProvider>
           </div>
-
+        </div>
+        <div className="flex justify-center items-center">
           <Button
             onClick={handleUpload}
             disabled={!selectedFile || uploadMutation.isPending}
           >
             {uploadMutation.isPending ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-1 h-4 w-4 text-theme-primary animate-spin" />
                 {t("uploading")}
               </>
             ) : (
               <>
-                <Upload className="mr-2 h-4 w-4" />
+                <Upload className="mr-1 h-4 w-4 text-theme-primary" />
                 {t("upload")}
               </>
             )}
@@ -349,13 +382,19 @@ function GroupDetailView({
               <Input
                 placeholder={t("searchVoters")}
                 value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(0);
+                }}
                 className="pl-9 w-64"
               />
             </div>
             <Select
               value={genderFilter}
-              onValueChange={(val) => { setGenderFilter(val); setPage(0); }}
+              onValueChange={(val) => {
+                setGenderFilter(val);
+                setPage(0);
+              }}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder={t("allGenders")} />
@@ -367,7 +406,15 @@ function GroupDetailView({
               </SelectContent>
             </Select>
             {(searchQuery || genderFilter) && (
-              <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(""); setGenderFilter(""); setPage(0); }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setGenderFilter("");
+                  setPage(0);
+                }}
+              >
                 <X className="mr-1 h-4 w-4" /> {tc("clear")}
               </Button>
             )}
@@ -378,7 +425,9 @@ function GroupDetailView({
             <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-16">
               <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-semibold">{t("noEntriesFound")}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{t("tryAdjustingFilters")}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("tryAdjustingFilters")}
+              </p>
             </div>
           ) : (
             <>
@@ -386,31 +435,76 @@ function GroupDetailView({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left font-medium">{t("serialNo")}</th>
-                      <th className="px-4 py-3 text-left font-medium">{t("epicNo")}</th>
-                      <th className="px-4 py-3 text-left font-medium">{t("name")}</th>
-                      <th className="px-4 py-3 text-left font-medium">{t("fatherOrHusbandName")}</th>
-                      <th className="px-4 py-3 text-left font-medium">{t("relationType")}</th>
-                      <th className="px-4 py-3 text-left font-medium">{t("gender")}</th>
-                      <th className="px-4 py-3 text-left font-medium">{t("age")}</th>
-                      <th className="px-4 py-3 text-left font-medium">{t("houseNumber")}</th>
-                      <th className="px-4 py-3 text-left font-medium">{t("section")}</th>
-                      <th className="px-4 py-3 text-left font-medium">{t("entryStatus")}</th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        {t("serialNo")}
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        {t("epicNo")}
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        {t("name")}
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        {t("fatherOrHusbandName")}
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        {t("relationType")}
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        {t("gender")}
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        {t("age")}
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        {t("houseNumber")}
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        {t("section")}
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        {t("entryStatus")}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {entries.map((entry) => (
-                      <tr key={entry.id} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-3 font-mono text-xs">{entry.serial_no ?? "—"}</td>
-                        <td className="px-4 py-3 font-mono text-xs">{entry.epic_no || "—"}</td>
+                      <tr
+                        key={entry.id}
+                        className="border-b last:border-0 hover:bg-muted/30"
+                      >
+                        <td className="px-4 py-3 font-mono text-xs">
+                          {entry.serial_no ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs">
+                          {entry.epic_no || "—"}
+                        </td>
                         <td className="px-4 py-3 font-medium">{entry.name}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{entry.father_or_husband_name || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{entry.relation_type || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{entry.gender || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{entry.age ?? "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{entry.house_number || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{entry.section || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{entry.status ? <Badge variant="outline">{entry.status}</Badge> : "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {entry.father_or_husband_name || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {entry.relation_type || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {entry.gender || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {entry.age ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {entry.house_number || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {entry.section || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {entry.status ? (
+                            <Badge variant="outline">{entry.status}</Badge>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -423,10 +517,20 @@ function GroupDetailView({
                   {tc("showing", { from, to, total: totalEntries })}
                 </p>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 0}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
                     <ChevronLeft className="mr-1 h-4 w-4" /> {tc("previous")}
                   </Button>
-                  <Button variant="outline" size="sm" disabled={to >= totalEntries} onClick={() => setPage((p) => p + 1)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={to >= totalEntries}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
                     {tc("next")} <ChevronRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
@@ -440,7 +544,11 @@ function GroupDetailView({
 }
 
 // --- Groups List View ---
-function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void }) {
+function GroupsListView({
+  onSelectGroup,
+}: {
+  onSelectGroup: (id: string) => void;
+}) {
   const t = useTranslations("voters");
   const tc = useTranslations("common");
   const formatDate = useFormatDate();
@@ -449,7 +557,9 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [groupToDelete, setGroupToDelete] = useState<VoterListGroupItem | undefined>();
+  const [groupToDelete, setGroupToDelete] = useState<
+    VoterListGroupItem | undefined
+  >();
   const deleteGroup = useDeleteVoterListGroup();
 
   async function handleDeleteConfirm() {
@@ -475,7 +585,8 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
   });
 
   // Start/stop polling based on whether any group is processing
-  const hasProcessing = data?.items?.some((g) => g.status === "processing") ?? false;
+  const hasProcessing =
+    data?.items?.some((g) => g.status === "processing") ?? false;
   useEffect(() => {
     setIsPolling(hasProcessing);
   }, [hasProcessing]);
@@ -495,13 +606,19 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
           <Input
             placeholder={t("searchConstituency")}
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(0);
+            }}
             className="pl-9 w-64"
           />
         </div>
         <Select
           value={statusFilter}
-          onValueChange={(val) => { setStatusFilter(val); setPage(0); }}
+          onValueChange={(val) => {
+            setStatusFilter(val);
+            setPage(0);
+          }}
         >
           <SelectTrigger className="w-40">
             <SelectValue placeholder={t("allStatuses")} />
@@ -513,7 +630,15 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
           </SelectContent>
         </Select>
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(""); setStatusFilter(""); setPage(0); }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearchQuery("");
+              setStatusFilter("");
+              setPage(0);
+            }}
+          >
             <X className="mr-1 h-4 w-4" /> {tc("clear")}
           </Button>
         )}
@@ -523,7 +648,10 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
       {isLoading ? (
         <div className="rounded-md border">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 border-b px-4 py-3 last:border-0">
+            <div
+              key={i}
+              className="flex items-center gap-4 border-b px-4 py-3 last:border-0"
+            >
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-5 w-20 rounded-full" />
@@ -548,34 +676,67 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium">{t("constituency")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("partNo")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("partName")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("year")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("status")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("voterCount")}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("createdAt")}</th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    {t("constituency")}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    {t("partNo")}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    {t("partName")}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    {t("year")}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    {t("status")}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    {t("voterCount")}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    {t("createdAt")}
+                  </th>
                   <th className="px-4 py-3 text-left font-medium"></th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item: VoterListGroupItem) => (
-                  <tr key={item.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium">{item.constituency}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{item.part_no || "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{item.part_name || "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{item.year}</td>
-                    <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
+                  <tr
+                    key={item.id}
+                    className="border-b last:border-0 hover:bg-muted/30"
+                  >
+                    <td className="px-4 py-3 font-medium">
+                      {item.constituency}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {item.part_no || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {item.part_name || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {item.year}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={item.status} />
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <Users className="h-3.5 w-3.5" />
                         {item.voter_count.toLocaleString()}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(item.created_at)}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                      {formatDate(item.created_at)}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => onSelectGroup(item.id)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onSelectGroup(item.id)}
+                        >
                           {t("viewDetails")}
                         </Button>
                         <PermissionGate permission="voters:write">
@@ -583,7 +744,10 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
                             variant="ghost"
                             size="sm"
                             className="text-destructive hover:text-destructive"
-                            onClick={() => { setGroupToDelete(item); setDeleteDialogOpen(true); }}
+                            onClick={() => {
+                              setGroupToDelete(item);
+                              setDeleteDialogOpen(true);
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -602,10 +766,20 @@ function GroupsListView({ onSelectGroup }: { onSelectGroup: (id: string) => void
               {tc("showing", { from, to, total })}
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 <ChevronLeft className="mr-1 h-4 w-4" /> {tc("previous")}
               </Button>
-              <Button variant="outline" size="sm" disabled={to >= total} onClick={() => setPage((p) => p + 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={to >= total}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 {tc("next")} <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
