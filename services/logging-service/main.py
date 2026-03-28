@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI
 from sqlalchemy import delete
 
-from sentinel_shared.config import get_settings
 from sentinel_shared.logging import init_logging
 from sentinel_shared.database.session import get_session_factory
 from sentinel_shared.models.log_entry import LogEntry
@@ -36,6 +35,7 @@ async def lifespan(app: FastAPI):
 
     # Schedule daily log purge
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
     scheduler = AsyncIOScheduler()
     scheduler.add_job(purge_old_logs, "interval", hours=24)
     scheduler.start()

@@ -74,7 +74,11 @@ class FileUploadHandler(BaseConnectorHandler):
                     text, sheet_count = _extract_xls_text(data)
                     metadata["sheet_count"] = sheet_count
                 else:
-                    logger.warning("file_upload_unsupported_type", filename=filename, content_type=content_type)
+                    logger.warning(
+                        "file_upload_unsupported_type",
+                        filename=filename,
+                        content_type=content_type,
+                    )
                     continue
 
                 metadata["char_count"] = len(text)
@@ -82,7 +86,9 @@ class FileUploadHandler(BaseConnectorHandler):
                 # Chunk large files into multiple items
                 if len(text) > MAX_CONTENT_CHARS:
                     chunks = _chunk_text(text, MAX_CONTENT_CHARS)
-                    logger.info("file_upload_chunking", filename=filename, chunks=len(chunks))
+                    logger.info(
+                        "file_upload_chunking", filename=filename, chunks=len(chunks)
+                    )
                     for i, chunk in enumerate(chunks):
                         item = RawMediaItem(
                             tenant_id=tid,
@@ -91,7 +97,11 @@ class FileUploadHandler(BaseConnectorHandler):
                             content=chunk,
                             author=filename,
                             published_at=datetime.now(timezone.utc),
-                            raw_payload={**metadata, "part": i, "total_parts": len(chunks)},
+                            raw_payload={
+                                **metadata,
+                                "part": i,
+                                "total_parts": len(chunks),
+                            },
                         )
                         results.append(item)
                 else:
@@ -106,10 +116,17 @@ class FileUploadHandler(BaseConnectorHandler):
                     )
                     results.append(item)
 
-                logger.info("file_upload_extracted", filename=filename, char_count=len(text))
+                logger.info(
+                    "file_upload_extracted", filename=filename, char_count=len(text)
+                )
 
             except Exception as exc:
-                logger.error("file_upload_processing_failed", filename=filename, s3_key=s3_key, error=str(exc))
+                logger.error(
+                    "file_upload_processing_failed",
+                    filename=filename,
+                    s3_key=s3_key,
+                    error=str(exc),
+                )
                 continue
 
         logger.info("file_upload_fetch_complete", total_items=len(results))
@@ -122,15 +139,15 @@ def _is_pdf(filename: str, content_type: str) -> bool:
 
 def _is_xlsx(filename: str, content_type: str) -> bool:
     return (
-        content_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        content_type
+        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         or filename.lower().endswith(".xlsx")
     )
 
 
 def _is_xls(filename: str, content_type: str) -> bool:
-    return (
-        content_type == "application/vnd.ms-excel"
-        or filename.lower().endswith(".xls")
+    return content_type == "application/vnd.ms-excel" or filename.lower().endswith(
+        ".xls"
     )
 
 
@@ -145,7 +162,9 @@ def _extract_pdf_text(data: bytes) -> tuple[str, int]:
     total_pages = len(doc)
     if total_pages > MAX_PDF_PAGES:
         doc.close()
-        raise ValueError(f"PDF has {total_pages} pages, exceeding the limit of {MAX_PDF_PAGES}")
+        raise ValueError(
+            f"PDF has {total_pages} pages, exceeding the limit of {MAX_PDF_PAGES}"
+        )
     pages = []
     for page in doc:
         pages.append(page.get_text())
@@ -169,7 +188,9 @@ def _extract_xlsx_text(data: bytes) -> tuple[str, int]:
             total_rows += 1
             if total_rows > MAX_EXCEL_ROWS:
                 wb.close()
-                raise ValueError(f"Excel file exceeds the limit of {MAX_EXCEL_ROWS} total rows")
+                raise ValueError(
+                    f"Excel file exceeds the limit of {MAX_EXCEL_ROWS} total rows"
+                )
             cell_values = [str(cell) if cell is not None else "" for cell in row]
             row_text = "\t".join(cell_values)
             if row_text.strip():
@@ -194,8 +215,12 @@ def _extract_xls_text(data: bytes) -> tuple[str, int]:
         for row_idx in range(sheet.nrows):
             total_rows += 1
             if total_rows > MAX_EXCEL_ROWS:
-                raise ValueError(f"Excel file exceeds the limit of {MAX_EXCEL_ROWS} total rows")
-            cell_values = [str(sheet.cell_value(row_idx, col)) for col in range(sheet.ncols)]
+                raise ValueError(
+                    f"Excel file exceeds the limit of {MAX_EXCEL_ROWS} total rows"
+                )
+            cell_values = [
+                str(sheet.cell_value(row_idx, col)) for col in range(sheet.ncols)
+            ]
             row_text = "\t".join(cell_values)
             if row_text.strip():
                 rows.append(row_text)

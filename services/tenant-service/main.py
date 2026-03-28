@@ -6,6 +6,7 @@ from routers import tenants_router
 
 logger = structlog.get_logger()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_logging("tenant-service")
@@ -15,8 +16,10 @@ async def lifespan(app: FastAPI):
     logger.info("tenant-service shutting down")
     await stop_log_shipper()
 
+
 app = FastAPI(title="Tenant Service", lifespan=lifespan)
 app.include_router(tenants_router, prefix="/tenants/tenants", tags=["tenants"])
+
 
 @app.get("/health")
 async def health():

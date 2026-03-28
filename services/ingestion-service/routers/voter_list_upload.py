@@ -4,7 +4,10 @@ from typing import Literal
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from pydantic import BaseModel
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 from sentinel_shared.storage.s3 import S3Client
 from sentinel_shared.messaging.sqs import SQSClient
 from sentinel_shared.config import get_settings
@@ -47,7 +50,9 @@ def _get_file_extension(filename: str) -> str:
     return filename[dot_idx:].lower()
 
 
-@router.post("/", response_model=VoterListUploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=VoterListUploadResponse, status_code=status.HTTP_201_CREATED
+)
 async def upload_voter_list(
     file: UploadFile = File(...),
     year: int = Form(...),
@@ -129,18 +134,21 @@ async def upload_voter_list(
     # Send SQS message to voter-list processing queue
     try:
         sqs = SQSClient()
-        await sqs.send_message(settings.sqs_voter_list_queue, {
-            "file_id": file_id,
-            "s3_key": s3_key,
-            "year": year,
-            "language": language,
-            "part_no": part_no,
-            "part_name": part_name,
-            "location_name": location_name,
-            "location_lat": location_lat,
-            "location_lng": location_lng,
-            "tenant_id": tenant_id,
-        })
+        await sqs.send_message(
+            settings.sqs_voter_list_queue,
+            {
+                "file_id": file_id,
+                "s3_key": s3_key,
+                "year": year,
+                "language": language,
+                "part_no": part_no,
+                "part_name": part_name,
+                "location_name": location_name,
+                "location_lat": location_lat,
+                "location_lng": location_lng,
+                "tenant_id": tenant_id,
+            },
+        )
         logger.info(
             "voter_list_job_dispatched",
             file_id=file_id,

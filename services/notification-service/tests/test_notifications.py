@@ -7,7 +7,7 @@ class TestSendNotification:
     """POST /notifications/send"""
 
     def test_valid_notification_returns_200(self, client):
-        with patch("main.push_notification", new_callable=AsyncMock) as mock_push:
+        with patch("main.push_notification", new_callable=AsyncMock):
             resp = client.post(
                 "/notifications/send",
                 json={

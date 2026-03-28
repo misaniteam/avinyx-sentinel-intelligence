@@ -6,7 +6,10 @@ from sqlalchemy import select, func, desc, or_
 
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.voter_list import VoterListGroup, VoterListEntry
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -16,6 +19,7 @@ router = APIRouter()
 # -------------------------
 # RESPONSE SCHEMAS
 # -------------------------
+
 
 class VoterEntryItem(BaseModel):
     id: UUID
@@ -107,6 +111,7 @@ class VoterListGroupDetailResponse(BaseModel):
 # LIST GROUPS
 # -------------------------
 
+
 @router.get("/", response_model=VoterListGroupsResponse)
 async def list_voter_list_groups(
     db: AsyncSession = Depends(get_db),
@@ -130,9 +135,12 @@ async def list_voter_list_groups(
         conditions.append(VoterListGroup.constituency.ilike(f"%{search}%"))
 
     # Total count
-    total = await db.scalar(
-        select(func.count()).select_from(VoterListGroup).where(*conditions)
-    ) or 0
+    total = (
+        await db.scalar(
+            select(func.count()).select_from(VoterListGroup).where(*conditions)
+        )
+        or 0
+    )
 
     # Voter count subquery
     voter_count_subq = (
@@ -145,10 +153,7 @@ async def list_voter_list_groups(
     )
 
     query = (
-        select(
-            VoterListGroup,
-            func.coalesce(voter_count_subq.c.voter_count, 0)
-        )
+        select(VoterListGroup, func.coalesce(voter_count_subq.c.voter_count, 0))
         .outerjoin(voter_count_subq, VoterListGroup.id == voter_count_subq.c.group_id)
         .where(*conditions)
         .order_by(desc(VoterListGroup.created_at))
@@ -184,6 +189,7 @@ async def list_voter_list_groups(
 # -------------------------
 # ALL ENTRIES (across groups)
 # -------------------------
+
 
 @router.get("/entries/all", response_model=AllVoterEntriesResponse)
 async def list_all_voter_entries(
@@ -236,13 +242,12 @@ async def list_all_voter_entries(
         .where(*conditions)
     )
 
-    total = await db.scalar(
-        select(func.count()).select_from(base_query.subquery())
-    ) or 0
+    total = (
+        await db.scalar(select(func.count()).select_from(base_query.subquery())) or 0
+    )
 
     result = await db.execute(
-        base_query
-        .order_by(VoterListEntry.serial_no.nulls_last())
+        base_query.order_by(VoterListEntry.serial_no.nulls_last())
         .offset(skip)
         .limit(limit)
     )
@@ -255,6 +260,7 @@ async def list_all_voter_entries(
 # -------------------------
 # GET GROUP + ENTRIES
 # -------------------------
+
 
 @router.get("/{group_id}", response_model=VoterListGroupDetailResponse)
 async def get_voter_list_group(
@@ -298,9 +304,12 @@ async def get_voter_list_group(
         conditions.append(VoterListEntry.status == status)
 
     # Count
-    total_entries = await db.scalar(
-        select(func.count()).select_from(VoterListEntry).where(*conditions)
-    ) or 0
+    total_entries = (
+        await db.scalar(
+            select(func.count()).select_from(VoterListEntry).where(*conditions)
+        )
+        or 0
+    )
 
     # Fetch entries
     result = await db.execute(
@@ -336,6 +345,7 @@ async def get_voter_list_group(
 # -------------------------
 # DELETE GROUP
 # -------------------------
+
 
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_voter_list_group(

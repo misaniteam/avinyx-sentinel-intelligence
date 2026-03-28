@@ -13,9 +13,13 @@ class S3Client:
             kwargs["endpoint_url"] = self.settings.aws_endpoint_url
         return kwargs
 
-    async def upload_file(self, bucket: str, key: str, data: bytes, content_type: str) -> str:
+    async def upload_file(
+        self, bucket: str, key: str, data: bytes, content_type: str
+    ) -> str:
         """Upload a file to S3 and return the key."""
-        async with self._session.create_client("s3", **self._get_client_kwargs()) as client:
+        async with self._session.create_client(
+            "s3", **self._get_client_kwargs()
+        ) as client:
             await client.put_object(
                 Bucket=bucket,
                 Key=key,
@@ -27,7 +31,9 @@ class S3Client:
 
     async def download_file(self, bucket: str, key: str) -> bytes:
         """Download a file from S3 and return its bytes."""
-        async with self._session.create_client("s3", **self._get_client_kwargs()) as client:
+        async with self._session.create_client(
+            "s3", **self._get_client_kwargs()
+        ) as client:
             resp = await client.get_object(Bucket=bucket, Key=key)
             async with resp["Body"] as stream:
                 return await stream.read()

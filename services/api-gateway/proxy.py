@@ -1,13 +1,18 @@
 import httpx
 import structlog
-from fastapi import APIRouter, Request, Response, Depends
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 from sentinel_shared.config import get_settings
-from sentinel_shared.auth.dependencies import get_current_user
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 logger = structlog.get_logger()
 router = APIRouter()
+
 
 # Route prefix -> service URL mapping
 def get_service_map() -> dict[str, str]:
@@ -22,6 +27,7 @@ def get_service_map() -> dict[str, str]:
         "/api/logs": settings.logging_service_url,
     }
 
+
 # Public routes that don't require auth
 PUBLIC_PATHS = {
     "/api/auth/login",
@@ -30,12 +36,20 @@ PUBLIC_PATHS = {
     "/api/auth/refresh",
 }
 
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=0.5, min=0.5, max=5),
     retry=retry_if_exception_type(httpx.ConnectError),
 )
-async def proxy_request(method: str, url: str, headers: dict, content: bytes, params: dict, timeout: float = 30.0) -> httpx.Response:
+async def proxy_request(
+    method: str,
+    url: str,
+    headers: dict,
+    content: bytes,
+    params: dict,
+    timeout: float = 30.0,
+) -> httpx.Response:
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         return await client.request(
             method=method,
@@ -45,6 +59,7 @@ async def proxy_request(method: str, url: str, headers: dict, content: bytes, pa
             params=params,
         )
 
+
 @router.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def gateway_proxy(request: Request, path: str):
     full_path = f"/api/{path}"
@@ -53,17 +68,18 @@ async def gateway_proxy(request: Request, path: str):
     if full_path not in PUBLIC_PATHS:
         auth_header = request.headers.get("authorization")
         if not auth_header:
-            return JSONResponse(status_code=401, content={"detail": "Missing authorization header"})
+            return JSONResponse(
+                status_code=401, content={"detail": "Missing authorization header"}
+            )
 
     # Find target service
     service_map = get_service_map()
     target_url = None
-    strip_prefix = ""
 
     for prefix, service_url in service_map.items():
         if full_path.startswith(prefix):
             # Map /api/auth/login -> auth-service /auth/login
-            remaining = full_path[len(prefix):]
+            remaining = full_path[len(prefix) :]
             service_prefix = prefix.replace("/api", "")
             target_url = f"{service_url}{service_prefix}{remaining}"
             break
@@ -79,7 +95,11 @@ async def gateway_proxy(request: Request, path: str):
     body = await request.body()
 
     # Use extended timeout for file upload endpoints
-    timeout = 300.0 if ("/file-upload" in full_path or "/voter-list-upload" in full_path) else 30.0
+    timeout = (
+        300.0
+        if ("/file-upload" in full_path or "/voter-list-upload" in full_path)
+        else 30.0
+    )
 
     try:
         response = await proxy_request(
@@ -93,7 +113,11 @@ async def gateway_proxy(request: Request, path: str):
 
         # Forward response
         excluded_headers = {"content-encoding", "transfer-encoding", "content-length"}
-        response_headers = {k: v for k, v in response.headers.items() if k.lower() not in excluded_headers}
+        response_headers = {
+            k: v
+            for k, v in response.headers.items()
+            if k.lower() not in excluded_headers
+        }
 
         return Response(
             content=response.content,
@@ -103,7 +127,9 @@ async def gateway_proxy(request: Request, path: str):
         )
     except httpx.ConnectError:
         logger.error("service_unavailable", target=target_url)
-        return JSONResponse(status_code=503, content={"detail": "Service temporarily unavailable"})
+        return JSONResponse(
+            status_code=503, content={"detail": "Service temporarily unavailable"}
+        )
     except Exception as e:
         logger.error("proxy_error", error=str(e), target=target_url)
         return JSONResponse(status_code=502, content={"detail": "Bad gateway"})

@@ -10,6 +10,7 @@ from datetime import datetime
 
 router = APIRouter()
 
+
 class VoterCreate(BaseModel):
     full_name: str
     email: str | None = None
@@ -19,6 +20,7 @@ class VoterCreate(BaseModel):
     geo_region: str | None = None
     demographics: dict = {}
     tags: list[str] = []
+
 
 class VoterUpdate(BaseModel):
     full_name: str | None = None
@@ -30,6 +32,7 @@ class VoterUpdate(BaseModel):
     demographics: dict | None = None
     sentiment_score: float | None = None
     tags: list[str] | None = None
+
 
 class VoterResponse(BaseModel):
     id: UUID
@@ -46,11 +49,13 @@ class VoterResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
 class InteractionCreate(BaseModel):
     campaign_id: UUID | None = None
     interaction_type: str
     notes: str | None = None
     metadata: dict = {}
+
 
 class InteractionResponse(BaseModel):
     id: UUID
@@ -62,6 +67,7 @@ class InteractionResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
 
 @router.get("/", response_model=list[VoterResponse])
 async def list_voters(
@@ -78,6 +84,7 @@ async def list_voters(
         query = query.where(Voter.geo_region == region)
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
+
 
 @router.post("/", response_model=VoterResponse, status_code=status.HTTP_201_CREATED)
 async def create_voter(
@@ -102,6 +109,7 @@ async def create_voter(
     await db.refresh(voter)
     return voter
 
+
 @router.get("/{voter_id}", response_model=VoterResponse)
 async def get_voter(
     voter_id: UUID,
@@ -109,11 +117,14 @@ async def get_voter(
     tenant_id: str = Depends(get_current_tenant),
     user: dict = Depends(require_permissions("voters:read")),
 ):
-    result = await db.execute(select(Voter).where(Voter.id == voter_id, Voter.tenant_id == tenant_id))
+    result = await db.execute(
+        select(Voter).where(Voter.id == voter_id, Voter.tenant_id == tenant_id)
+    )
     voter = result.scalar_one_or_none()
     if not voter:
         raise HTTPException(status_code=404, detail="Voter not found")
     return voter
+
 
 @router.patch("/{voter_id}", response_model=VoterResponse)
 async def update_voter(
@@ -123,7 +134,9 @@ async def update_voter(
     tenant_id: str = Depends(get_current_tenant),
     user: dict = Depends(require_permissions("voters:write")),
 ):
-    result = await db.execute(select(Voter).where(Voter.id == voter_id, Voter.tenant_id == tenant_id))
+    result = await db.execute(
+        select(Voter).where(Voter.id == voter_id, Voter.tenant_id == tenant_id)
+    )
     voter = result.scalar_one_or_none()
     if not voter:
         raise HTTPException(status_code=404, detail="Voter not found")
@@ -133,6 +146,7 @@ async def update_voter(
     await db.refresh(voter)
     return voter
 
+
 @router.delete("/{voter_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_voter(
     voter_id: UUID,
@@ -140,12 +154,15 @@ async def delete_voter(
     tenant_id: str = Depends(get_current_tenant),
     user: dict = Depends(require_permissions("voters:write")),
 ):
-    result = await db.execute(select(Voter).where(Voter.id == voter_id, Voter.tenant_id == tenant_id))
+    result = await db.execute(
+        select(Voter).where(Voter.id == voter_id, Voter.tenant_id == tenant_id)
+    )
     voter = result.scalar_one_or_none()
     if not voter:
         raise HTTPException(status_code=404, detail="Voter not found")
     await db.delete(voter)
     await db.commit()
+
 
 @router.get("/{voter_id}/interactions", response_model=list[InteractionResponse])
 async def list_voter_interactions(
@@ -155,11 +172,19 @@ async def list_voter_interactions(
     user: dict = Depends(require_permissions("voters:read")),
 ):
     result = await db.execute(
-        select(VoterInteraction).where(VoterInteraction.voter_id == voter_id, VoterInteraction.tenant_id == tenant_id)
+        select(VoterInteraction).where(
+            VoterInteraction.voter_id == voter_id,
+            VoterInteraction.tenant_id == tenant_id,
+        )
     )
     return result.scalars().all()
 
-@router.post("/{voter_id}/interactions", response_model=InteractionResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/{voter_id}/interactions",
+    response_model=InteractionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_voter_interaction(
     voter_id: UUID,
     request: InteractionCreate,

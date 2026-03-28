@@ -9,7 +9,10 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 from sentinel_shared.config import get_settings
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.report import Report
@@ -136,7 +139,9 @@ async def generate_report(
     await db.commit()
     await db.refresh(report)
 
-    logger.info("Report %s generation triggered (MVP: completed immediately)", report_id)
+    logger.info(
+        "Report %s generation triggered (MVP: completed immediately)", report_id
+    )
     return ReportGenerateResponse(status="generating")
 
 

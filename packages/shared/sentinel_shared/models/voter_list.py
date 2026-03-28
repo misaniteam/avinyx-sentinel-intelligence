@@ -52,11 +52,7 @@ class VoterListGroup(Base, TimestampMixin, TenantMixin):
     )
 
     # Index
-    __table_args__ = (
-        Index("idx_voter_group_tenant_year", "tenant_id", "year"),
-    )
-
-
+    __table_args__ = (Index("idx_voter_group_tenant_year", "tenant_id", "year"),)
 
 
 class VoterListEntry(Base, TimestampMixin):
@@ -85,10 +81,10 @@ class VoterListEntry(Base, TimestampMixin):
     age = Column(Integer)
 
     # Identifiers
-    voter_no = Column(String(50))   # not unique
+    voter_no = Column(String(50))  # not unique
     serial_no = Column(Integer)
 
-    epic_no = Column(String(50))   # indexed below
+    epic_no = Column(String(50))  # indexed below
 
     # Address
     house_number = Column(String(100))

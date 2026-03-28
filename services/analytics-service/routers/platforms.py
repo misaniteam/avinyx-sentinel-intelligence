@@ -6,7 +6,10 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.media import RawMediaItem
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 
 router = APIRouter()
 
@@ -58,14 +61,22 @@ async def engagement_over_time(
     user: dict = Depends(require_permissions("analytics:read")),
 ):
     trunc_period = "day" if period == "daily" else "week"
-    period_col = func.date_trunc(trunc_period, RawMediaItem.published_at).label("period_start")
+    period_col = func.date_trunc(trunc_period, RawMediaItem.published_at).label(
+        "period_start"
+    )
 
     query = (
         select(
             period_col,
-            func.coalesce(func.sum(RawMediaItem.engagement["likes"].as_integer()), 0).label("likes"),
-            func.coalesce(func.sum(RawMediaItem.engagement["shares"].as_integer()), 0).label("shares"),
-            func.coalesce(func.sum(RawMediaItem.engagement["comments"].as_integer()), 0).label("comments"),
+            func.coalesce(
+                func.sum(RawMediaItem.engagement["likes"].as_integer()), 0
+            ).label("likes"),
+            func.coalesce(
+                func.sum(RawMediaItem.engagement["shares"].as_integer()), 0
+            ).label("shares"),
+            func.coalesce(
+                func.sum(RawMediaItem.engagement["comments"].as_integer()), 0
+            ).label("comments"),
         )
         .where(
             RawMediaItem.tenant_id == tenant_id,

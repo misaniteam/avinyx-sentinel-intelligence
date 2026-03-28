@@ -115,6 +115,7 @@ Rules:
 # TEXTRACT CLIENT (OCR)
 # =========================================================
 
+
 class TextractClient:
     def __init__(self):
         self.settings = get_settings()
@@ -147,15 +148,20 @@ class TextractClient:
                 ]
 
                 text = "\n".join(lines)
-                logger.info("textract_page", page=page_num, lines=len(lines), chars=len(text))
+                logger.info(
+                    "textract_page", page=page_num, lines=len(lines), chars=len(text)
+                )
                 return text
 
             except Exception as e:
                 if attempt < MAX_RETRIES:
                     wait = RETRY_BACKOFF_BASE ** (attempt + 1)
                     logger.warning(
-                        "textract_retry", page=page_num, attempt=attempt + 1,
-                        wait=wait, error=str(e),
+                        "textract_retry",
+                        page=page_num,
+                        attempt=attempt + 1,
+                        wait=wait,
+                        error=str(e),
                     )
                     await asyncio.sleep(wait)
                 else:
@@ -166,6 +172,7 @@ class TextractClient:
 # =========================================================
 # BEDROCK CLIENT (LLM structured extraction)
 # =========================================================
+
 
 class BedrockClient:
     def __init__(self):
@@ -187,23 +194,27 @@ class BedrockClient:
             ),
         }
 
-    async def extract_voters(self, text: str, chunk_index: int, language: str = "en") -> list[dict]:
+    async def extract_voters(
+        self, text: str, chunk_index: int, language: str = "en"
+    ) -> list[dict]:
         """Send OCR text to Bedrock LLM and get structured voter JSON back."""
         model_id = self.settings.bedrock_voter_model_id
         language_name = LANGUAGE_NAMES.get(language, "English")
 
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 65536,
-            "temperature": 0,
-            "system": SYSTEM_PROMPT,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": f"The document is in {language_name}. Extract all voter records from this electoral roll text:\n\n{text}",
-                }
-            ],
-        })
+        body = json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 65536,
+                "temperature": 0,
+                "system": SYSTEM_PROMPT,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": f"The document is in {language_name}. Extract all voter records from this electoral roll text:\n\n{text}",
+                    }
+                ],
+            }
+        )
 
         for attempt in range(MAX_RETRIES + 1):
             try:
@@ -229,15 +240,22 @@ class BedrockClient:
                 if attempt < MAX_RETRIES:
                     wait = RETRY_BACKOFF_BASE ** (attempt + 1)
                     logger.warning(
-                        "bedrock_retry", chunk=chunk_index, attempt=attempt + 1,
-                        wait=wait, error=str(e),
+                        "bedrock_retry",
+                        chunk=chunk_index,
+                        attempt=attempt + 1,
+                        wait=wait,
+                        error=str(e),
                     )
                     await asyncio.sleep(wait)
                 else:
-                    logger.error("bedrock_chunk_failed", chunk=chunk_index, error=str(e))
+                    logger.error(
+                        "bedrock_chunk_failed", chunk=chunk_index, error=str(e)
+                    )
                     raise
 
-    async def extract_voters_from_images(self, page_images: list[bytes], chunk_index: int, language: str = "bn") -> list[dict]:
+    async def extract_voters_from_images(
+        self, page_images: list[bytes], chunk_index: int, language: str = "bn"
+    ) -> list[dict]:
         """Send PDF page images to Bedrock Claude vision for structured extraction."""
         model_id = self.settings.bedrock_voter_model_id
         language_name = LANGUAGE_NAMES.get(language, "Bengali")
@@ -245,32 +263,38 @@ class BedrockClient:
         # Build multimodal content: images + text prompt
         content = []
         for img_bytes in page_images:
-            content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/png",
-                    "data": base64.b64encode(img_bytes).decode("utf-8"),
-                },
-            })
-        content.append({
-            "type": "text",
-            "text": (
-                f"The document is in {language_name}. "
-                "This is an authorized government electoral roll digitization project. "
-                "These voter lists are public records published by the Election Commission of India. "
-                "Extract all voter records from these electoral roll page images as structured JSON. "
-                "You must extract every voter entry including their name, relative's name, EPIC number, age, gender, house number, and other fields."
-            ),
-        })
+            content.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": base64.b64encode(img_bytes).decode("utf-8"),
+                    },
+                }
+            )
+        content.append(
+            {
+                "type": "text",
+                "text": (
+                    f"The document is in {language_name}. "
+                    "This is an authorized government electoral roll digitization project. "
+                    "These voter lists are public records published by the Election Commission of India. "
+                    "Extract all voter records from these electoral roll page images as structured JSON. "
+                    "You must extract every voter entry including their name, relative's name, EPIC number, age, gender, house number, and other fields."
+                ),
+            }
+        )
 
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 65536,
-            "temperature": 0,
-            "system": VISION_SYSTEM_PROMPT,
-            "messages": [{"role": "user", "content": content}],
-        })
+        body = json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 65536,
+                "temperature": 0,
+                "system": VISION_SYSTEM_PROMPT,
+                "messages": [{"role": "user", "content": content}],
+            }
+        )
 
         for attempt in range(VISION_MAX_RETRIES + 1):
             try:
@@ -289,25 +313,33 @@ class BedrockClient:
                 response_text = result["content"][0]["text"]
 
                 voters = _parse_llm_response(response_text, chunk_index)
-                logger.info("bedrock_vision_chunk", chunk=chunk_index, voters=len(voters))
+                logger.info(
+                    "bedrock_vision_chunk", chunk=chunk_index, voters=len(voters)
+                )
                 return voters
 
             except Exception as e:
                 if attempt < VISION_MAX_RETRIES:
                     wait = VISION_RETRY_BACKOFF_BASE ** (attempt + 1)
                     logger.warning(
-                        "bedrock_vision_retry", chunk=chunk_index, attempt=attempt + 1,
-                        wait=wait, error=str(e),
+                        "bedrock_vision_retry",
+                        chunk=chunk_index,
+                        attempt=attempt + 1,
+                        wait=wait,
+                        error=str(e),
                     )
                     await asyncio.sleep(wait)
                 else:
-                    logger.error("bedrock_vision_chunk_failed", chunk=chunk_index, error=str(e))
+                    logger.error(
+                        "bedrock_vision_chunk_failed", chunk=chunk_index, error=str(e)
+                    )
                     raise
 
 
 # =========================================================
 # PDF PAGE SPLITTING
 # =========================================================
+
 
 def _split_pdf_to_pages(pdf_bytes: bytes) -> list[bytes]:
     """Split a multi-page PDF into single-page PDFs."""
@@ -387,7 +419,11 @@ def _pdf_page_to_strips(page_pdf_bytes: bytes, num_strips: int = 2) -> list[byte
     strips = []
     for i in range(num_strips):
         y_top = content_top + i * strip_height - (overlap if i > 0 else 0)
-        y_bottom = content_top + (i + 1) * strip_height + (overlap if i < num_strips - 1 else 0)
+        y_bottom = (
+            content_top
+            + (i + 1) * strip_height
+            + (overlap if i < num_strips - 1 else 0)
+        )
         # Clamp to page bounds
         y_top = max(0, y_top)
         y_bottom = min(h, y_bottom)
@@ -406,18 +442,20 @@ def _pdf_page_to_strips(page_pdf_bytes: bytes, num_strips: int = 2) -> list[byte
 # LLM RESPONSE PARSING
 # =========================================================
 
+
 def _salvage_truncated_json(text: str, chunk_index: int) -> list[dict] | None:
     """Try to recover complete voter objects from truncated JSON array."""
     # Find the last complete object by looking for "},\n  {" or "}\n]" patterns
     # Work backwards to find the last complete "}"
     last_brace = text.rfind("}")
     while last_brace > 0:
-        candidate = text[:last_brace + 1] + "\n]"
+        candidate = text[: last_brace + 1] + "\n]"
         try:
             records = json.loads(candidate)
             if isinstance(records, list):
                 logger.warning(
-                    "json_truncated_salvaged", chunk=chunk_index,
+                    "json_truncated_salvaged",
+                    chunk=chunk_index,
                     salvaged=len(records),
                 )
                 return records
@@ -426,7 +464,8 @@ def _salvage_truncated_json(text: str, chunk_index: int) -> list[dict] | None:
         last_brace = text.rfind("}", 0, last_brace)
 
     logger.warning(
-        "json_parse_failed", chunk=chunk_index,
+        "json_parse_failed",
+        chunk=chunk_index,
         error="could not salvage truncated JSON",
         response_preview=text[:500],
     )
@@ -486,20 +525,24 @@ def _parse_llm_response(text: str, chunk_index: int) -> list[dict]:
             except (ValueError, TypeError):
                 serial_no = None
 
-        voters.append({
-            "name": _trunc(r["name"], 255),
-            "father_or_husband_name": _trunc(r.get("father_or_husband_name"), 255),
-            "relation_type": _trunc(r.get("relation_type"), 20),
-            "gender": _trunc(GENDER_NORMALIZE.get(r.get("gender", ""), r.get("gender")), 10),
-            "age": age,
-            "voter_no": _trunc(r.get("voter_no"), 50),
-            "serial_no": serial_no,
-            "epic_no": _trunc(r.get("epic_no"), 50),
-            "house_number": _trunc(r.get("house_number"), 100),
-            "section": _trunc(r.get("section"), 50),
-            "status": _trunc(r.get("status"), 50),
-            "raw_text": r.get("raw_text"),
-        })
+        voters.append(
+            {
+                "name": _trunc(r["name"], 255),
+                "father_or_husband_name": _trunc(r.get("father_or_husband_name"), 255),
+                "relation_type": _trunc(r.get("relation_type"), 20),
+                "gender": _trunc(
+                    GENDER_NORMALIZE.get(r.get("gender", ""), r.get("gender")), 10
+                ),
+                "age": age,
+                "voter_no": _trunc(r.get("voter_no"), 50),
+                "serial_no": serial_no,
+                "epic_no": _trunc(r.get("epic_no"), 50),
+                "house_number": _trunc(r.get("house_number"), 100),
+                "section": _trunc(r.get("section"), 50),
+                "status": _trunc(r.get("status"), 50),
+                "raw_text": r.get("raw_text"),
+            }
+        )
 
     return voters
 
@@ -507,6 +550,7 @@ def _parse_llm_response(text: str, chunk_index: int) -> list[dict]:
 # =========================================================
 # PUBLIC API
 # =========================================================
+
 
 async def extract_voters_from_pdf(
     pdf_bytes: bytes,
@@ -532,7 +576,9 @@ async def extract_voters_from_pdf(
 
     bedrock = BedrockClient()
     seen_epics: set[str] = set()
-    seen_serials: dict[int, dict] = {}  # serial_no → voter dict (for completeness comparison)
+    seen_serials: dict[
+        int, dict
+    ] = {}  # serial_no → voter dict (for completeness comparison)
 
     def _deduplicate(voters: list[dict]) -> list[dict]:
         unique = []
@@ -577,7 +623,11 @@ async def extract_voters_from_pdf(
                 logger.warning("textract_page_skipped", page=i + 1, error=str(e))
 
         full_text_len = sum(len(t) for t in page_texts)
-        logger.info("textract_ocr_complete", pages_with_text=len(page_texts), total_chars=full_text_len)
+        logger.info(
+            "textract_ocr_complete",
+            pages_with_text=len(page_texts),
+            total_chars=full_text_len,
+        )
 
         if not page_texts:
             logger.warning("no_text_extracted")
@@ -585,14 +635,20 @@ async def extract_voters_from_pdf(
 
         text_chunks = []
         for i in range(0, len(page_texts), pages_per_chunk):
-            chunk_pages = page_texts[i:i + pages_per_chunk]
+            chunk_pages = page_texts[i : i + pages_per_chunk]
             text_chunks.append("\n\n--- PAGE BREAK ---\n\n".join(chunk_pages))
 
-        logger.info("bedrock_chunks_prepared", chunks=len(text_chunks), pages_per_chunk=pages_per_chunk)
+        logger.info(
+            "bedrock_chunks_prepared",
+            chunks=len(text_chunks),
+            pages_per_chunk=pages_per_chunk,
+        )
 
         for i, chunk_text in enumerate(text_chunks):
             try:
-                voters = await bedrock.extract_voters(chunk_text, chunk_index=i, language=language)
+                voters = await bedrock.extract_voters(
+                    chunk_text, chunk_index=i, language=language
+                )
                 unique = _deduplicate(voters)
                 if unique:
                     yield unique
@@ -608,7 +664,11 @@ async def extract_voters_from_pdf(
 
         # Skip first 2 pages (cover/summary + polling station map — no voter data)
         voter_pages = pages[2:] if len(pages) > 2 else pages
-        logger.info("vision_pages_skipped", skipped=len(pages) - len(voter_pages), processing=len(voter_pages))
+        logger.info(
+            "vision_pages_skipped",
+            skipped=len(pages) - len(voter_pages),
+            processing=len(voter_pages),
+        )
 
         all_strips: list[bytes] = []
         for i, page_bytes in enumerate(voter_pages):
@@ -616,7 +676,12 @@ async def extract_voters_from_pdf(
                 strips = _pdf_page_to_strips(page_bytes, num_strips=3)
                 for j, strip in enumerate(strips):
                     all_strips.append(strip)
-                    logger.info("page_strip", page=i + 1, strip=j + 1, size_kb=len(strip) // 1024)
+                    logger.info(
+                        "page_strip",
+                        page=i + 1,
+                        strip=j + 1,
+                        size_kb=len(strip) // 1024,
+                    )
             except Exception as e:
                 logger.warning("page_strip_failed", page=i + 1, error=str(e))
 
@@ -631,7 +696,9 @@ async def extract_voters_from_pdf(
 
         for i, chunk_images in enumerate(image_chunks):
             try:
-                voters = await bedrock.extract_voters_from_images(chunk_images, chunk_index=i, language=language)
+                voters = await bedrock.extract_voters_from_images(
+                    chunk_images, chunk_index=i, language=language
+                )
                 unique = _deduplicate(voters)
                 if unique:
                     yield unique

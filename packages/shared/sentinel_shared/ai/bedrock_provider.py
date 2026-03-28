@@ -3,7 +3,12 @@ import asyncio
 import structlog
 from aiobotocore.session import get_session
 from aiobotocore.config import AioConfig
-from sentinel_shared.ai.base import BaseAIProvider, SentimentResult, ContentExtractionResult, build_topic_keywords_prompt
+from sentinel_shared.ai.base import (
+    BaseAIProvider,
+    SentimentResult,
+    ContentExtractionResult,
+    build_topic_keywords_prompt,
+)
 from sentinel_shared.config import get_settings
 
 logger = structlog.get_logger()
@@ -44,23 +49,36 @@ class BedrockProvider(BaseAIProvider):
     def _is_throttling_error(error: Exception) -> bool:
         """Check if the error is a Bedrock throttling/rate limit error."""
         error_str = str(error).lower()
-        return any(term in error_str for term in (
-            "throttl", "too many requests", "rate exceeded",
-            "limit exceeded", "serviceunav", "modelerror",
-        ))
+        return any(
+            term in error_str
+            for term in (
+                "throttl",
+                "too many requests",
+                "rate exceeded",
+                "limit exceeded",
+                "serviceunav",
+                "modelerror",
+            )
+        )
 
-    async def _invoke(self, system: str, user_content: str, max_tokens: int = 2048) -> str:
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": max_tokens,
-            "temperature": 0,
-            "system": system,
-            "messages": [{"role": "user", "content": user_content}],
-        })
+    async def _invoke(
+        self, system: str, user_content: str, max_tokens: int = 2048
+    ) -> str:
+        body = json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": max_tokens,
+                "temperature": 0,
+                "system": system,
+                "messages": [{"role": "user", "content": user_content}],
+            }
+        )
 
         for attempt in range(MAX_RETRIES + 1):
             try:
-                async with self._session.create_client("bedrock-runtime", **self._client_kwargs()) as client:
+                async with self._session.create_client(
+                    "bedrock-runtime", **self._client_kwargs()
+                ) as client:
                     response = await client.invoke_model(
                         modelId=self.model,
                         body=body,
@@ -85,7 +103,13 @@ class BedrockProvider(BaseAIProvider):
                         wait = RETRY_BACKOFF_BASE ** (attempt + 2)  # 4, 8, 16, 32, 64s
                     else:
                         wait = RETRY_BACKOFF_BASE ** (attempt + 1)  # 2, 4, 8, 16, 32s
-                    logger.warning("bedrock_retry", attempt=attempt + 1, wait=wait, throttled=is_throttle, error=str(e))
+                    logger.warning(
+                        "bedrock_retry",
+                        attempt=attempt + 1,
+                        wait=wait,
+                        throttled=is_throttle,
+                        error=str(e),
+                    )
                     await asyncio.sleep(wait)
                 else:
                     raise
@@ -101,10 +125,26 @@ class BedrockProvider(BaseAIProvider):
                 data = json.loads(response_text)
                 results.append(SentimentResult(**data))
             except (json.JSONDecodeError, KeyError, TypeError):
-                results.append(SentimentResult(sentiment_score=0.0, sentiment_label="neutral", summary="Analysis failed"))
+                results.append(
+                    SentimentResult(
+                        sentiment_score=0.0,
+                        sentiment_label="neutral",
+                        summary="Analysis failed",
+                    )
+                )
             except Exception as e:
-                logger.error("bedrock_sentiment_failed", error=str(e), throttled=self._is_throttling_error(e))
-                results.append(SentimentResult(sentiment_score=0.0, sentiment_label="neutral", summary="Analysis failed"))
+                logger.error(
+                    "bedrock_sentiment_failed",
+                    error=str(e),
+                    throttled=self._is_throttling_error(e),
+                )
+                results.append(
+                    SentimentResult(
+                        sentiment_score=0.0,
+                        sentiment_label="neutral",
+                        summary="Analysis failed",
+                    )
+                )
                 if self._is_throttling_error(e):
                     await asyncio.sleep(30)
         return results
@@ -122,18 +162,28 @@ class BedrockProvider(BaseAIProvider):
             except (json.JSONDecodeError, KeyError):
                 results.append([])
             except Exception as e:
-                logger.error("bedrock_topics_failed", error=str(e), throttled=self._is_throttling_error(e))
+                logger.error(
+                    "bedrock_topics_failed",
+                    error=str(e),
+                    throttled=self._is_throttling_error(e),
+                )
                 results.append([])
                 if self._is_throttling_error(e):
                     await asyncio.sleep(30)
         return results
 
     async def analyze_and_extract(
-        self, texts: list[str], raw_payloads: list[dict | None],
+        self,
+        texts: list[str],
+        raw_payloads: list[dict | None],
         topic_keywords: list[dict] | None = None,
     ) -> list[tuple[SentimentResult, ContentExtractionResult]]:
         keyword_context = build_topic_keywords_prompt(topic_keywords)
-        system_prompt = ANALYZE_AND_EXTRACT_SYSTEM + keyword_context if keyword_context else ANALYZE_AND_EXTRACT_SYSTEM
+        system_prompt = (
+            ANALYZE_AND_EXTRACT_SYSTEM + keyword_context
+            if keyword_context
+            else ANALYZE_AND_EXTRACT_SYSTEM
+        )
         results = []
         for i, (text, payload) in enumerate(zip(texts, raw_payloads)):
             if i > 0:
@@ -141,25 +191,50 @@ class BedrockProvider(BaseAIProvider):
             payload_str = json.dumps(payload or {}, default=str)[:2000]
             user_content = f"Content text:\n{text}\n\nRaw platform data:\n{payload_str}"
             try:
-                response_text = await self._invoke(system_prompt, user_content, max_tokens=2048)
+                response_text = await self._invoke(
+                    system_prompt, user_content, max_tokens=2048
+                )
                 data = json.loads(response_text)
                 sentiment = SentimentResult(**(data.get("sentiment", {})))
                 extraction = ContentExtractionResult(**(data.get("extraction", {})))
                 results.append((sentiment, extraction))
             except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-                logger.error("bedrock_parse_failed", error=str(e), response_preview=response_text[:500] if 'response_text' in dir() else "no response")
-                results.append((
-                    SentimentResult(sentiment_score=0.0, sentiment_label="neutral", summary="Analysis failed"),
-                    ContentExtractionResult(),
-                ))
+                logger.error(
+                    "bedrock_parse_failed",
+                    error=str(e),
+                    response_preview=response_text[:500]
+                    if "response_text" in dir()
+                    else "no response",
+                )
+                results.append(
+                    (
+                        SentimentResult(
+                            sentiment_score=0.0,
+                            sentiment_label="neutral",
+                            summary="Analysis failed",
+                        ),
+                        ContentExtractionResult(),
+                    )
+                )
             except Exception as e:
                 # Throttling or other API errors — log, add fallback, and add extra cooldown
                 is_throttle = self._is_throttling_error(e)
-                logger.error("bedrock_invoke_failed", error=str(e), throttled=is_throttle, item_index=i)
-                results.append((
-                    SentimentResult(sentiment_score=0.0, sentiment_label="neutral", summary="Analysis failed"),
-                    ContentExtractionResult(),
-                ))
+                logger.error(
+                    "bedrock_invoke_failed",
+                    error=str(e),
+                    throttled=is_throttle,
+                    item_index=i,
+                )
+                results.append(
+                    (
+                        SentimentResult(
+                            sentiment_score=0.0,
+                            sentiment_label="neutral",
+                            summary="Analysis failed",
+                        ),
+                        ContentExtractionResult(),
+                    )
+                )
                 if is_throttle:
                     # Back off significantly before attempting the next item
                     await asyncio.sleep(30)

@@ -15,7 +15,12 @@ class TenantStatus(str, enum.Enum):
 class Tenant(Base, TimestampMixin):
     __tablename__ = "tenants"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
     name = Column(String(255), nullable=False)
     slug = Column(String(100), unique=True, nullable=False, index=True)
     status = Column(SAEnum(TenantStatus), default=TenantStatus.ACTIVE, nullable=False)

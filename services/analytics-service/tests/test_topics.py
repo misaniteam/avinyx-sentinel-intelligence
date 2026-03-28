@@ -12,10 +12,12 @@ class FakeRow:
 class TestTopTopics:
     def test_returns_list_of_topic_counts(self, client, fake_db):
         fake_db.set_execute_result(
-            FakeDBResult(rows=[
-                FakeRow(topic="economy", count=42),
-                FakeRow(topic="healthcare", count=35),
-            ])
+            FakeDBResult(
+                rows=[
+                    FakeRow(topic="economy", count=42),
+                    FakeRow(topic="healthcare", count=35),
+                ]
+            )
         )
         resp = client.get("/analytics/topics/top")
         assert resp.status_code == 200
@@ -47,6 +49,9 @@ class TestTopTopics:
         fake_db.set_execute_result(FakeDBResult(rows=[]))
         resp = client.get(
             "/analytics/topics/top",
-            params={"date_from": "2025-06-01T00:00:00", "date_to": "2025-06-30T23:59:59"},
+            params={
+                "date_from": "2025-06-01T00:00:00",
+                "date_to": "2025-06-30T23:59:59",
+            },
         )
         assert resp.status_code == 200

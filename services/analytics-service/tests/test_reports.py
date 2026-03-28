@@ -115,7 +115,9 @@ class TestDownloadReport:
         assert resp.status_code == 404
 
     @patch("routers.reports._get_s3_client")
-    def test_returns_download_url_when_generated(self, mock_s3_factory, client, fake_db):
+    def test_returns_download_url_when_generated(
+        self, mock_s3_factory, client, fake_db
+    ):
         report_id = uuid.uuid4()
         fake_report = FakeReport(
             id=report_id,
@@ -125,7 +127,9 @@ class TestDownloadReport:
         fake_db.set_execute_result(FakeDBResult(scalar=fake_report))
 
         mock_s3 = MagicMock()
-        mock_s3.generate_presigned_url.return_value = "https://s3.example.com/report.pdf"
+        mock_s3.generate_presigned_url.return_value = (
+            "https://s3.example.com/report.pdf"
+        )
         mock_s3_factory.return_value = mock_s3
 
         resp = client.get(f"/reports/{report_id}/download")

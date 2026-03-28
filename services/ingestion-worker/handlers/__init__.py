@@ -17,5 +17,6 @@ _registry: dict[str, BaseConnectorHandler] = {
     "file_upload": FileUploadHandler(),
 }
 
+
 def get_handler(platform: str) -> BaseConnectorHandler | None:
     return _registry.get(platform)

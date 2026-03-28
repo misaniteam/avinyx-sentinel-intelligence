@@ -11,6 +11,7 @@ from conftest import FakeDBResult, FAKE_TENANT_ID
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class _FakeRole:
     """Minimal stand-in for the Role SQLAlchemy model."""
 
@@ -68,25 +69,32 @@ class _SequentialFakeDB:
 # Permission Validation (CRITICAL security tests)
 # ---------------------------------------------------------------------------
 
+
 class TestPermissionValidation:
     """Pydantic schema rejects dangerous / invalid permissions at the API layer."""
 
     def test_create_with_valid_permissions_succeeds(self, client, fake_db):
         """Creating a role with known-good permissions should succeed."""
         # First execute = uniqueness check (count=0), second = after commit
-        seq_db = _SequentialFakeDB([
-            FakeDBResult(scalar=0),   # _check_name_unique count
-        ])
+        seq_db = _SequentialFakeDB(
+            [
+                FakeDBResult(scalar=0),  # _check_name_unique count
+            ]
+        )
         # Override get_db to return our sequential db
         from main import app
         from sentinel_shared.database.session import get_db
+
         app.dependency_overrides[get_db] = lambda: seq_db
 
-        resp = client.post("/auth/roles/", json={
-            "name": "Campaign Viewer",
-            "description": "Can view campaigns",
-            "permissions": ["campaigns:read", "dashboard:view"],
-        })
+        resp = client.post(
+            "/auth/roles/",
+            json={
+                "name": "Campaign Viewer",
+                "description": "Can view campaigns",
+                "permissions": ["campaigns:read", "dashboard:view"],
+            },
+        )
         assert resp.status_code == 201
         body = resp.json()
         assert body["name"] == "Campaign Viewer"
@@ -94,27 +102,36 @@ class TestPermissionValidation:
 
     def test_create_with_wildcard_permission_rejected(self, client):
         """The '*' wildcard must NEVER be assignable to a custom role."""
-        resp = client.post("/auth/roles/", json={
-            "name": "Hacker Role",
-            "permissions": ["*"],
-        })
+        resp = client.post(
+            "/auth/roles/",
+            json={
+                "name": "Hacker Role",
+                "permissions": ["*"],
+            },
+        )
         assert resp.status_code == 422
 
     def test_create_with_unknown_permission_rejected(self, client):
         """Unknown permission strings should be rejected."""
-        resp = client.post("/auth/roles/", json={
-            "name": "Bad Perms",
-            "permissions": ["nuclear:launch", "dashboard:view"],
-        })
+        resp = client.post(
+            "/auth/roles/",
+            json={
+                "name": "Bad Perms",
+                "permissions": ["nuclear:launch", "dashboard:view"],
+            },
+        )
         assert resp.status_code == 422
 
     def test_create_with_over_50_permissions_rejected(self, client):
         """More than 50 permissions should be rejected."""
         perms = ["dashboard:view"] * 51
-        resp = client.post("/auth/roles/", json={
-            "name": "Too Many Perms",
-            "permissions": perms,
-        })
+        resp = client.post(
+            "/auth/roles/",
+            json={
+                "name": "Too Many Perms",
+                "permissions": perms,
+            },
+        )
         assert resp.status_code == 422
 
     def test_update_with_invalid_permissions_rejected(self, client, fake_db):
@@ -122,9 +139,12 @@ class TestPermissionValidation:
         role = _FakeRole()
         fake_db.set_execute_result(FakeDBResult(scalar=role))
 
-        resp = client.patch(f"/auth/roles/{role.id}", json={
-            "permissions": ["*"],
-        })
+        resp = client.patch(
+            f"/auth/roles/{role.id}",
+            json={
+                "permissions": ["*"],
+            },
+        )
         assert resp.status_code == 422
 
     def test_update_with_unknown_permissions_rejected(self, client, fake_db):
@@ -132,9 +152,12 @@ class TestPermissionValidation:
         role = _FakeRole()
         fake_db.set_execute_result(FakeDBResult(scalar=role))
 
-        resp = client.patch(f"/auth/roles/{role.id}", json={
-            "permissions": ["system:destroy"],
-        })
+        resp = client.patch(
+            f"/auth/roles/{role.id}",
+            json={
+                "permissions": ["system:destroy"],
+            },
+        )
         assert resp.status_code == 422
 
 
@@ -142,21 +165,28 @@ class TestPermissionValidation:
 # Name Validation
 # ---------------------------------------------------------------------------
 
+
 class TestNameValidation:
     """Role name constraints enforced by Pydantic schema."""
 
     def test_create_with_empty_name_rejected(self, client):
-        resp = client.post("/auth/roles/", json={
-            "name": "",
-            "permissions": [],
-        })
+        resp = client.post(
+            "/auth/roles/",
+            json={
+                "name": "",
+                "permissions": [],
+            },
+        )
         assert resp.status_code == 422
 
     def test_create_with_name_over_100_chars_rejected(self, client):
-        resp = client.post("/auth/roles/", json={
-            "name": "A" * 101,
-            "permissions": [],
-        })
+        resp = client.post(
+            "/auth/roles/",
+            json={
+                "name": "A" * 101,
+                "permissions": [],
+            },
+        )
         assert resp.status_code == 422
 
     def test_duplicate_name_returns_409(self, client):
@@ -164,15 +194,20 @@ class TestNameValidation:
         from main import app
         from sentinel_shared.database.session import get_db
 
-        seq_db = _SequentialFakeDB([
-            FakeDBResult(scalar=1),  # _check_name_unique finds existing
-        ])
+        seq_db = _SequentialFakeDB(
+            [
+                FakeDBResult(scalar=1),  # _check_name_unique finds existing
+            ]
+        )
         app.dependency_overrides[get_db] = lambda: seq_db
 
-        resp = client.post("/auth/roles/", json={
-            "name": "Existing Role",
-            "permissions": ["dashboard:view"],
-        })
+        resp = client.post(
+            "/auth/roles/",
+            json={
+                "name": "Existing Role",
+                "permissions": ["dashboard:view"],
+            },
+        )
         assert resp.status_code == 409
         assert "already exists" in resp.json()["detail"]
 
@@ -180,6 +215,7 @@ class TestNameValidation:
 # ---------------------------------------------------------------------------
 # Tenant Isolation
 # ---------------------------------------------------------------------------
+
 
 class TestTenantIsolation:
     """Endpoints that use get_current_tenant_required reject missing tenant context."""
@@ -218,6 +254,7 @@ class TestTenantIsolation:
 # CRUD Operations
 # ---------------------------------------------------------------------------
 
+
 class TestListRoles:
     """GET /auth/roles/"""
 
@@ -248,16 +285,21 @@ class TestCreateRole:
         from main import app
         from sentinel_shared.database.session import get_db
 
-        seq_db = _SequentialFakeDB([
-            FakeDBResult(scalar=0),  # uniqueness check passes
-        ])
+        seq_db = _SequentialFakeDB(
+            [
+                FakeDBResult(scalar=0),  # uniqueness check passes
+            ]
+        )
         app.dependency_overrides[get_db] = lambda: seq_db
 
-        resp = client.post("/auth/roles/", json={
-            "name": "New Role",
-            "description": "A fresh role",
-            "permissions": ["dashboard:view"],
-        })
+        resp = client.post(
+            "/auth/roles/",
+            json={
+                "name": "New Role",
+                "description": "A fresh role",
+                "permissions": ["dashboard:view"],
+            },
+        )
         assert resp.status_code == 201
         body = resp.json()
         assert body["name"] == "New Role"
@@ -292,10 +334,12 @@ class TestUpdateRole:
         from sentinel_shared.database.session import get_db
 
         role = _FakeRole(name="Old Name")
-        seq_db = _SequentialFakeDB([
-            FakeDBResult(scalar=role),  # _get_role_or_404
-            FakeDBResult(scalar=0),     # _check_name_unique
-        ])
+        seq_db = _SequentialFakeDB(
+            [
+                FakeDBResult(scalar=role),  # _get_role_or_404
+                FakeDBResult(scalar=0),  # _check_name_unique
+            ]
+        )
         app.dependency_overrides[get_db] = lambda: seq_db
 
         resp = client.patch(f"/auth/roles/{role.id}", json={"name": "New Name"})
@@ -306,9 +350,12 @@ class TestUpdateRole:
         role = _FakeRole(name="Analyst", permissions=["dashboard:view"])
         fake_db.set_execute_result(FakeDBResult(scalar=role))
 
-        resp = client.patch(f"/auth/roles/{role.id}", json={
-            "permissions": ["dashboard:view", "analytics:read"],
-        })
+        resp = client.patch(
+            f"/auth/roles/{role.id}",
+            json={
+                "permissions": ["dashboard:view", "analytics:read"],
+            },
+        )
         assert resp.status_code == 200
         assert set(resp.json()["permissions"]) == {"dashboard:view", "analytics:read"}
 

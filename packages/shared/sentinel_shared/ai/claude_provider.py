@@ -1,6 +1,11 @@
 import json
 from anthropic import AsyncAnthropic
-from sentinel_shared.ai.base import BaseAIProvider, SentimentResult, ContentExtractionResult, build_topic_keywords_prompt
+from sentinel_shared.ai.base import (
+    BaseAIProvider,
+    SentimentResult,
+    ContentExtractionResult,
+    build_topic_keywords_prompt,
+)
 from sentinel_shared.config import get_settings
 
 ANALYZE_AND_EXTRACT_PROMPT = """Analyze this content and extract structured information. Return JSON with exactly two keys:
@@ -42,9 +47,10 @@ class ClaudeProvider(BaseAIProvider):
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=1024,
-                messages=[{
-                    "role": "user",
-                    "content": f"""Analyze the sentiment of this text. Return JSON with:
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"""Analyze the sentiment of this text. Return JSON with:
 - sentiment_score: float from -1.0 (very negative) to 1.0 (very positive)
 - sentiment_label: "positive", "negative", or "neutral"
 - topics: list of topic strings
@@ -53,18 +59,21 @@ class ClaudeProvider(BaseAIProvider):
 
 Text: {text}
 
-Return only valid JSON."""
-                }],
+Return only valid JSON.""",
+                    }
+                ],
             )
             try:
                 data = json.loads(response.content[0].text)
                 results.append(SentimentResult(**data))
             except (json.JSONDecodeError, KeyError, IndexError):
-                results.append(SentimentResult(
-                    sentiment_score=0.0,
-                    sentiment_label="neutral",
-                    summary="Analysis failed",
-                ))
+                results.append(
+                    SentimentResult(
+                        sentiment_score=0.0,
+                        sentiment_label="neutral",
+                        summary="Analysis failed",
+                    )
+                )
         return results
 
     async def extract_topics(self, texts: list[str]) -> list[list[str]]:
@@ -73,10 +82,12 @@ Return only valid JSON."""
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=512,
-                messages=[{
-                    "role": "user",
-                    "content": f"Extract key topics from this text. Return a JSON array of topic strings.\n\nText: {text}\n\nReturn only a JSON array."
-                }],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Extract key topics from this text. Return a JSON array of topic strings.\n\nText: {text}\n\nReturn only a JSON array.",
+                    }
+                ],
             )
             try:
                 topics = json.loads(response.content[0].text)
@@ -86,23 +97,32 @@ Return only valid JSON."""
         return results
 
     async def analyze_and_extract(
-        self, texts: list[str], raw_payloads: list[dict | None],
+        self,
+        texts: list[str],
+        raw_payloads: list[dict | None],
         topic_keywords: list[dict] | None = None,
     ) -> list[tuple[SentimentResult, ContentExtractionResult]]:
         keyword_context = build_topic_keywords_prompt(topic_keywords)
         results = []
         for text, payload in zip(texts, raw_payloads):
             payload_str = json.dumps(payload or {}, default=str)[:2000]
-            prompt_content = ANALYZE_AND_EXTRACT_PROMPT.format(text=text, raw_payload=payload_str)
+            prompt_content = ANALYZE_AND_EXTRACT_PROMPT.format(
+                text=text, raw_payload=payload_str
+            )
             if keyword_context:
-                prompt_content = prompt_content.replace("Return only valid JSON.", keyword_context + "\n\nReturn only valid JSON.")
+                prompt_content = prompt_content.replace(
+                    "Return only valid JSON.",
+                    keyword_context + "\n\nReturn only valid JSON.",
+                )
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=2048,
-                messages=[{
-                    "role": "user",
-                    "content": prompt_content,
-                }],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt_content,
+                    }
+                ],
             )
             try:
                 data = json.loads(response.content[0].text)
@@ -110,8 +130,14 @@ Return only valid JSON."""
                 extraction = ContentExtractionResult(**(data.get("extraction", {})))
                 results.append((sentiment, extraction))
             except (json.JSONDecodeError, KeyError, IndexError, TypeError):
-                results.append((
-                    SentimentResult(sentiment_score=0.0, sentiment_label="neutral", summary="Analysis failed"),
-                    ContentExtractionResult(),
-                ))
+                results.append(
+                    (
+                        SentimentResult(
+                            sentiment_score=0.0,
+                            sentiment_label="neutral",
+                            summary="Analysis failed",
+                        ),
+                        ContentExtractionResult(),
+                    )
+                )
         return results

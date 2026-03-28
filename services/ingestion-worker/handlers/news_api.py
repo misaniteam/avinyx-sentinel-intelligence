@@ -1,6 +1,6 @@
 """TheNewsAPI connector handler (thenewsapi.com)."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 import httpx
 import structlog
@@ -58,8 +58,14 @@ class NewsAPIHandler(BaseConnectorHandler):
                     break
                 try:
                     articles, total_found = await self._fetch_page(
-                        client, api_key, search_query, categories, domains,
-                        language, since, page,
+                        client,
+                        api_key,
+                        search_query,
+                        categories,
+                        domains,
+                        language,
+                        since,
+                        page,
                     )
                     for article in articles:
                         if len(items) >= MAX_RESULTS:

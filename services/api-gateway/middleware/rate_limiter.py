@@ -7,6 +7,7 @@ import structlog
 
 logger = structlog.get_logger()
 
+
 class RateLimiterMiddleware(BaseHTTPMiddleware):
     """Simple in-memory rate limiter. Replace with Redis in production."""
 
@@ -24,7 +25,9 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         window_start = now - 60
 
         # Clean old entries
-        self._requests[client_ip] = [t for t in self._requests[client_ip] if t > window_start]
+        self._requests[client_ip] = [
+            t for t in self._requests[client_ip] if t > window_start
+        ]
 
         if len(self._requests[client_ip]) >= self.requests_per_minute:
             logger.warning("rate_limit_exceeded", client_ip=client_ip)

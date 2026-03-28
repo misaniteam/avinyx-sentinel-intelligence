@@ -23,9 +23,15 @@ def build_topic_keywords_prompt(topic_keywords: list[dict] | None) -> str:
     if not topic_keywords:
         return ""
 
-    positive_topics = [tk for tk in topic_keywords if tk["sentiment_direction"] == "positive"]
-    negative_topics = [tk for tk in topic_keywords if tk["sentiment_direction"] == "negative"]
-    neutral_topics = [tk for tk in topic_keywords if tk["sentiment_direction"] == "neutral"]
+    positive_topics = [
+        tk for tk in topic_keywords if tk["sentiment_direction"] == "positive"
+    ]
+    negative_topics = [
+        tk for tk in topic_keywords if tk["sentiment_direction"] == "negative"
+    ]
+    neutral_topics = [
+        tk for tk in topic_keywords if tk["sentiment_direction"] == "neutral"
+    ]
 
     lines = [
         "\n\nCRITICAL — PERSPECTIVE-BASED SENTIMENT ANALYSIS:"
@@ -35,10 +41,14 @@ def build_topic_keywords_prompt(topic_keywords: list[dict] | None) -> str:
     ]
 
     if positive_topics:
-        lines.append("\nENTITIES/TOPICS THE USER SUPPORTS (score these POSITIVELY when content is favorable to them):")
+        lines.append(
+            "\nENTITIES/TOPICS THE USER SUPPORTS (score these POSITIVELY when content is favorable to them):"
+        )
         for tk in positive_topics:
             keywords = ", ".join(tk["keywords"]) if tk["keywords"] else ""
-            lines.append(f'  - "{tk["name"]}"{f" (keywords: {keywords})" if keywords else ""}')
+            lines.append(
+                f'  - "{tk["name"]}"{f" (keywords: {keywords})" if keywords else ""}'
+            )
         lines.append(
             "  Rules for SUPPORTED entities:"
             "\n  - Content where they take action, make promises, warn people, criticize opponents → POSITIVE"
@@ -48,10 +58,14 @@ def build_topic_keywords_prompt(topic_keywords: list[dict] | None) -> str:
         )
 
     if negative_topics:
-        lines.append("\nENTITIES/TOPICS THE USER OPPOSES (score these NEGATIVELY when content is favorable to them):")
+        lines.append(
+            "\nENTITIES/TOPICS THE USER OPPOSES (score these NEGATIVELY when content is favorable to them):"
+        )
         for tk in negative_topics:
             keywords = ", ".join(tk["keywords"]) if tk["keywords"] else ""
-            lines.append(f'  - "{tk["name"]}"{f" (keywords: {keywords})" if keywords else ""}')
+            lines.append(
+                f'  - "{tk["name"]}"{f" (keywords: {keywords})" if keywords else ""}'
+            )
         lines.append(
             "  Rules for OPPOSED entities:"
             "\n  - Content where they face criticism, scandals, failures → POSITIVE (good for the user)"
@@ -63,10 +77,12 @@ def build_topic_keywords_prompt(topic_keywords: list[dict] | None) -> str:
         lines.append("\nNEUTRAL TOPICS (analyze based on general sentiment):")
         for tk in neutral_topics:
             keywords = ", ".join(tk["keywords"]) if tk["keywords"] else ""
-            lines.append(f'  - "{tk["name"]}"{f" (keywords: {keywords})" if keywords else ""}')
+            lines.append(
+                f'  - "{tk["name"]}"{f" (keywords: {keywords})" if keywords else ""}'
+            )
 
     lines.append(
-        "\nINCLUDE matched topic/entity names in the \"topics\" list."
+        '\nINCLUDE matched topic/entity names in the "topics" list.'
         "\nThe sentiment_score MUST reflect the user's perspective as defined above."
     )
     return "\n".join(lines)
@@ -74,16 +90,15 @@ def build_topic_keywords_prompt(topic_keywords: list[dict] | None) -> str:
 
 class BaseAIProvider(ABC):
     @abstractmethod
-    async def analyze_sentiment(self, texts: list[str]) -> list[SentimentResult]:
-        ...
+    async def analyze_sentiment(self, texts: list[str]) -> list[SentimentResult]: ...
 
     @abstractmethod
-    async def extract_topics(self, texts: list[str]) -> list[list[str]]:
-        ...
+    async def extract_topics(self, texts: list[str]) -> list[list[str]]: ...
 
     @abstractmethod
     async def analyze_and_extract(
-        self, texts: list[str], raw_payloads: list[dict | None],
+        self,
+        texts: list[str],
+        raw_payloads: list[dict | None],
         topic_keywords: list[dict] | None = None,
-    ) -> list[tuple[SentimentResult, ContentExtractionResult]]:
-        ...
+    ) -> list[tuple[SentimentResult, ContentExtractionResult]]: ...

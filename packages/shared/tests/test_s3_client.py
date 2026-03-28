@@ -17,6 +17,7 @@ def mock_settings():
 @pytest.fixture
 def s3_client(mock_settings):
     from sentinel_shared.storage.s3 import S3Client
+
     return S3Client()
 
 
@@ -87,6 +88,7 @@ async def test_upload_file_with_endpoint_url(mock_settings):
     mock_settings.aws_endpoint_url = "http://localhost:4566"
 
     from sentinel_shared.storage.s3 import S3Client
+
     client = S3Client()
 
     kwargs = client._get_client_kwargs()
@@ -100,6 +102,7 @@ async def test_upload_file_without_endpoint_url(mock_settings):
     mock_settings.aws_endpoint_url = None
 
     from sentinel_shared.storage.s3 import S3Client
+
     client = S3Client()
 
     kwargs = client._get_client_kwargs()

@@ -3,15 +3,18 @@ import time
 import structlog
 from contextlib import asynccontextmanager
 from typing import Literal
-from fastapi import FastAPI, Depends, Query, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sentinel_shared.database.session import get_db
-from sentinel_shared.auth.dependencies import get_current_tenant, get_current_tenant_required, get_current_user, require_permissions
+from fastapi import FastAPI, Depends, HTTPException
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    get_current_user,
+    require_permissions,
+)
 from sentinel_shared.firebase.client import push_notification, get_firebase_app
 from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
 from pydantic import BaseModel, Field
 
 logger = structlog.get_logger()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,7 +25,9 @@ async def lifespan(app: FastAPI):
     logger.info("notification-service shutting down")
     await stop_log_shipper()
 
+
 app = FastAPI(title="Notification Service", lifespan=lifespan)
+
 
 class NotificationCreate(BaseModel):
     type: Literal["alert", "info", "warning"]
@@ -30,11 +35,16 @@ class NotificationCreate(BaseModel):
     message: str = Field(..., max_length=2000)
     metadata: dict = {}
 
+
 @app.get("/health")
 async def health():
     return {"status": "healthy", "service": "notification-service"}
 
-@app.post("/notifications/send", dependencies=[Depends(require_permissions("notifications:write"))])
+
+@app.post(
+    "/notifications/send",
+    dependencies=[Depends(require_permissions("notifications:write"))],
+)
 async def send_notification(
     request: NotificationCreate,
     tenant_id: str = Depends(get_current_tenant_required),
@@ -53,7 +63,9 @@ async def send_notification(
     return {"status": "sent"}
 
 
-@app.get("/notifications/", dependencies=[Depends(require_permissions("dashboard:view"))])
+@app.get(
+    "/notifications/", dependencies=[Depends(require_permissions("dashboard:view"))]
+)
 async def list_notifications(
     user: dict = Depends(get_current_user),
     tenant_id: str = Depends(get_current_tenant_required),
@@ -79,13 +91,16 @@ async def list_notifications(
     return {"notifications": notifications}
 
 
-@app.patch("/notifications/notifications/{notification_id}/read", dependencies=[Depends(require_permissions("dashboard:view"))])
+@app.patch(
+    "/notifications/notifications/{notification_id}/read",
+    dependencies=[Depends(require_permissions("dashboard:view"))],
+)
 async def mark_notification_read(
     notification_id: str,
     tenant_id: str = Depends(get_current_tenant_required),
 ):
     """Mark a single notification as read."""
-    if not re.match(r'^[-A-Za-z0-9_]+$', notification_id):
+    if not re.match(r"^[-A-Za-z0-9_]+$", notification_id):
         raise HTTPException(status_code=400, detail="Invalid notification ID")
     from firebase_admin import db as rtdb
 
@@ -93,12 +108,17 @@ async def mark_notification_read(
     if not app:
         raise HTTPException(status_code=503, detail="Firebase not configured")
 
-    ref = rtdb.reference(f"sentinel/notifications/{tenant_id}/{notification_id}", app=app)
+    ref = rtdb.reference(
+        f"sentinel/notifications/{tenant_id}/{notification_id}", app=app
+    )
     ref.update({"read": True})
     return {"status": "ok"}
 
 
-@app.post("/notifications/notifications/mark-all-read", dependencies=[Depends(require_permissions("dashboard:view"))])
+@app.post(
+    "/notifications/notifications/mark-all-read",
+    dependencies=[Depends(require_permissions("dashboard:view"))],
+)
 async def mark_all_read(
     tenant_id: str = Depends(get_current_tenant_required),
 ):
@@ -112,7 +132,9 @@ async def mark_all_read(
     ref = rtdb.reference(f"sentinel/notifications/{tenant_id}", app=app)
     data = ref.get()
     if data:
-        updates = {f"{key}/read": True for key, val in data.items() if not val.get("read")}
+        updates = {
+            f"{key}/read": True for key, val in data.items() if not val.get("read")
+        }
         if updates:
             ref.update(updates)
     return {"status": "ok"}

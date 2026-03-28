@@ -15,7 +15,9 @@ class SQSClient:
         return kwargs
 
     async def send_message(self, queue_name: str, message: dict) -> str:
-        async with self._session.create_client("sqs", **self._get_client_kwargs()) as client:
+        async with self._session.create_client(
+            "sqs", **self._get_client_kwargs()
+        ) as client:
             queue_url_resp = await client.get_queue_url(QueueName=queue_name)
             queue_url = queue_url_resp["QueueUrl"]
             resp = await client.send_message(
@@ -24,8 +26,16 @@ class SQSClient:
             )
             return resp["MessageId"]
 
-    async def receive_messages(self, queue_name: str, max_messages: int = 10, wait_time: int = 20, visibility_timeout: int | None = None) -> list:
-        async with self._session.create_client("sqs", **self._get_client_kwargs()) as client:
+    async def receive_messages(
+        self,
+        queue_name: str,
+        max_messages: int = 10,
+        wait_time: int = 20,
+        visibility_timeout: int | None = None,
+    ) -> list:
+        async with self._session.create_client(
+            "sqs", **self._get_client_kwargs()
+        ) as client:
             queue_url_resp = await client.get_queue_url(QueueName=queue_name)
             queue_url = queue_url_resp["QueueUrl"]
             kwargs = {
@@ -39,13 +49,19 @@ class SQSClient:
             return resp.get("Messages", [])
 
     async def delete_message(self, queue_name: str, receipt_handle: str):
-        async with self._session.create_client("sqs", **self._get_client_kwargs()) as client:
+        async with self._session.create_client(
+            "sqs", **self._get_client_kwargs()
+        ) as client:
             queue_url_resp = await client.get_queue_url(QueueName=queue_name)
             queue_url = queue_url_resp["QueueUrl"]
-            await client.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
+            await client.delete_message(
+                QueueUrl=queue_url, ReceiptHandle=receipt_handle
+            )
 
     async def get_queue_attributes(self, queue_name: str) -> dict:
-        async with self._session.create_client("sqs", **self._get_client_kwargs()) as client:
+        async with self._session.create_client(
+            "sqs", **self._get_client_kwargs()
+        ) as client:
             queue_url_resp = await client.get_queue_url(QueueName=queue_name)
             queue_url = queue_url_resp["QueueUrl"]
             resp = await client.get_queue_attributes(

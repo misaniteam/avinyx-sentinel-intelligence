@@ -43,19 +43,25 @@ async def _check_service_health(service_name: str, service_url: str) -> dict:
         return {"status": "unreachable", "response_time_ms": None}
 
 
-async def _get_queue_metrics(sqs: SQSClient, queue_name: str, dlq_name: str | None) -> dict:
+async def _get_queue_metrics(
+    sqs: SQSClient, queue_name: str, dlq_name: str | None
+) -> dict:
     result = {"messages": 0, "not_visible": 0, "dlq_messages": None}
     try:
         attrs = await sqs.get_queue_attributes(queue_name)
         result["messages"] = int(attrs.get("ApproximateNumberOfMessages", 0))
-        result["not_visible"] = int(attrs.get("ApproximateNumberOfMessagesNotVisible", 0))
+        result["not_visible"] = int(
+            attrs.get("ApproximateNumberOfMessagesNotVisible", 0)
+        )
     except Exception:
         pass
 
     if dlq_name:
         try:
             dlq_attrs = await sqs.get_queue_attributes(dlq_name)
-            result["dlq_messages"] = int(dlq_attrs.get("ApproximateNumberOfMessages", 0))
+            result["dlq_messages"] = int(
+                dlq_attrs.get("ApproximateNumberOfMessages", 0)
+            )
         except Exception:
             result["dlq_messages"] = None
 

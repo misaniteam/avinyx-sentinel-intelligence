@@ -63,7 +63,9 @@ class TwitterHandler(BaseConnectorHandler):
                         params["next_token"] = next_token
 
                     try:
-                        resp = await client.get(SEARCH_URL, headers=headers, params=params)
+                        resp = await client.get(
+                            SEARCH_URL, headers=headers, params=params
+                        )
                         resp.raise_for_status()
                     except httpx.HTTPStatusError as exc:
                         logger.error(
@@ -74,7 +76,9 @@ class TwitterHandler(BaseConnectorHandler):
                         )
                         break
                     except httpx.RequestError as exc:
-                        logger.error("twitter_api_request_error", error=str(exc), page=page)
+                        logger.error(
+                            "twitter_api_request_error", error=str(exc), page=page
+                        )
                         break
 
                     body = resp.json()
@@ -127,10 +131,14 @@ class TwitterHandler(BaseConnectorHandler):
                     if not next_token:
                         break
 
-                    logger.info("twitter_page_complete", page=page, items_so_far=len(results))
+                    logger.info(
+                        "twitter_page_complete", page=page, items_so_far=len(results)
+                    )
 
         except Exception as exc:
-            logger.error("twitter_unexpected_error", error=str(exc), items_collected=len(results))
+            logger.error(
+                "twitter_unexpected_error", error=str(exc), items_collected=len(results)
+            )
 
         logger.info("twitter_fetch_complete", total_items=len(results))
         return results

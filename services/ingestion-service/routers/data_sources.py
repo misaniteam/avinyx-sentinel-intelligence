@@ -1,5 +1,4 @@
 import ipaddress
-import re
 import structlog
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -9,7 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.data_source import DataSource
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 from sentinel_shared.messaging.sqs import SQSClient
 from sentinel_shared.config import get_settings
 from pydantic import BaseModel, Field, field_validator
@@ -18,7 +20,15 @@ logger = structlog.get_logger()
 
 router = APIRouter()
 
-ALLOWED_PLATFORMS = ("brand24", "youtube", "twitter", "news_rss", "news_api", "reddit", "file_upload")
+ALLOWED_PLATFORMS = (
+    "brand24",
+    "youtube",
+    "twitter",
+    "news_rss",
+    "news_api",
+    "reddit",
+    "file_upload",
+)
 
 SENSITIVE_KEY_PATTERNS = ("key", "secret", "token", "password")
 
@@ -82,7 +92,9 @@ def validate_config(platform: str, config: dict, is_update: bool = False) -> dic
 
     if not is_update:
         # On create, require all mandatory keys
-        missing = [k for k in schema["required"] if k not in sanitized or not sanitized[k]]
+        missing = [
+            k for k in schema["required"] if k not in sanitized or not sanitized[k]
+        ]
         if missing:
             raise HTTPException(
                 status_code=422,
@@ -92,13 +104,19 @@ def validate_config(platform: str, config: dict, is_update: bool = False) -> dic
     # Validate individual field values
     for k, v in sanitized.items():
         if isinstance(v, str) and len(v) > 10_000:
-            raise HTTPException(status_code=422, detail=f"Config field '{k}' exceeds maximum length")
+            raise HTTPException(
+                status_code=422, detail=f"Config field '{k}' exceeds maximum length"
+            )
         if isinstance(v, list):
             if len(v) > 500:
-                raise HTTPException(status_code=422, detail=f"Config field '{k}' has too many items")
+                raise HTTPException(
+                    status_code=422, detail=f"Config field '{k}' has too many items"
+                )
             for item in v:
                 if not isinstance(item, str) or len(item) > 2000:
-                    raise HTTPException(status_code=422, detail=f"Invalid item in config field '{k}'")
+                    raise HTTPException(
+                        status_code=422, detail=f"Invalid item in config field '{k}'"
+                    )
 
     # SSRF protection for URL fields
     if "feed_urls" in sanitized:
@@ -120,7 +138,9 @@ def _validate_url(url: str) -> None:
         raise HTTPException(status_code=422, detail=f"Invalid URL: {url}")
 
     if parsed.scheme not in ("http", "https"):
-        raise HTTPException(status_code=422, detail=f"URL must use http or https scheme: {url}")
+        raise HTTPException(
+            status_code=422, detail=f"URL must use http or https scheme: {url}"
+        )
 
     if not parsed.hostname:
         raise HTTPException(status_code=422, detail=f"URL missing hostname: {url}")
@@ -128,15 +148,25 @@ def _validate_url(url: str) -> None:
     hostname = parsed.hostname.lower()
 
     # Block obvious internal hostnames
-    blocked_hosts = ("localhost", "127.0.0.1", "0.0.0.0", "169.254.169.254", "metadata.google.internal")
+    blocked_hosts = (
+        "localhost",
+        "127.0.0.1",
+        "0.0.0.0",
+        "169.254.169.254",
+        "metadata.google.internal",
+    )
     if hostname in blocked_hosts:
-        raise HTTPException(status_code=422, detail=f"Internal URLs are not allowed: {url}")
+        raise HTTPException(
+            status_code=422, detail=f"Internal URLs are not allowed: {url}"
+        )
 
     # Block private IP ranges
     try:
         ip = ipaddress.ip_address(hostname)
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
-            raise HTTPException(status_code=422, detail=f"Internal IP addresses are not allowed: {url}")
+            raise HTTPException(
+                status_code=422, detail=f"Internal IP addresses are not allowed: {url}"
+            )
     except ValueError:
         # hostname is not an IP — that's fine, it's a domain name
         pass
@@ -164,7 +194,9 @@ class DataSourceCreate(BaseModel):
     @classmethod
     def validate_platform(cls, v: str) -> str:
         if v not in ALLOWED_PLATFORMS:
-            raise ValueError(f"Invalid platform. Allowed: {', '.join(ALLOWED_PLATFORMS)}")
+            raise ValueError(
+                f"Invalid platform. Allowed: {', '.join(ALLOWED_PLATFORMS)}"
+            )
         return v
 
 
@@ -207,12 +239,16 @@ async def list_data_sources(
     tenant_id: str = Depends(get_current_tenant_required),
     user: dict = Depends(require_permissions("data_sources:read")),
 ):
-    result = await db.execute(select(DataSource).where(DataSource.tenant_id == tenant_id))
+    result = await db.execute(
+        select(DataSource).where(DataSource.tenant_id == tenant_id)
+    )
     sources = result.scalars().all()
     return [DataSourceResponse.from_model(ds) for ds in sources]
 
 
-@router.post("/", response_model=DataSourceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=DataSourceResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_data_source(
     request: DataSourceCreate,
     db: AsyncSession = Depends(get_db),
@@ -251,19 +287,30 @@ async def create_data_source(
         try:
             sqs = SQSClient()
             settings = get_settings()
-            await sqs.send_message(settings.sqs_ingestion_queue, {
-                "tenant_id": str(ds.tenant_id),
-                "platform": ds.platform,
-                "config": ds.config or {},
-                "since": None,
-            })
+            await sqs.send_message(
+                settings.sqs_ingestion_queue,
+                {
+                    "tenant_id": str(ds.tenant_id),
+                    "platform": ds.platform,
+                    "config": ds.config or {},
+                    "since": None,
+                },
+            )
             # Mark as polled so scheduler doesn't double-dispatch
             ds.last_polled_at = datetime.now(timezone.utc)
             await db.commit()
             await db.refresh(ds)
-            logger.info("immediate_ingestion_dispatched", data_source_id=str(ds.id), platform=ds.platform)
+            logger.info(
+                "immediate_ingestion_dispatched",
+                data_source_id=str(ds.id),
+                platform=ds.platform,
+            )
         except Exception as exc:
-            logger.error("immediate_ingestion_dispatch_failed", data_source_id=str(ds.id), error=str(exc))
+            logger.error(
+                "immediate_ingestion_dispatch_failed",
+                data_source_id=str(ds.id),
+                error=str(exc),
+            )
 
     return DataSourceResponse.from_model(ds)
 
@@ -275,7 +322,11 @@ async def get_data_source(
     tenant_id: str = Depends(get_current_tenant_required),
     user: dict = Depends(require_permissions("data_sources:read")),
 ):
-    result = await db.execute(select(DataSource).where(DataSource.id == source_id, DataSource.tenant_id == tenant_id))
+    result = await db.execute(
+        select(DataSource).where(
+            DataSource.id == source_id, DataSource.tenant_id == tenant_id
+        )
+    )
     ds = result.scalar_one_or_none()
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")
@@ -290,7 +341,11 @@ async def update_data_source(
     tenant_id: str = Depends(get_current_tenant_required),
     user: dict = Depends(require_permissions("data_sources:write")),
 ):
-    result = await db.execute(select(DataSource).where(DataSource.id == source_id, DataSource.tenant_id == tenant_id))
+    result = await db.execute(
+        select(DataSource).where(
+            DataSource.id == source_id, DataSource.tenant_id == tenant_id
+        )
+    )
     ds = result.scalar_one_or_none()
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")
@@ -316,7 +371,9 @@ async def update_data_source(
     if "name" in updates:
         ds.name = updates["name"]
     if "config" in updates:
-        validated_config = validate_config(ds.platform, updates["config"], is_update=True)
+        validated_config = validate_config(
+            ds.platform, updates["config"], is_update=True
+        )
         ds.config = merge_config(ds.config or {}, validated_config)
     if "poll_interval_minutes" in updates:
         ds.poll_interval_minutes = updates["poll_interval_minutes"]
@@ -335,7 +392,11 @@ async def delete_data_source(
     tenant_id: str = Depends(get_current_tenant_required),
     user: dict = Depends(require_permissions("data_sources:write")),
 ):
-    result = await db.execute(select(DataSource).where(DataSource.id == source_id, DataSource.tenant_id == tenant_id))
+    result = await db.execute(
+        select(DataSource).where(
+            DataSource.id == source_id, DataSource.tenant_id == tenant_id
+        )
+    )
     ds = result.scalar_one_or_none()
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")

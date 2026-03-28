@@ -24,7 +24,9 @@ def _create_pdf_bytes(text: str = "Hello PDF World", num_pages: int = 1) -> byte
     return data
 
 
-def _create_xlsx_bytes(rows: list[list[str]] | None = None, sheet_name: str = "Sheet1") -> bytes:
+def _create_xlsx_bytes(
+    rows: list[list[str]] | None = None, sheet_name: str = "Sheet1"
+) -> bytes:
     """Create a valid XLSX with the given rows using openpyxl."""
     from openpyxl import Workbook
 
@@ -99,6 +101,7 @@ def mock_tenant():
 @pytest.fixture
 def handler():
     from handlers.file_upload_handler import FileUploadHandler
+
     return FileUploadHandler()
 
 
@@ -115,7 +118,12 @@ async def test_extract_pdf_text(handler, mock_s3, mock_settings, mock_tenant):
 
     config = {
         "files": [
-            {"filename": "report.pdf", "s3_key": FAKE_S3_KEY, "content_type": "application/pdf", "size": len(pdf_bytes)},
+            {
+                "filename": "report.pdf",
+                "s3_key": FAKE_S3_KEY,
+                "content_type": "application/pdf",
+                "size": len(pdf_bytes),
+            },
         ]
     }
 
@@ -139,7 +147,12 @@ async def test_extract_xlsx_text(handler, mock_s3, mock_settings, mock_tenant):
 
     config = {
         "files": [
-            {"filename": "data.xlsx", "s3_key": FAKE_XLSX_KEY, "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "size": len(xlsx_bytes)},
+            {
+                "filename": "data.xlsx",
+                "s3_key": FAKE_XLSX_KEY,
+                "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "size": len(xlsx_bytes),
+            },
         ]
     }
 
@@ -162,7 +175,12 @@ async def test_extract_xls_text(handler, mock_s3, mock_settings, mock_tenant):
 
     config = {
         "files": [
-            {"filename": "data.xls", "s3_key": FAKE_XLS_KEY, "content_type": "application/vnd.ms-excel", "size": len(xls_bytes)},
+            {
+                "filename": "data.xls",
+                "s3_key": FAKE_XLS_KEY,
+                "content_type": "application/vnd.ms-excel",
+                "size": len(xls_bytes),
+            },
         ]
     }
 
@@ -187,10 +205,17 @@ async def test_large_file_chunking(handler, mock_s3, mock_settings, mock_tenant)
     pdf_bytes = _create_pdf_bytes("placeholder")
     mock_s3.download_file = AsyncMock(return_value=pdf_bytes)
 
-    with patch("handlers.file_upload_handler._extract_pdf_text", return_value=(large_text, 1)):
+    with patch(
+        "handlers.file_upload_handler._extract_pdf_text", return_value=(large_text, 1)
+    ):
         config = {
             "files": [
-                {"filename": "big.pdf", "s3_key": FAKE_S3_KEY, "content_type": "application/pdf", "size": 1000},
+                {
+                    "filename": "big.pdf",
+                    "s3_key": FAKE_S3_KEY,
+                    "content_type": "application/pdf",
+                    "size": 1000,
+                },
             ]
         }
 
@@ -226,7 +251,12 @@ async def test_encrypted_pdf(handler, mock_s3, mock_settings, mock_tenant):
 
     config = {
         "files": [
-            {"filename": "secret.pdf", "s3_key": FAKE_S3_KEY, "content_type": "application/pdf", "size": len(encrypted_bytes)},
+            {
+                "filename": "secret.pdf",
+                "s3_key": FAKE_S3_KEY,
+                "content_type": "application/pdf",
+                "size": len(encrypted_bytes),
+            },
         ]
     }
 
@@ -251,7 +281,12 @@ async def test_empty_pdf(handler, mock_s3, mock_settings, mock_tenant):
 
     config = {
         "files": [
-            {"filename": "blank.pdf", "s3_key": FAKE_S3_KEY, "content_type": "application/pdf", "size": len(empty_pdf)},
+            {
+                "filename": "blank.pdf",
+                "s3_key": FAKE_S3_KEY,
+                "content_type": "application/pdf",
+                "size": len(empty_pdf),
+            },
         ]
     }
 
@@ -270,7 +305,12 @@ async def test_tenant_key_validation(handler, mock_s3, mock_settings, mock_tenan
 
     config = {
         "files": [
-            {"filename": "report.pdf", "s3_key": wrong_key, "content_type": "application/pdf", "size": 1000},
+            {
+                "filename": "report.pdf",
+                "s3_key": wrong_key,
+                "content_type": "application/pdf",
+                "size": 1000,
+            },
         ]
     }
 
@@ -293,11 +333,18 @@ async def test_pdf_page_limit(handler, mock_s3, mock_settings, mock_tenant):
 
     with patch(
         "handlers.file_upload_handler._extract_pdf_text",
-        side_effect=ValueError(f"PDF has 3000 pages, exceeding the limit of {MAX_PDF_PAGES}"),
+        side_effect=ValueError(
+            f"PDF has 3000 pages, exceeding the limit of {MAX_PDF_PAGES}"
+        ),
     ):
         config = {
             "files": [
-                {"filename": "huge.pdf", "s3_key": FAKE_S3_KEY, "content_type": "application/pdf", "size": 1000},
+                {
+                    "filename": "huge.pdf",
+                    "s3_key": FAKE_S3_KEY,
+                    "content_type": "application/pdf",
+                    "size": 1000,
+                },
             ]
         }
 
@@ -335,6 +382,7 @@ async def test_missing_s3_key(handler, mock_s3, mock_settings, mock_tenant):
 class TestChunkText:
     def test_short_text_no_chunking(self):
         from handlers.file_upload_handler import _chunk_text
+
         text = "short text"
         chunks = _chunk_text(text, 500_000)
         assert len(chunks) == 1
@@ -342,6 +390,7 @@ class TestChunkText:
 
     def test_long_text_produces_multiple_chunks(self):
         from handlers.file_upload_handler import _chunk_text
+
         text = "A" * 1_200_000
         chunks = _chunk_text(text, 500_000)
         assert len(chunks) >= 2
@@ -350,6 +399,7 @@ class TestChunkText:
 
     def test_breaks_at_newlines(self):
         from handlers.file_upload_handler import _chunk_text
+
         # Build text where a newline occurs near the chunk boundary
         part1 = "A" * 450_000
         part2 = "B" * 100_000
@@ -363,6 +413,7 @@ class TestChunkText:
 class TestTypeDetection:
     def test_is_pdf(self):
         from handlers.file_upload_handler import _is_pdf
+
         assert _is_pdf("report.pdf", "application/pdf") is True
         assert _is_pdf("report.PDF", "") is True
         assert _is_pdf("report.xlsx", "application/pdf") is True
@@ -370,12 +421,20 @@ class TestTypeDetection:
 
     def test_is_xlsx(self):
         from handlers.file_upload_handler import _is_xlsx
+
         assert _is_xlsx("data.xlsx", "") is True
-        assert _is_xlsx("data.txt", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") is True
+        assert (
+            _is_xlsx(
+                "data.txt",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            is True
+        )
         assert _is_xlsx("data.txt", "text/plain") is False
 
     def test_is_xls(self):
         from handlers.file_upload_handler import _is_xls
+
         assert _is_xls("old.xls", "") is True
         assert _is_xls("old.txt", "application/vnd.ms-excel") is True
         assert _is_xls("old.txt", "text/plain") is False

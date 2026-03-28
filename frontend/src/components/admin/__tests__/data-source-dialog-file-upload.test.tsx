@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // ---------------------------------------------------------------------------
-// jsdom does not provide ResizeObserver — Radix UI Dialog needs it
+// jsdom does not provide several DOM APIs that Radix UI needs
 // ---------------------------------------------------------------------------
 beforeAll(() => {
   globalThis.ResizeObserver = class ResizeObserver {
@@ -10,6 +10,14 @@ beforeAll(() => {
     unobserve() {}
     disconnect() {}
   } as unknown as typeof ResizeObserver;
+
+  // Radix Select calls scrollIntoView on candidates
+  Element.prototype.scrollIntoView = vi.fn();
+
+  // Radix needs pointer capture APIs
+  Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
+  Element.prototype.setPointerCapture = vi.fn();
+  Element.prototype.releasePointerCapture = vi.fn();
 });
 
 // ---------------------------------------------------------------------------
@@ -28,6 +36,21 @@ vi.mock('sonner', () => ({
 
 import { DataSourceDialog } from '../data-source-dialog';
 
+// Helper: select a platform from the Radix Select dropdown
+async function selectPlatform(label: string) {
+  const trigger = screen.getByRole('combobox');
+  fireEvent.click(trigger);
+
+  // Radix Select renders both a hidden <option> and a visible <span> for each item.
+  // Use getAllByText and click the one inside the Radix select content (role="option").
+  await waitFor(() => {
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+  });
+
+  const option = screen.getByRole('option', { name: label });
+  fireEvent.click(option);
+}
+
 // ---------------------------------------------------------------------------
 // File Upload platform tests
 // ---------------------------------------------------------------------------
@@ -42,13 +65,11 @@ describe('DataSourceDialog — File Upload platform', () => {
       />
     );
 
-    // The platform select trigger should be present
     const trigger = screen.getByRole('combobox');
     fireEvent.click(trigger);
 
-    // Wait for the dropdown to appear and check for "File Upload"
     await waitFor(() => {
-      expect(screen.getByText('File Upload')).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'File Upload' })).toBeInTheDocument();
     });
   });
 
@@ -61,19 +82,9 @@ describe('DataSourceDialog — File Upload platform', () => {
       />
     );
 
-    // Open platform select and choose "File Upload"
-    const trigger = screen.getByRole('combobox');
-    fireEvent.click(trigger);
+    await selectPlatform('File Upload');
 
     await waitFor(() => {
-      expect(screen.getByText('File Upload')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('File Upload'));
-
-    // After selecting file_upload, the file input section should render
-    await waitFor(() => {
-      // The file upload section title from i18n: "Files"
       expect(screen.getByText('Files')).toBeInTheDocument();
     });
   });
@@ -87,17 +98,8 @@ describe('DataSourceDialog — File Upload platform', () => {
       />
     );
 
-    // Select "File Upload" platform
-    const trigger = screen.getByRole('combobox');
-    fireEvent.click(trigger);
+    await selectPlatform('File Upload');
 
-    await waitFor(() => {
-      expect(screen.getByText('File Upload')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('File Upload'));
-
-    // Poll interval field should not be visible
     await waitFor(() => {
       expect(screen.queryByLabelText('Poll Interval (minutes)')).not.toBeInTheDocument();
     });
@@ -112,17 +114,8 @@ describe('DataSourceDialog — File Upload platform', () => {
       />
     );
 
-    // Select "YouTube" platform
-    const trigger = screen.getByRole('combobox');
-    fireEvent.click(trigger);
+    await selectPlatform('YouTube');
 
-    await waitFor(() => {
-      expect(screen.getByText('YouTube')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('YouTube'));
-
-    // Poll interval should be visible for YouTube
     await waitFor(() => {
       expect(screen.getByText('Poll Interval (minutes)')).toBeInTheDocument();
     });
@@ -137,17 +130,8 @@ describe('DataSourceDialog — File Upload platform', () => {
       />
     );
 
-    // Select "File Upload" platform
-    const trigger = screen.getByRole('combobox');
-    fireEvent.click(trigger);
+    await selectPlatform('File Upload');
 
-    await waitFor(() => {
-      expect(screen.getByText('File Upload')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('File Upload'));
-
-    // There should be no "Credentials" section or API key fields
     await waitFor(() => {
       expect(screen.queryByText('Credentials')).not.toBeInTheDocument();
       expect(screen.queryByText('API Key')).not.toBeInTheDocument();

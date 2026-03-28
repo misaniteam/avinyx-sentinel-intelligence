@@ -1,7 +1,7 @@
 import structlog
 from datetime import datetime, timezone
 from sqlalchemy import select, or_
-from sqlalchemy.sql import func, text
+from sqlalchemy.sql import text
 from sentinel_shared.database.session import get_session_factory
 from sentinel_shared.models.data_source import DataSource
 from sentinel_shared.messaging.sqs import SQSClient
@@ -20,10 +20,12 @@ async def check_and_dispatch_polls():
             # Find data sources that are active and due for polling
             now = datetime.now(timezone.utc)
             query = select(DataSource).where(
-                DataSource.is_active == True,
+                DataSource.is_active.is_(True),
                 or_(
                     DataSource.last_polled_at.is_(None),
-                    DataSource.last_polled_at + text("(poll_interval_minutes * interval '1 minute')") < now,
+                    DataSource.last_polled_at
+                    + text("(poll_interval_minutes * interval '1 minute')")
+                    < now,
                 ),
             )
             result = await session.execute(query)
@@ -41,7 +43,9 @@ async def check_and_dispatch_polls():
                         "tenant_id": str(ds.tenant_id),
                         "platform": ds.platform,
                         "config": ds.config or {},
-                        "since": ds.last_polled_at.isoformat() if ds.last_polled_at else None,
+                        "since": ds.last_polled_at.isoformat()
+                        if ds.last_polled_at
+                        else None,
                     }
                     await sqs.send_message(settings.sqs_ingestion_queue, message)
 

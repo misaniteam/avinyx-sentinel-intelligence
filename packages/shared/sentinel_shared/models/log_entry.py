@@ -12,7 +12,12 @@ class LogEntry(Base, TimestampMixin):
         Index("ix_log_entries_tenant_timestamp", "tenant_id", "timestamp"),
     )
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
     service = Column(String(100), nullable=False, index=True)
     level = Column(String(20), nullable=False)
     message = Column(Text, nullable=False)

@@ -73,7 +73,11 @@ class YouTubeHandler(BaseConnectorHandler):
                 stats_map = await self._fetch_stats(client, api_key, video_ids)
 
         except Exception as exc:
-            logger.error("youtube_unexpected_error", error=str(exc), items_collected=len(raw_items))
+            logger.error(
+                "youtube_unexpected_error",
+                error=str(exc),
+                items_collected=len(raw_items),
+            )
             # Build results from whatever we collected so far (no stats)
             stats_map = {}
 
@@ -161,17 +165,21 @@ class YouTubeHandler(BaseConnectorHandler):
                 video_id = si.get("id", {}).get("videoId")
                 if not video_id:
                     continue
-                items.append({
-                    "video_id": video_id,
-                    "snippet": si.get("snippet", {}),
-                    "raw": si,
-                })
+                items.append(
+                    {
+                        "video_id": video_id,
+                        "snippet": si.get("snippet", {}),
+                        "raw": si,
+                    }
+                )
 
             page_token = body.get("nextPageToken")
             if not page_token:
                 break
 
-            logger.info("youtube_search_page_complete", page=page, items_so_far=len(items))
+            logger.info(
+                "youtube_search_page_complete", page=page, items_so_far=len(items)
+            )
 
         return items
 
@@ -204,7 +212,9 @@ class YouTubeHandler(BaseConnectorHandler):
                 )
                 continue
             except httpx.RequestError as exc:
-                logger.error("youtube_stats_request_error", error=str(exc), batch_start=i)
+                logger.error(
+                    "youtube_stats_request_error", error=str(exc), batch_start=i
+                )
                 continue
 
             body = resp.json()

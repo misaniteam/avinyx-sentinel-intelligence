@@ -5,7 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from sqlalchemy.ext.asyncio import AsyncSession
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.data_source import DataSource
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 from sentinel_shared.storage.s3 import S3Client
 from sentinel_shared.messaging.sqs import SQSClient
 from sentinel_shared.config import get_settings
@@ -39,7 +42,7 @@ def _validate_magic_bytes(data: bytes, extension: str) -> bool:
     signatures = MAGIC_SIGNATURES.get(extension, [])
     if not signatures:
         return False
-    return any(data[:len(sig)] == sig for sig in signatures)
+    return any(data[: len(sig)] == sig for sig in signatures)
 
 
 def _sanitize_filename(filename: str) -> str:
@@ -78,7 +81,9 @@ def _validate_file(file: UploadFile) -> None:
         )
 
 
-@router.post("/", response_model=DataSourceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=DataSourceResponse, status_code=status.HTTP_201_CREATED
+)
 async def upload_files(
     files: list[UploadFile] = File(...),
     name: str = Form(..., min_length=1, max_length=255),
@@ -90,7 +95,9 @@ async def upload_files(
     if not files:
         raise HTTPException(status_code=422, detail="At least one file is required")
     if len(files) > MAX_FILES:
-        raise HTTPException(status_code=422, detail=f"Maximum {MAX_FILES} files allowed per upload")
+        raise HTTPException(
+            status_code=422, detail=f"Maximum {MAX_FILES} files allowed per upload"
+        )
 
     # Validate all files first before uploading anything
     for file in files:
@@ -135,7 +142,7 @@ async def upload_files(
             raise HTTPException(
                 status_code=422,
                 detail=f"File {file.filename} content does not match its extension ({ext}). "
-                       f"The file may be corrupted or misnamed.",
+                f"The file may be corrupted or misnamed.",
             )
 
         sanitized_name = _sanitize_filename(file.filename or "upload")
@@ -164,12 +171,14 @@ async def upload_files(
                 detail=f"Failed to upload file {file.filename} to storage",
             )
 
-        file_infos.append({
-            "filename": sanitized_name,
-            "s3_key": s3_key,
-            "content_type": content_type,
-            "size": len(data),
-        })
+        file_infos.append(
+            {
+                "filename": sanitized_name,
+                "s3_key": s3_key,
+                "content_type": content_type,
+                "size": len(data),
+            }
+        )
 
     # Update the DataSource config with file information
     ds.config = {"files": file_infos}
@@ -179,12 +188,15 @@ async def upload_files(
     # Dispatch SQS message for the worker to process
     try:
         sqs = SQSClient()
-        await sqs.send_message(settings.sqs_ingestion_queue, {
-            "tenant_id": tenant_id,
-            "platform": "file_upload",
-            "config": ds.config,
-            "data_source_id": str(ds.id),
-        })
+        await sqs.send_message(
+            settings.sqs_ingestion_queue,
+            {
+                "tenant_id": tenant_id,
+                "platform": "file_upload",
+                "config": ds.config,
+                "data_source_id": str(ds.id),
+            },
+        )
         logger.info(
             "file_upload_job_dispatched",
             data_source_id=str(ds.id),

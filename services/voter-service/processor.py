@@ -95,10 +95,7 @@ async def process_voter_list(message: dict):
 
         logger.info("downloading_pdf", s3_key=s3_key)
 
-        pdf_bytes = await s3.download_file(
-            settings.s3_voter_docs_bucket,
-            s3_key
-        )
+        pdf_bytes = await s3.download_file(settings.s3_voter_docs_bucket, s3_key)
 
         logger.info("pdf_downloaded", size=len(pdf_bytes))
 
@@ -112,9 +109,7 @@ async def process_voter_list(message: dict):
     # --------------------------------------------------
     async with factory() as session:
         await session.execute(
-            delete(VoterListEntry).where(
-                VoterListEntry.group_id == group_id
-            )
+            delete(VoterListEntry).where(VoterListEntry.group_id == group_id)
         )
         await session.commit()
 
@@ -151,7 +146,8 @@ async def process_voter_list(message: dict):
 
             # Filter out voters whose EPIC already exists in other groups
             chunk_voters = [
-                v for v in chunk_voters
+                v
+                for v in chunk_voters
                 if not v.get("epic_no") or v["epic_no"] not in existing_epics
             ]
             if not chunk_voters:
@@ -161,18 +157,24 @@ async def process_voter_list(message: dict):
             # Insert this chunk to DB immediately
             try:
                 # Separate new inserts from replacements (overlap upgrades with EPIC)
-                to_insert = [v for v in chunk_voters if v.get("name") and not v.get("_replace_serial")]
+                to_insert = [
+                    v
+                    for v in chunk_voters
+                    if v.get("name") and not v.get("_replace_serial")
+                ]
                 to_update = [v for v in chunk_voters if v.get("_replace_serial")]
 
                 async with factory() as session:
                     # Insert new entries
                     for i in range(0, len(to_insert), BATCH_SIZE):
-                        batch = to_insert[i:i + BATCH_SIZE]
+                        batch = to_insert[i : i + BATCH_SIZE]
                         rows = [
                             {
                                 "group_id": group_id,
                                 "name": v["name"],
-                                "father_or_husband_name": v.get("father_or_husband_name"),
+                                "father_or_husband_name": v.get(
+                                    "father_or_husband_name"
+                                ),
                                 "relation_type": v.get("relation_type"),
                                 "gender": v.get("gender"),
                                 "age": v.get("age"),
@@ -188,8 +190,7 @@ async def process_voter_list(message: dict):
                         ]
                         if rows:
                             await session.execute(
-                                VoterListEntry.__table__.insert(),
-                                rows
+                                VoterListEntry.__table__.insert(), rows
                             )
 
                     # Update entries where a better version was found in overlap
@@ -213,10 +214,17 @@ async def process_voter_list(message: dict):
                         existing_epics.add(v["epic_no"])
 
                 total_inserted += len(to_insert)
-                logger.info("db_chunk_inserted", chunk_voters=len(to_insert), updated=len(to_update), total_so_far=total_inserted)
+                logger.info(
+                    "db_chunk_inserted",
+                    chunk_voters=len(to_insert),
+                    updated=len(to_update),
+                    total_so_far=total_inserted,
+                )
 
             except Exception as e:
-                logger.error("db_chunk_insert_failed", error=str(e), total_saved=total_inserted)
+                logger.error(
+                    "db_chunk_insert_failed", error=str(e), total_saved=total_inserted
+                )
                 # Continue processing remaining chunks — already-saved data is preserved
 
     except Exception as e:
@@ -248,6 +256,7 @@ async def process_voter_list(message: dict):
 # HELPERS
 # --------------------------------------------------
 
+
 async def _mark_failed(factory, group_id):
     async with factory() as session:
         group = await session.get(VoterListGroup, group_id)
@@ -261,9 +270,7 @@ async def _get_tenant_constituency(tenant_id: str) -> str:
 
     async with factory() as session:
         result = await session.execute(
-            select(Tenant.constituency_code).where(
-                Tenant.id == tenant_id
-            )
+            select(Tenant.constituency_code).where(Tenant.id == tenant_id)
         )
         code = result.scalar_one_or_none()
 

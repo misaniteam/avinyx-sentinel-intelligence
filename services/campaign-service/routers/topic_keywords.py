@@ -5,8 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.topic_keyword import TopicKeyword
-from sentinel_shared.schemas.topic_keyword import TopicKeywordCreate, TopicKeywordUpdate, TopicKeywordResponse
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.schemas.topic_keyword import (
+    TopicKeywordCreate,
+    TopicKeywordUpdate,
+    TopicKeywordResponse,
+)
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 
 logger = structlog.get_logger()
 
@@ -36,7 +43,9 @@ async def list_topic_keywords(
     return result.scalars().all()
 
 
-@router.post("/", response_model=TopicKeywordResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=TopicKeywordResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_topic_keyword(
     request: TopicKeywordCreate,
     db: AsyncSession = Depends(get_db),
@@ -78,7 +87,9 @@ async def get_topic_keyword(
     user: dict = Depends(require_permissions("topics:read")),
 ):
     result = await db.execute(
-        select(TopicKeyword).where(TopicKeyword.id == topic_id, TopicKeyword.tenant_id == tenant_id)
+        select(TopicKeyword).where(
+            TopicKeyword.id == topic_id, TopicKeyword.tenant_id == tenant_id
+        )
     )
     topic = result.scalar_one_or_none()
     if not topic:
@@ -95,7 +106,9 @@ async def update_topic_keyword(
     user: dict = Depends(require_permissions("topics:write")),
 ):
     result = await db.execute(
-        select(TopicKeyword).where(TopicKeyword.id == topic_id, TopicKeyword.tenant_id == tenant_id)
+        select(TopicKeyword).where(
+            TopicKeyword.id == topic_id, TopicKeyword.tenant_id == tenant_id
+        )
     )
     topic = result.scalar_one_or_none()
     if not topic:
@@ -142,7 +155,9 @@ async def delete_topic_keyword(
     user: dict = Depends(require_permissions("topics:write")),
 ):
     result = await db.execute(
-        select(TopicKeyword).where(TopicKeyword.id == topic_id, TopicKeyword.tenant_id == tenant_id)
+        select(TopicKeyword).where(
+            TopicKeyword.id == topic_id, TopicKeyword.tenant_id == tenant_id
+        )
     )
     topic = result.scalar_one_or_none()
     if not topic:

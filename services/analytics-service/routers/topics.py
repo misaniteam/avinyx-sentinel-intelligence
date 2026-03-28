@@ -2,11 +2,14 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.media import SentimentAnalysis, RawMediaItem
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 
 router = APIRouter()
 
@@ -27,9 +30,7 @@ async def top_topics(
 ):
     # Use PostgreSQL jsonb_array_elements_text to unnest and count topics in SQL
     unnested = (
-        select(
-            func.jsonb_array_elements_text(SentimentAnalysis.topics).label("topic")
-        )
+        select(func.jsonb_array_elements_text(SentimentAnalysis.topics).label("topic"))
         .join(RawMediaItem, SentimentAnalysis.media_item_id == RawMediaItem.id)
         .where(
             SentimentAnalysis.tenant_id == tenant_id,

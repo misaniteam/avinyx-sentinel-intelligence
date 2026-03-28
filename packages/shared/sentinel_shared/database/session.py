@@ -18,14 +18,18 @@ def get_engine():
     global _engine
     if _engine is None:
         settings = get_settings()
-        _engine = create_async_engine(settings.database_url, echo=False, pool_size=20, max_overflow=10)
+        _engine = create_async_engine(
+            settings.database_url, echo=False, pool_size=20, max_overflow=10
+        )
     return _engine
 
 
 def get_session_factory():
     global _async_session_factory
     if _async_session_factory is None:
-        _async_session_factory = async_sessionmaker(get_engine(), class_=AsyncSession, expire_on_commit=False)
+        _async_session_factory = async_sessionmaker(
+            get_engine(), class_=AsyncSession, expire_on_commit=False
+        )
     return _async_session_factory
 
 

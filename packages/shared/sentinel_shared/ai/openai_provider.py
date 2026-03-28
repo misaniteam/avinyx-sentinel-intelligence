@@ -1,6 +1,11 @@
 import json
 from openai import AsyncOpenAI
-from sentinel_shared.ai.base import BaseAIProvider, SentimentResult, ContentExtractionResult, build_topic_keywords_prompt
+from sentinel_shared.ai.base import (
+    BaseAIProvider,
+    SentimentResult,
+    ContentExtractionResult,
+    build_topic_keywords_prompt,
+)
 from sentinel_shared.config import get_settings
 
 ANALYZE_AND_EXTRACT_SYSTEM = """You analyze content and extract structured information. Return JSON with exactly two keys:
@@ -21,7 +26,10 @@ class OpenAIProvider(BaseAIProvider):
                 model=self.model,
                 response_format={"type": "json_object"},
                 messages=[
-                    {"role": "system", "content": "You analyze text sentiment. Return JSON with: sentiment_score (float -1.0 to 1.0), sentiment_label (positive/negative/neutral), topics (list of strings), entities (list of {name, type} objects), summary (string)."},
+                    {
+                        "role": "system",
+                        "content": "You analyze text sentiment. Return JSON with: sentiment_score (float -1.0 to 1.0), sentiment_label (positive/negative/neutral), topics (list of strings), entities (list of {name, type} objects), summary (string).",
+                    },
                     {"role": "user", "content": text},
                 ],
             )
@@ -29,7 +37,13 @@ class OpenAIProvider(BaseAIProvider):
                 data = json.loads(response.choices[0].message.content)
                 results.append(SentimentResult(**data))
             except (json.JSONDecodeError, KeyError, IndexError):
-                results.append(SentimentResult(sentiment_score=0.0, sentiment_label="neutral", summary="Analysis failed"))
+                results.append(
+                    SentimentResult(
+                        sentiment_score=0.0,
+                        sentiment_label="neutral",
+                        summary="Analysis failed",
+                    )
+                )
         return results
 
     async def extract_topics(self, texts: list[str]) -> list[list[str]]:
@@ -39,7 +53,10 @@ class OpenAIProvider(BaseAIProvider):
                 model=self.model,
                 response_format={"type": "json_object"},
                 messages=[
-                    {"role": "system", "content": "Extract key topics. Return JSON: {\"topics\": [\"topic1\", ...]}"},
+                    {
+                        "role": "system",
+                        "content": 'Extract key topics. Return JSON: {"topics": ["topic1", ...]}',
+                    },
                     {"role": "user", "content": text},
                 ],
             )
@@ -51,11 +68,17 @@ class OpenAIProvider(BaseAIProvider):
         return results
 
     async def analyze_and_extract(
-        self, texts: list[str], raw_payloads: list[dict | None],
+        self,
+        texts: list[str],
+        raw_payloads: list[dict | None],
         topic_keywords: list[dict] | None = None,
     ) -> list[tuple[SentimentResult, ContentExtractionResult]]:
         keyword_context = build_topic_keywords_prompt(topic_keywords)
-        system_prompt = ANALYZE_AND_EXTRACT_SYSTEM + keyword_context if keyword_context else ANALYZE_AND_EXTRACT_SYSTEM
+        system_prompt = (
+            ANALYZE_AND_EXTRACT_SYSTEM + keyword_context
+            if keyword_context
+            else ANALYZE_AND_EXTRACT_SYSTEM
+        )
         results = []
         for text, payload in zip(texts, raw_payloads):
             payload_str = json.dumps(payload or {}, default=str)[:2000]
@@ -64,7 +87,10 @@ class OpenAIProvider(BaseAIProvider):
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Content text:\n{text}\n\nRaw platform data:\n{payload_str}"},
+                    {
+                        "role": "user",
+                        "content": f"Content text:\n{text}\n\nRaw platform data:\n{payload_str}",
+                    },
                 ],
             )
             try:
@@ -73,8 +99,14 @@ class OpenAIProvider(BaseAIProvider):
                 extraction = ContentExtractionResult(**(data.get("extraction", {})))
                 results.append((sentiment, extraction))
             except (json.JSONDecodeError, KeyError, IndexError, TypeError):
-                results.append((
-                    SentimentResult(sentiment_score=0.0, sentiment_label="neutral", summary="Analysis failed"),
-                    ContentExtractionResult(),
-                ))
+                results.append(
+                    (
+                        SentimentResult(
+                            sentiment_score=0.0,
+                            sentiment_label="neutral",
+                            summary="Analysis failed",
+                        ),
+                        ContentExtractionResult(),
+                    )
+                )
         return results

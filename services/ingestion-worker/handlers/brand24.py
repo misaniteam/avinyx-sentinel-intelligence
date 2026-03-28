@@ -25,7 +25,11 @@ class Brand24Handler(BaseConnectorHandler):
         project_id = config.get("project_id")
 
         if not api_key or not project_id:
-            logger.error("brand24_missing_config", has_key=bool(api_key), has_project=bool(project_id))
+            logger.error(
+                "brand24_missing_config",
+                has_key=bool(api_key),
+                has_project=bool(project_id),
+            )
             return []
 
         # Build search keywords by combining config search_queries with location keywords
@@ -60,7 +64,9 @@ class Brand24Handler(BaseConnectorHandler):
                         params["lastMentionId"] = cursor
 
                     try:
-                        resp = await client.get(BASE_URL, headers=headers, params=params)
+                        resp = await client.get(
+                            BASE_URL, headers=headers, params=params
+                        )
                         resp.raise_for_status()
                     except httpx.HTTPStatusError as exc:
                         logger.error(
@@ -71,7 +77,9 @@ class Brand24Handler(BaseConnectorHandler):
                         )
                         break
                     except httpx.RequestError as exc:
-                        logger.error("brand24_api_request_error", error=str(exc), page=page)
+                        logger.error(
+                            "brand24_api_request_error", error=str(exc), page=page
+                        )
                         break
 
                     body = resp.json()
@@ -93,7 +101,9 @@ class Brand24Handler(BaseConnectorHandler):
                             external_id=str(mention["id"]),
                             content=mention.get("text"),
                             author=mention.get("author"),
-                            author_id=str(mention["authorId"]) if mention.get("authorId") else None,
+                            author_id=str(mention["authorId"])
+                            if mention.get("authorId")
+                            else None,
                             published_at=published_at,
                             url=mention.get("url"),
                             engagement={
@@ -110,10 +120,14 @@ class Brand24Handler(BaseConnectorHandler):
                     if not cursor:
                         break
 
-                    logger.info("brand24_page_complete", page=page, items_so_far=len(results))
+                    logger.info(
+                        "brand24_page_complete", page=page, items_so_far=len(results)
+                    )
 
         except Exception as exc:
-            logger.error("brand24_unexpected_error", error=str(exc), items_collected=len(results))
+            logger.error(
+                "brand24_unexpected_error", error=str(exc), items_collected=len(results)
+            )
 
         logger.info("brand24_fetch_complete", total_items=len(results))
         return results

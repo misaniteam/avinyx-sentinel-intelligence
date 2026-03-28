@@ -22,7 +22,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # 'metadata', which causes an import error. We pre-load a patched version
 # of the voter module into sys.modules BEFORE anything else imports it.
 # ---------------------------------------------------------------------------
-_shared_root = Path(__file__).resolve().parent.parent.parent.parent / "packages" / "shared"
+_shared_root = (
+    Path(__file__).resolve().parent.parent.parent.parent / "packages" / "shared"
+)
 
 for _pkg in [
     "sentinel_shared",
@@ -46,8 +48,6 @@ _voter_spec = importlib.util.spec_from_file_location(
 _voter_module = importlib.util.module_from_spec(_voter_spec)
 sys.modules["sentinel_shared.models.voter"] = _voter_module
 
-import sentinel_shared.database.session  # noqa: E402
-import sentinel_shared.models.base  # noqa: E402
 
 exec(compile(_voter_source, str(_voter_path), "exec"), _voter_module.__dict__)
 
@@ -102,7 +102,9 @@ def fake_db():
 def client(fake_db):
     """TestClient with all auth/db/firebase dependencies overridden."""
     # Patch push_notification before importing app so it doesn't need Firebase
-    with patch("sentinel_shared.firebase.client.push_notification", new_callable=AsyncMock) as mock_push:
+    with patch(
+        "sentinel_shared.firebase.client.push_notification", new_callable=AsyncMock
+    ):
         from main import app
 
         app.dependency_overrides[get_db] = lambda: fake_db

@@ -49,7 +49,9 @@ class RedditHandler(BaseConnectorHandler):
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 # Authenticate with OAuth2 client credentials
-                access_token = await self._authenticate(client, client_id, client_secret)
+                access_token = await self._authenticate(
+                    client, client_id, client_secret
+                )
                 if not access_token:
                     return []
 
@@ -73,7 +75,9 @@ class RedditHandler(BaseConnectorHandler):
                         params["after"] = after
 
                     try:
-                        resp = await client.get(SEARCH_URL, headers=headers, params=params)
+                        resp = await client.get(
+                            SEARCH_URL, headers=headers, params=params
+                        )
                         resp.raise_for_status()
                     except httpx.HTTPStatusError as exc:
                         logger.error(
@@ -84,7 +88,9 @@ class RedditHandler(BaseConnectorHandler):
                         )
                         break
                     except httpx.RequestError as exc:
-                        logger.error("reddit_api_request_error", error=str(exc), page=page)
+                        logger.error(
+                            "reddit_api_request_error", error=str(exc), page=page
+                        )
                         break
 
                     body = resp.json()
@@ -108,7 +114,9 @@ class RedditHandler(BaseConnectorHandler):
                         created_utc = post.get("created_utc")
                         published_at = _parse_timestamp(created_utc)
                         if since and published_at:
-                            since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+                            since_dt = datetime.fromisoformat(
+                                since.replace("Z", "+00:00")
+                            )
                             if published_at < since_dt:
                                 continue
 
@@ -126,7 +134,9 @@ class RedditHandler(BaseConnectorHandler):
                             author=post.get("author"),
                             author_id=post.get("author"),
                             published_at=published_at,
-                            url=f"https://www.reddit.com{permalink}" if permalink else None,
+                            url=f"https://www.reddit.com{permalink}"
+                            if permalink
+                            else None,
                             engagement={
                                 "upvotes": post.get("ups", 0),
                                 "comments": post.get("num_comments", 0),
@@ -141,10 +151,14 @@ class RedditHandler(BaseConnectorHandler):
                     if not after:
                         break
 
-                    logger.info("reddit_page_complete", page=page, items_so_far=len(results))
+                    logger.info(
+                        "reddit_page_complete", page=page, items_so_far=len(results)
+                    )
 
         except Exception as exc:
-            logger.error("reddit_unexpected_error", error=str(exc), items_collected=len(results))
+            logger.error(
+                "reddit_unexpected_error", error=str(exc), items_collected=len(results)
+            )
 
         logger.info("reddit_fetch_complete", total_items=len(results))
         return results

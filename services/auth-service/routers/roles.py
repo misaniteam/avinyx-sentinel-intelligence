@@ -4,27 +4,43 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.role import Role
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 from sentinel_shared.schemas.user import RoleCreate, RoleUpdate, RoleResponse
 
 router = APIRouter()
 
 
 async def _get_role_or_404(db: AsyncSession, role_id: UUID, tenant_id: str) -> Role:
-    result = await db.execute(select(Role).where(Role.id == role_id, Role.tenant_id == tenant_id))
+    result = await db.execute(
+        select(Role).where(Role.id == role_id, Role.tenant_id == tenant_id)
+    )
     role = result.scalar_one_or_none()
     if not role:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+        )
     return role
 
 
-async def _check_name_unique(db: AsyncSession, tenant_id: str, name: str, exclude_id: UUID | None = None) -> None:
-    query = select(func.count()).select_from(Role).where(Role.tenant_id == tenant_id, Role.name == name)
+async def _check_name_unique(
+    db: AsyncSession, tenant_id: str, name: str, exclude_id: UUID | None = None
+) -> None:
+    query = (
+        select(func.count())
+        .select_from(Role)
+        .where(Role.tenant_id == tenant_id, Role.name == name)
+    )
     if exclude_id:
         query = query.where(Role.id != exclude_id)
     result = await db.execute(query)
     if result.scalar_one() > 0:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"A role named '{name}' already exists")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A role named '{name}' already exists",
+        )
 
 
 @router.get("/", response_model=list[RoleResponse])

@@ -5,9 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.media import RawMediaItem, SentimentAnalysis
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 
 router = APIRouter()
+
 
 @router.get("/data")
 async def heatmap_data(
@@ -47,6 +51,10 @@ async def heatmap_data(
     rows = result.all()
 
     return [
-        {"lat": row.geo_lat, "lng": row.geo_lng, "weight": (row.sentiment_score + 1) / 2}
+        {
+            "lat": row.geo_lat,
+            "lng": row.geo_lng,
+            "weight": (row.sentiment_score + 1) / 2,
+        }
         for row in rows
     ]

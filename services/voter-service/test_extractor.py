@@ -1,11 +1,11 @@
 """Tests for textract_extractor: PDF page splitting, key matching, and FORMS parsing."""
+
 import pymupdf
 import pytest
 
 from textract_extractor import (
     _split_pdf_to_pages,
     _match_key,
-    _extract_kv_pairs,
     _cluster_by_position,
     parse_page_forms,
 )
@@ -14,6 +14,7 @@ from textract_extractor import (
 # -------------------------
 # Helpers
 # -------------------------
+
 
 def _make_pdf(num_pages: int) -> bytes:
     doc = pymupdf.open()
@@ -37,46 +38,56 @@ def _make_textract_response(kv_pairs: list[dict], lines: list[dict] = None) -> d
         word_val_id = f"wval-{block_id}"
 
         # Word blocks
-        blocks.append({
-            "BlockType": "WORD",
-            "Id": word_key_id,
-            "Text": kv["key"],
-        })
-        blocks.append({
-            "BlockType": "WORD",
-            "Id": word_val_id,
-            "Text": kv["value"],
-        })
+        blocks.append(
+            {
+                "BlockType": "WORD",
+                "Id": word_key_id,
+                "Text": kv["key"],
+            }
+        )
+        blocks.append(
+            {
+                "BlockType": "WORD",
+                "Id": word_val_id,
+                "Text": kv["value"],
+            }
+        )
 
         # VALUE block
-        blocks.append({
-            "BlockType": "KEY_VALUE_SET",
-            "Id": val_id,
-            "EntityTypes": ["VALUE"],
-            "Geometry": {"BoundingBox": {"Top": kv["top"]}},
-            "Relationships": [{"Type": "CHILD", "Ids": [word_val_id]}],
-        })
+        blocks.append(
+            {
+                "BlockType": "KEY_VALUE_SET",
+                "Id": val_id,
+                "EntityTypes": ["VALUE"],
+                "Geometry": {"BoundingBox": {"Top": kv["top"]}},
+                "Relationships": [{"Type": "CHILD", "Ids": [word_val_id]}],
+            }
+        )
 
         # KEY block
-        blocks.append({
-            "BlockType": "KEY_VALUE_SET",
-            "Id": key_id,
-            "EntityTypes": ["KEY"],
-            "Geometry": {"BoundingBox": {"Top": kv["top"]}},
-            "Relationships": [
-                {"Type": "VALUE", "Ids": [val_id]},
-                {"Type": "CHILD", "Ids": [word_key_id]},
-            ],
-        })
+        blocks.append(
+            {
+                "BlockType": "KEY_VALUE_SET",
+                "Id": key_id,
+                "EntityTypes": ["KEY"],
+                "Geometry": {"BoundingBox": {"Top": kv["top"]}},
+                "Relationships": [
+                    {"Type": "VALUE", "Ids": [val_id]},
+                    {"Type": "CHILD", "Ids": [word_key_id]},
+                ],
+            }
+        )
 
-    for line in (lines or []):
+    for line in lines or []:
         block_id += 1
-        blocks.append({
-            "BlockType": "LINE",
-            "Id": f"line-{block_id}",
-            "Text": line["text"],
-            "Geometry": {"BoundingBox": {"Top": line["top"]}},
-        })
+        blocks.append(
+            {
+                "BlockType": "LINE",
+                "Id": f"line-{block_id}",
+                "Text": line["text"],
+                "Geometry": {"BoundingBox": {"Top": line["top"]}},
+            }
+        )
 
     return {"Blocks": blocks}
 
@@ -84,6 +95,7 @@ def _make_textract_response(kv_pairs: list[dict], lines: list[dict] = None) -> d
 # -------------------------
 # PDF Page Splitting Tests
 # -------------------------
+
 
 class TestPdfPageSplitting:
     def test_single_page_no_split(self):
@@ -104,6 +116,7 @@ class TestPdfPageSplitting:
 # -------------------------
 # Key Matching Tests
 # -------------------------
+
 
 class TestKeyMatching:
     def test_exact_matches(self):
@@ -136,6 +149,7 @@ class TestKeyMatching:
 # -------------------------
 # FORMS Parsing Tests
 # -------------------------
+
 
 class TestFormsParsing:
     def test_single_voter(self):
@@ -203,6 +217,7 @@ class TestFormsParsing:
 # -------------------------
 # Clustering Tests
 # -------------------------
+
 
 class TestClustering:
     def test_two_clusters(self):

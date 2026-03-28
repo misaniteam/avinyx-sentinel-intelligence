@@ -16,14 +16,18 @@ class SentryProcessor:
                 sentry_sdk.set_tag("tenant_id", str(tenant_id))
 
             extras = {
-                k: v for k, v in event_dict.items()
-                if k not in ("event", "level", "timestamp", "_record", "_from_structlog")
+                k: v
+                for k, v in event_dict.items()
+                if k
+                not in ("event", "level", "timestamp", "_record", "_from_structlog")
             }
-            sentry_sdk.capture_event({
-                "message": event_dict.get("event", ""),
-                "level": level,
-                "extra": extras,
-            })
+            sentry_sdk.capture_event(
+                {
+                    "message": event_dict.get("event", ""),
+                    "level": level,
+                    "extra": extras,
+                }
+            )
 
         return event_dict
 
@@ -55,8 +59,16 @@ class LogShipperProcessor:
             "context": {
                 k: _serialize_value(v)
                 for k, v in event_dict.items()
-                if k not in ("event", "level", "timestamp", "service", "tenant_id",
-                             "_record", "_from_structlog")
+                if k
+                not in (
+                    "event",
+                    "level",
+                    "timestamp",
+                    "service",
+                    "tenant_id",
+                    "_record",
+                    "_from_structlog",
+                )
             },
             "trace_id": event_dict.get("trace_id"),
         }

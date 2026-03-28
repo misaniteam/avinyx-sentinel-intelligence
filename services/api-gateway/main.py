@@ -9,6 +9,7 @@ from proxy import router as proxy_router
 
 logger = structlog.get_logger()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_logging("api-gateway")
@@ -17,6 +18,7 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("api-gateway shutting down")
     await stop_log_shipper()
+
 
 app = FastAPI(title="Sentinel API Gateway", lifespan=lifespan)
 
@@ -37,6 +39,7 @@ app.include_router(infrastructure_router)
 
 # Proxy routes
 app.include_router(proxy_router)
+
 
 @app.get("/health")
 async def health():

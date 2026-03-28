@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sentinel_shared.database.session import get_db
-from sentinel_shared.auth.dependencies import get_current_tenant_required, require_permissions
+from sentinel_shared.auth.dependencies import (
+    get_current_tenant_required,
+    require_permissions,
+)
 from sentinel_shared.models.tenant import Tenant
 from pydantic import BaseModel, field_validator
 from typing import Any
@@ -26,7 +29,11 @@ class TenantSettingsUpdate(BaseModel):
 
 def _mask_settings(settings: dict) -> dict:
     """Mask sensitive fields before returning settings to the client."""
-    if "ai" in settings and isinstance(settings["ai"], dict) and "api_key" in settings["ai"]:
+    if (
+        "ai" in settings
+        and isinstance(settings["ai"], dict)
+        and "api_key" in settings["ai"]
+    ):
         settings = {**settings, "ai": {**settings["ai"], "api_key": "****"}}
     return settings
 

@@ -43,9 +43,7 @@ class NewsRSSHandler(BaseConnectorHandler):
         location_keywords: list[str] = []
         if location_context:
             location_keywords = [
-                kw.lower()
-                for kw in location_context.get("keywords", [])
-                if kw
+                kw.lower() for kw in location_context.get("keywords", []) if kw
             ]
 
         current_tenant_id = tenant_context.get()
@@ -80,7 +78,9 @@ class NewsRSSHandler(BaseConnectorHandler):
         feed = await asyncio.to_thread(feedparser.parse, response.text)
 
         if feed.bozo and not feed.entries:
-            logger.warning("news_rss.parse_error", url=url, error=str(feed.bozo_exception))
+            logger.warning(
+                "news_rss.parse_error", url=url, error=str(feed.bozo_exception)
+            )
             return []
 
         items: list[RawMediaItem] = []

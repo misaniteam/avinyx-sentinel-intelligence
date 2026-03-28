@@ -8,7 +8,6 @@ import sys
 import importlib
 import importlib.util
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -22,7 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # 'metadata', which causes an import error. We pre-load a patched version
 # of the voter module into sys.modules BEFORE anything else imports it.
 # ---------------------------------------------------------------------------
-_shared_root = Path(__file__).resolve().parent.parent.parent.parent / "packages" / "shared"
+_shared_root = (
+    Path(__file__).resolve().parent.parent.parent.parent / "packages" / "shared"
+)
 
 # First, ensure sentinel_shared and sentinel_shared.models packages exist in sys.modules
 # so that importing the voter submodule doesn't trigger __init__.py chain.
@@ -53,8 +54,6 @@ sys.modules["sentinel_shared.models.voter"] = _voter_module
 # We need sentinel_shared.models.base and sentinel_shared.database.session
 # to be importable before exec'ing the voter module source.
 # Import them directly (they don't trigger the voter import).
-import sentinel_shared.database.session  # noqa: E402
-import sentinel_shared.models.base  # noqa: E402
 
 exec(compile(_voter_source, str(_voter_path), "exec"), _voter_module.__dict__)
 
@@ -80,7 +79,6 @@ from main import app  # noqa: E402
 from sentinel_shared.database.session import get_db  # noqa: E402
 from sentinel_shared.auth.dependencies import (  # noqa: E402
     get_current_tenant_required,
-    require_permissions,
 )
 
 FAKE_TENANT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -148,6 +146,7 @@ def client(fake_db):
     # We can't easily override the dynamic require_permissions, so instead
     # we override get_current_user which is the underlying dependency.
     from sentinel_shared.auth.dependencies import get_current_user
+
     app.dependency_overrides[get_current_user] = lambda: FAKE_USER
 
     yield TestClient(app)

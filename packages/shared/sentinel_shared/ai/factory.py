@@ -12,5 +12,7 @@ class AIProviderFactory:
     def get_provider(cls, name: str, config: dict | None = None) -> BaseAIProvider:
         provider_class = cls._providers.get(name)
         if provider_class is None:
-            raise ValueError(f"Unknown AI provider: {name}. Available: {list(cls._providers.keys())}")
+            raise ValueError(
+                f"Unknown AI provider: {name}. Available: {list(cls._providers.keys())}"
+            )
         return provider_class(**(config or {}))

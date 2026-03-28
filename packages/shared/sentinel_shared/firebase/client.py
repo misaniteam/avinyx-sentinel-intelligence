@@ -11,9 +11,12 @@ def get_firebase_app():
         settings = get_settings()
         if settings.firebase_credentials_path:
             cred = credentials.Certificate(settings.firebase_credentials_path)
-            _app = firebase_admin.initialize_app(cred, {
-                "databaseURL": f"https://{settings.firebase_project_id}-default-rtdb.firebaseio.com"
-            })
+            _app = firebase_admin.initialize_app(
+                cred,
+                {
+                    "databaseURL": f"https://{settings.firebase_project_id}-default-rtdb.firebaseio.com"
+                },
+            )
         else:
             # For testing/development without Firebase
             return None

@@ -16,11 +16,23 @@ class CampaignStatus(str, enum.Enum):
 class Campaign(Base, TimestampMixin, TenantMixin):
     __tablename__ = "campaigns"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    tenant_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    status = Column(SAEnum(CampaignStatus), default=CampaignStatus.DRAFT, nullable=False)
+    status = Column(
+        SAEnum(CampaignStatus), default=CampaignStatus.DRAFT, nullable=False
+    )
     start_date = Column(DateTime(timezone=True), nullable=True)
     end_date = Column(DateTime(timezone=True), nullable=True)
     target_regions = Column(JSONB, default=list, server_default=text("'[]'::jsonb"))

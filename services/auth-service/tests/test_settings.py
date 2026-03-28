@@ -1,6 +1,5 @@
 """Tests for the tenant settings router (auth-service)."""
 
-from unittest.mock import MagicMock
 from conftest import FakeDBResult
 
 
@@ -16,10 +15,12 @@ class TestGetTenantSettings:
     """GET /auth/tenant-settings"""
 
     def test_returns_settings_with_masked_api_key(self, client, fake_db):
-        tenant = _FakeTenant(settings={
-            "ai": {"provider": "claude", "api_key": "sk-secret-12345"},
-            "general": {"name": "My Party"},
-        })
+        tenant = _FakeTenant(
+            settings={
+                "ai": {"provider": "claude", "api_key": "sk-secret-12345"},
+                "general": {"name": "My Party"},
+            }
+        )
         fake_db.set_execute_result(FakeDBResult(scalar=tenant))
 
         resp = client.get("/auth/tenant-settings")
@@ -91,7 +92,9 @@ class TestPatchTenantSettings:
 
         resp = client.patch(
             "/auth/tenant-settings",
-            json={"settings": {"ai": {"provider": "claude", "api_key": "sk-new-secret"}}},
+            json={
+                "settings": {"ai": {"provider": "claude", "api_key": "sk-new-secret"}}
+            },
         )
         assert resp.status_code == 200
         assert resp.json()["settings"]["ai"]["api_key"] == "****"

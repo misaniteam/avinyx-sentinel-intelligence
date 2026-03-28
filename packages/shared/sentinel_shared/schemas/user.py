@@ -3,22 +3,38 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from uuid import UUID
 from datetime import datetime
 
-VALID_PERMISSIONS = frozenset({
-    "dashboard:view", "dashboard:edit",
-    "voters:read", "voters:write",
-    "campaigns:read", "campaigns:write",
-    "media:read", "media:write",
-    "analytics:read", "analytics:export",
-    "reports:read", "reports:write", "reports:export",
-    "heatmap:view",
-    "users:read", "users:write",
-    "roles:read", "roles:write",
-    "settings:read", "settings:write",
-    "workers:read", "workers:manage",
-    "data_sources:read", "data_sources:write",
-    "notifications:read", "notifications:write",
-    "topics:read", "topics:write",
-})
+VALID_PERMISSIONS = frozenset(
+    {
+        "dashboard:view",
+        "dashboard:edit",
+        "voters:read",
+        "voters:write",
+        "campaigns:read",
+        "campaigns:write",
+        "media:read",
+        "media:write",
+        "analytics:read",
+        "analytics:export",
+        "reports:read",
+        "reports:write",
+        "reports:export",
+        "heatmap:view",
+        "users:read",
+        "users:write",
+        "roles:read",
+        "roles:write",
+        "settings:read",
+        "settings:write",
+        "workers:read",
+        "workers:manage",
+        "data_sources:read",
+        "data_sources:write",
+        "notifications:read",
+        "notifications:write",
+        "topics:read",
+        "topics:write",
+    }
+)
 
 
 def _validate_permissions(permissions: list[str]) -> list[str]:
@@ -70,8 +86,10 @@ class RoleCreate(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        if not re.match(r'^[\w\s\-]+$', v):
-            raise ValueError("Name can only contain letters, numbers, spaces, underscores, and hyphens")
+        if not re.match(r"^[\w\s\-]+$", v):
+            raise ValueError(
+                "Name can only contain letters, numbers, spaces, underscores, and hyphens"
+            )
         return v.strip()
 
 
@@ -92,8 +110,10 @@ class RoleUpdate(BaseModel):
     def validate_name(cls, v: str | None) -> str | None:
         if v is None:
             return v
-        if not re.match(r'^[\w\s\-]+$', v):
-            raise ValueError("Name can only contain letters, numbers, spaces, underscores, and hyphens")
+        if not re.match(r"^[\w\s\-]+$", v):
+            raise ValueError(
+                "Name can only contain letters, numbers, spaces, underscores, and hyphens"
+            )
         return v.strip()
 
 

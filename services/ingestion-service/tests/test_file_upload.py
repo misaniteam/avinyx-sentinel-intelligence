@@ -54,8 +54,13 @@ def _make_fake_ds(**overrides):
 def mock_deps():
     """Patch auth dependencies, DB session, S3Client, SQSClient, and get_settings."""
     with (
-        patch("routers.file_upload.get_current_tenant_required", return_value=FAKE_TENANT_ID),
-        patch("routers.file_upload.require_permissions", return_value=lambda: FAKE_USER),
+        patch(
+            "routers.file_upload.get_current_tenant_required",
+            return_value=FAKE_TENANT_ID,
+        ),
+        patch(
+            "routers.file_upload.require_permissions", return_value=lambda: FAKE_USER
+        ),
         patch("routers.file_upload.get_settings") as mock_settings,
         patch("routers.file_upload.S3Client") as mock_s3_cls,
         patch("routers.file_upload.SQSClient") as mock_sqs_cls,
@@ -120,17 +125,20 @@ def patched_app(mock_deps):
 
         # Re-wire so DataSourceResponse.from_model works on our fake
         with patch("routers.file_upload.DataSourceResponse") as mock_resp:
-            mock_resp.from_model = MagicMock(side_effect=lambda ds: {
-                "id": str(ds.id),
-                "platform": ds.platform,
-                "name": ds.name,
-                "config": ds.config,
-                "poll_interval_minutes": ds.poll_interval_minutes,
-                "is_active": ds.is_active,
-                "last_polled_at": None,
-            })
+            mock_resp.from_model = MagicMock(
+                side_effect=lambda ds: {
+                    "id": str(ds.id),
+                    "platform": ds.platform,
+                    "name": ds.name,
+                    "config": ds.config,
+                    "poll_interval_minutes": ds.poll_interval_minutes,
+                    "is_active": ds.is_active,
+                    "last_polled_at": None,
+                }
+            )
 
             from main import app
+
             yield app, mock_deps, fake_ds
 
 
@@ -152,7 +160,9 @@ async def test_upload_pdf_success(client):
     ac, deps, fake_ds = client
     response = await ac.post(
         "/ingestion/file-upload/",
-        files=[("files", ("report.pdf", BytesIO(MINIMAL_PDF_BYTES), "application/pdf"))],
+        files=[
+            ("files", ("report.pdf", BytesIO(MINIMAL_PDF_BYTES), "application/pdf"))
+        ],
         data={"name": "PDF Upload"},
     )
     assert response.status_code == 201
@@ -168,7 +178,16 @@ async def test_upload_xlsx_success(client):
     ac, deps, fake_ds = client
     response = await ac.post(
         "/ingestion/file-upload/",
-        files=[("files", ("data.xlsx", BytesIO(MINIMAL_XLSX_BYTES), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))],
+        files=[
+            (
+                "files",
+                (
+                    "data.xlsx",
+                    BytesIO(MINIMAL_XLSX_BYTES),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ),
+            )
+        ],
         data={"name": "Excel Upload"},
     )
     assert response.status_code == 201
@@ -182,7 +201,14 @@ async def test_upload_multiple_files(client):
         "/ingestion/file-upload/",
         files=[
             ("files", ("report.pdf", BytesIO(MINIMAL_PDF_BYTES), "application/pdf")),
-            ("files", ("data.xlsx", BytesIO(MINIMAL_XLSX_BYTES), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+            (
+                "files",
+                (
+                    "data.xlsx",
+                    BytesIO(MINIMAL_XLSX_BYTES),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ),
+            ),
         ],
         data={"name": "Multi Upload"},
     )
@@ -252,7 +278,9 @@ async def test_upload_empty_name(client):
     ac, deps, _ = client
     response = await ac.post(
         "/ingestion/file-upload/",
-        files=[("files", ("report.pdf", BytesIO(MINIMAL_PDF_BYTES), "application/pdf"))],
+        files=[
+            ("files", ("report.pdf", BytesIO(MINIMAL_PDF_BYTES), "application/pdf"))
+        ],
         data={"name": ""},
     )
     assert response.status_code == 422
@@ -264,7 +292,9 @@ async def test_filename_sanitization(client):
     ac, deps, _ = client
     response = await ac.post(
         "/ingestion/file-upload/",
-        files=[("files", ("../../evil.pdf", BytesIO(MINIMAL_PDF_BYTES), "application/pdf"))],
+        files=[
+            ("files", ("../../evil.pdf", BytesIO(MINIMAL_PDF_BYTES), "application/pdf"))
+        ],
         data={"name": "Sanitize Test"},
     )
     assert response.status_code == 201
@@ -297,16 +327,19 @@ async def test_magic_byte_validation(client):
 class TestSanitizeFilename:
     def test_strips_path_components(self):
         from routers.file_upload import _sanitize_filename
+
         assert _sanitize_filename("../../etc/passwd") == "passwd"
 
     def test_strips_windows_path(self):
         from routers.file_upload import _sanitize_filename
+
         result = _sanitize_filename("C:\\Users\\evil\\doc.pdf")
         assert "\\" not in result
         assert "doc.pdf" in result
 
     def test_replaces_unsafe_chars(self):
         from routers.file_upload import _sanitize_filename
+
         result = _sanitize_filename("my file (1).pdf")
         assert " " not in result
         assert "(" not in result
@@ -314,6 +347,7 @@ class TestSanitizeFilename:
 
     def test_truncates_long_filenames(self):
         from routers.file_upload import _sanitize_filename
+
         long_name = "a" * 200 + ".pdf"
         result = _sanitize_filename(long_name)
         assert len(result) <= 100
@@ -323,38 +357,47 @@ class TestSanitizeFilename:
 class TestValidateMagicBytes:
     def test_valid_pdf(self):
         from routers.file_upload import _validate_magic_bytes
+
         assert _validate_magic_bytes(b"%PDF-1.4 rest of content", ".pdf") is True
 
     def test_invalid_pdf(self):
         from routers.file_upload import _validate_magic_bytes
+
         assert _validate_magic_bytes(b"not a pdf", ".pdf") is False
 
     def test_valid_xlsx(self):
         from routers.file_upload import _validate_magic_bytes
+
         assert _validate_magic_bytes(b"PK\x03\x04 rest", ".xlsx") is True
 
     def test_valid_xls(self):
         from routers.file_upload import _validate_magic_bytes
+
         assert _validate_magic_bytes(b"\xd0\xcf\x11\xe0 rest", ".xls") is True
 
     def test_unknown_extension(self):
         from routers.file_upload import _validate_magic_bytes
+
         assert _validate_magic_bytes(b"anything", ".docx") is False
 
 
 class TestGetFileExtension:
     def test_normal_extension(self):
         from routers.file_upload import _get_file_extension
+
         assert _get_file_extension("report.pdf") == ".pdf"
 
     def test_uppercase(self):
         from routers.file_upload import _get_file_extension
+
         assert _get_file_extension("DATA.XLSX") == ".xlsx"
 
     def test_no_extension(self):
         from routers.file_upload import _get_file_extension
+
         assert _get_file_extension("noext") == ""
 
     def test_multiple_dots(self):
         from routers.file_upload import _get_file_extension
+
         assert _get_file_extension("my.file.pdf") == ".pdf"

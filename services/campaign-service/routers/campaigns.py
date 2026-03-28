@@ -10,6 +10,7 @@ from datetime import datetime
 
 router = APIRouter()
 
+
 class CampaignCreate(BaseModel):
     name: str
     description: str | None = None
@@ -18,6 +19,7 @@ class CampaignCreate(BaseModel):
     target_regions: list[str] = []
     keywords: list[str] = []
     settings: dict = {}
+
 
 class CampaignUpdate(BaseModel):
     name: str | None = None
@@ -28,6 +30,7 @@ class CampaignUpdate(BaseModel):
     target_regions: list[str] | None = None
     keywords: list[str] | None = None
     settings: dict | None = None
+
 
 class CampaignResponse(BaseModel):
     id: UUID
@@ -43,6 +46,7 @@ class CampaignResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
 @router.get("/", response_model=list[CampaignResponse])
 async def list_campaigns(
     db: AsyncSession = Depends(get_db),
@@ -52,9 +56,13 @@ async def list_campaigns(
     limit: int = Query(50, ge=1, le=100),
 ):
     result = await db.execute(
-        select(Campaign).where(Campaign.tenant_id == tenant_id).offset(skip).limit(limit)
+        select(Campaign)
+        .where(Campaign.tenant_id == tenant_id)
+        .offset(skip)
+        .limit(limit)
     )
     return result.scalars().all()
+
 
 @router.post("/", response_model=CampaignResponse, status_code=status.HTTP_201_CREATED)
 async def create_campaign(
@@ -78,6 +86,7 @@ async def create_campaign(
     await db.refresh(campaign)
     return campaign
 
+
 @router.get("/{campaign_id}", response_model=CampaignResponse)
 async def get_campaign(
     campaign_id: UUID,
@@ -85,11 +94,16 @@ async def get_campaign(
     tenant_id: str = Depends(get_current_tenant),
     user: dict = Depends(require_permissions("campaigns:read")),
 ):
-    result = await db.execute(select(Campaign).where(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id))
+    result = await db.execute(
+        select(Campaign).where(
+            Campaign.id == campaign_id, Campaign.tenant_id == tenant_id
+        )
+    )
     campaign = result.scalar_one_or_none()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     return campaign
+
 
 @router.patch("/{campaign_id}", response_model=CampaignResponse)
 async def update_campaign(
@@ -99,7 +113,11 @@ async def update_campaign(
     tenant_id: str = Depends(get_current_tenant),
     user: dict = Depends(require_permissions("campaigns:write")),
 ):
-    result = await db.execute(select(Campaign).where(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id))
+    result = await db.execute(
+        select(Campaign).where(
+            Campaign.id == campaign_id, Campaign.tenant_id == tenant_id
+        )
+    )
     campaign = result.scalar_one_or_none()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -109,6 +127,7 @@ async def update_campaign(
     await db.refresh(campaign)
     return campaign
 
+
 @router.delete("/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_campaign(
     campaign_id: UUID,
@@ -116,7 +135,11 @@ async def delete_campaign(
     tenant_id: str = Depends(get_current_tenant),
     user: dict = Depends(require_permissions("campaigns:write")),
 ):
-    result = await db.execute(select(Campaign).where(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id))
+    result = await db.execute(
+        select(Campaign).where(
+            Campaign.id == campaign_id, Campaign.tenant_id == tenant_id
+        )
+    )
     campaign = result.scalar_one_or_none()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")

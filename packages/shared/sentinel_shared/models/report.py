@@ -15,8 +15,18 @@ class ReportFormat(str, enum.Enum):
 class Report(Base, TimestampMixin, TenantMixin):
     __tablename__ = "reports"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    tenant_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name = Column(String(255), nullable=False)
     config = Column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
     generated_file = Column(String(500), nullable=True)  # S3 key

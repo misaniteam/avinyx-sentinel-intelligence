@@ -2,10 +2,15 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sentinel_shared.database.session import get_db
-from sentinel_shared.models.media import SentimentAnalysis, SentimentAggregate, RawMediaItem
+from sentinel_shared.models.media import (
+    SentimentAnalysis,
+    SentimentAggregate,
+    RawMediaItem,
+)
 from sentinel_shared.auth.dependencies import get_current_tenant, require_permissions
 
 router = APIRouter()
+
 
 @router.get("/summary")
 async def dashboard_summary(
@@ -15,28 +20,44 @@ async def dashboard_summary(
 ):
     # Total media items
     total_result = await db.execute(
-        select(func.count()).select_from(RawMediaItem).where(RawMediaItem.tenant_id == tenant_id)
+        select(func.count())
+        .select_from(RawMediaItem)
+        .where(RawMediaItem.tenant_id == tenant_id)
     )
     total_items = total_result.scalar() or 0
 
     # Average sentiment
     avg_result = await db.execute(
-        select(func.avg(SentimentAnalysis.sentiment_score)).where(SentimentAnalysis.tenant_id == tenant_id)
+        select(func.avg(SentimentAnalysis.sentiment_score)).where(
+            SentimentAnalysis.tenant_id == tenant_id
+        )
     )
     avg_sentiment = avg_result.scalar() or 0.0
 
     # Sentiment distribution
     pos_result = await db.execute(
-        select(func.count()).select_from(SentimentAnalysis)
-        .where(SentimentAnalysis.tenant_id == tenant_id, SentimentAnalysis.sentiment_label == "positive")
+        select(func.count())
+        .select_from(SentimentAnalysis)
+        .where(
+            SentimentAnalysis.tenant_id == tenant_id,
+            SentimentAnalysis.sentiment_label == "positive",
+        )
     )
     neg_result = await db.execute(
-        select(func.count()).select_from(SentimentAnalysis)
-        .where(SentimentAnalysis.tenant_id == tenant_id, SentimentAnalysis.sentiment_label == "negative")
+        select(func.count())
+        .select_from(SentimentAnalysis)
+        .where(
+            SentimentAnalysis.tenant_id == tenant_id,
+            SentimentAnalysis.sentiment_label == "negative",
+        )
     )
     neu_result = await db.execute(
-        select(func.count()).select_from(SentimentAnalysis)
-        .where(SentimentAnalysis.tenant_id == tenant_id, SentimentAnalysis.sentiment_label == "neutral")
+        select(func.count())
+        .select_from(SentimentAnalysis)
+        .where(
+            SentimentAnalysis.tenant_id == tenant_id,
+            SentimentAnalysis.sentiment_label == "neutral",
+        )
     )
 
     return {
@@ -49,6 +70,7 @@ async def dashboard_summary(
         },
     }
 
+
 @router.get("/trends")
 async def sentiment_trends(
     period: str = Query("daily", regex="^(hourly|daily|weekly)$"),
@@ -58,7 +80,10 @@ async def sentiment_trends(
 ):
     result = await db.execute(
         select(SentimentAggregate)
-        .where(SentimentAggregate.tenant_id == tenant_id, SentimentAggregate.period == period)
+        .where(
+            SentimentAggregate.tenant_id == tenant_id,
+            SentimentAggregate.period == period,
+        )
         .order_by(SentimentAggregate.period_start.desc())
         .limit(30)
     )

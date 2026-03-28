@@ -7,7 +7,11 @@ from datetime import datetime, timezone
 from sentinel_shared.config import get_settings
 from sentinel_shared.messaging.sqs import SQSClient
 from sentinel_shared.database.session import get_session_factory, tenant_context
-from sentinel_shared.models.media import RawMediaItem, SentimentAnalysis, SentimentAggregate, MediaFeed
+from sentinel_shared.models.media import (
+    RawMediaItem,
+    SentimentAnalysis,
+    MediaFeed,
+)
 from sentinel_shared.models.tenant import Tenant
 from sentinel_shared.models.topic_keyword import TopicKeyword
 from sentinel_shared.ai.factory import AIProviderFactory
@@ -15,7 +19,7 @@ from sentinel_shared.ai.claude_provider import ClaudeProvider
 from sentinel_shared.ai.openai_provider import OpenAIProvider
 from sentinel_shared.ai.bedrock_provider import BedrockProvider
 from sentinel_shared.firebase.client import update_worker_status
-from sentinel_shared.logging import init_logging, start_log_shipper, stop_log_shipper
+from sentinel_shared.logging import init_logging, start_log_shipper
 from sqlalchemy import select, update as sa_update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -29,7 +33,9 @@ AIProviderFactory.register("bedrock", BedrockProvider)
 INTER_ITEM_DELAY = 5  # seconds between individual API calls to avoid Bedrock throttling
 
 
-async def process_single_item(factory, provider, ai_provider_name, tenant_id, topic_keywords, item):
+async def process_single_item(
+    factory, provider, ai_provider_name, tenant_id, topic_keywords, item
+):
     """Process a single item through the AI provider."""
     async with factory() as session:
         # Mark item as processing
@@ -49,7 +55,12 @@ async def process_single_item(factory, provider, ai_provider_name, tenant_id, to
             )
             sentiment, extraction = results[0]
         except Exception as e:
-            logger.error("ai_item_failed", tenant_id=tenant_id, item_id=str(item.id), error=str(e))
+            logger.error(
+                "ai_item_failed",
+                tenant_id=tenant_id,
+                item_id=str(item.id),
+                error=str(e),
+            )
             await session.execute(
                 sa_update(RawMediaItem)
                 .where(RawMediaItem.id == item.id)
@@ -58,7 +69,9 @@ async def process_single_item(factory, provider, ai_provider_name, tenant_id, to
             await session.commit()
             return False
 
-        entities = [e if isinstance(e, dict) else {"name": str(e)} for e in sentiment.entities]
+        entities = [
+            e if isinstance(e, dict) else {"name": str(e)} for e in sentiment.entities
+        ]
 
         # Create SentimentAnalysis
         analysis = SentimentAnalysis(
@@ -120,27 +133,37 @@ async def process_message(message: dict):
     worker_run_id = f"ai-{uuid.uuid4()}"
     now = datetime.now(timezone.utc).isoformat()
 
-    await update_worker_status(tenant_id, worker_run_id, {
-        "worker_run_id": worker_run_id,
-        "tenant_id": tenant_id,
-        "platform": "ai-pipeline",
-        "status": "running",
-        "items_fetched": 0,
-        "started_at": now,
-        "updated_at": now,
-    })
+    await update_worker_status(
+        tenant_id,
+        worker_run_id,
+        {
+            "worker_run_id": worker_run_id,
+            "tenant_id": tenant_id,
+            "platform": "ai-pipeline",
+            "status": "running",
+            "items_fetched": 0,
+            "started_at": now,
+            "updated_at": now,
+        },
+    )
 
     async with factory() as session:
         # Get tenant settings for AI provider
-        tenant_result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
+        tenant_result = await session.execute(
+            select(Tenant).where(Tenant.id == tenant_id)
+        )
         tenant = tenant_result.scalar_one_or_none()
         if not tenant:
             logger.error("tenant_not_found", tenant_id=tenant_id)
-            await update_worker_status(tenant_id, worker_run_id, {
-                "status": "failed",
-                "error": "Tenant not found",
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            })
+            await update_worker_status(
+                tenant_id,
+                worker_run_id,
+                {
+                    "status": "failed",
+                    "error": "Tenant not found",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                },
+            )
             return
 
         ai_provider_name = (tenant.settings or {}).get("ai_provider", "bedrock")
@@ -152,11 +175,15 @@ async def process_message(message: dict):
         tk_result = await session.execute(
             select(TopicKeyword).where(
                 TopicKeyword.tenant_id == tenant_id,
-                TopicKeyword.is_active == True,
+                TopicKeyword.is_active.is_(True),
             )
         )
         topic_keywords = [
-            {"name": tk.name, "keywords": tk.keywords, "sentiment_direction": tk.sentiment_direction}
+            {
+                "name": tk.name,
+                "keywords": tk.keywords,
+                "sentiment_direction": tk.sentiment_direction,
+            }
             for tk in tk_result.scalars().all()
         ]
 
@@ -185,41 +212,68 @@ async def process_message(message: dict):
                 await asyncio.sleep(INTER_ITEM_DELAY)
 
             success = await process_single_item(
-                factory, provider, ai_provider_name, tenant_id, topic_keywords, item,
+                factory,
+                provider,
+                ai_provider_name,
+                tenant_id,
+                topic_keywords,
+                item,
             )
 
             if success:
                 total_processed += 1
-                logger.info("item_complete", tenant_id=tenant_id, item_id=str(item.id), progress=total_processed)
+                logger.info(
+                    "item_complete",
+                    tenant_id=tenant_id,
+                    item_id=str(item.id),
+                    progress=total_processed,
+                )
             else:
                 total_failed += 1
 
             # Update worker status periodically
             if (total_processed + total_failed) % 5 == 0 or not success:
-                await update_worker_status(tenant_id, worker_run_id, {
-                    "items_fetched": total_processed,
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                })
+                await update_worker_status(
+                    tenant_id,
+                    worker_run_id,
+                    {
+                        "items_fetched": total_processed,
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
 
     except Exception as e:
-        await update_worker_status(tenant_id, worker_run_id, {
-            "status": "failed",
-            "error": str(e)[:500],
-            "items_fetched": total_processed,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        })
+        await update_worker_status(
+            tenant_id,
+            worker_run_id,
+            {
+                "status": "failed",
+                "error": str(e)[:500],
+                "items_fetched": total_processed,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
         raise
 
     if total_processed == 0 and total_failed == 0:
         logger.debug("no_pending_items", tenant_id=tenant_id)
     else:
-        logger.info("analysis_complete", tenant_id=tenant_id, processed=total_processed, failed=total_failed)
+        logger.info(
+            "analysis_complete",
+            tenant_id=tenant_id,
+            processed=total_processed,
+            failed=total_failed,
+        )
 
-    await update_worker_status(tenant_id, worker_run_id, {
-        "status": "completed",
-        "items_fetched": total_processed,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    })
+    await update_worker_status(
+        tenant_id,
+        worker_run_id,
+        {
+            "status": "completed",
+            "items_fetched": total_processed,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
 
 async def main():
@@ -235,12 +289,19 @@ async def main():
             for msg in messages:
                 try:
                     await process_message(msg)
-                    await sqs.delete_message(settings.sqs_ai_pipeline_queue, msg["ReceiptHandle"])
+                    await sqs.delete_message(
+                        settings.sqs_ai_pipeline_queue, msg["ReceiptHandle"]
+                    )
                 except Exception as e:
-                    logger.error("message_processing_failed", error=str(e), traceback=traceback.format_exc())
+                    logger.error(
+                        "message_processing_failed",
+                        error=str(e),
+                        traceback=traceback.format_exc(),
+                    )
         except Exception as e:
             logger.error("polling_error", error=str(e))
             await asyncio.sleep(5)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

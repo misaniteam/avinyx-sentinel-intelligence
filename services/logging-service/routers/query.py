@@ -57,7 +57,9 @@ async def search_logs(
     total = total_result.scalar() or 0
 
     # Items query
-    items_query = select(LogEntry).order_by(desc(LogEntry.timestamp)).offset(skip).limit(limit)
+    items_query = (
+        select(LogEntry).order_by(desc(LogEntry.timestamp)).offset(skip).limit(limit)
+    )
     if conditions:
         items_query = items_query.where(*conditions)
     result = await db.execute(items_query)

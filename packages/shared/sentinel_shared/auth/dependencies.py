@@ -6,13 +6,19 @@ from sentinel_shared.database.session import tenant_context
 security = HTTPBearer()
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
     token = credentials.credentials
     payload = decode_token(token)
     if payload is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+        )
     if payload.get("type") != "access":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type"
+        )
     return payload
 
 
@@ -25,7 +31,9 @@ async def get_current_tenant(user: dict = Depends(get_current_user)) -> str | No
 
 def require_super_admin(user: dict = Depends(get_current_user)) -> dict:
     if not user.get("is_super_admin"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Super admin access required"
+        )
     return user
 
 
@@ -35,8 +43,11 @@ def require_permissions(*permissions: str):
         if "*" in user_permissions:
             return user
         if not all(p in user_permissions for p in permissions):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
+            )
         return user
+
     return checker
 
 

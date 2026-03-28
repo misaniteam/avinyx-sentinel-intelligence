@@ -24,6 +24,7 @@ async def start_log_shipper() -> None:
 
     # Make queue available to the processor
     from sentinel_shared.logging.setup import _shipper_processor
+
     if _shipper_processor is not None:
         _shipper_processor.set_queue(_queue)
 

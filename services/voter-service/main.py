@@ -35,8 +35,7 @@ async def main():
                     await process_voter_list(body)
 
                     await sqs.delete_message(
-                        settings.sqs_voter_list_queue,
-                        msg["ReceiptHandle"]
+                        settings.sqs_voter_list_queue, msg["ReceiptHandle"]
                     )
 
                 except Exception as e:
