@@ -328,36 +328,36 @@ jobs:
   # ──────────────────────────────────────────────
   # TODO: Frontend uses Next.js standalone (SSR) and needs an ECS service.
   # Add "frontend" to http_services in Terraform ECS module, then uncomment:
-  #
-  # deploy-frontend:
-  #   name: Deploy Frontend
-  #   needs: [migrate]
-  #   runs-on: ubuntu-latest
-  #   environment: ${{ github.event.inputs.environment || 'production' }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Configure AWS Credentials
-  #       uses: aws-actions/configure-aws-credentials@v4
-  #       with:
-  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-  #         aws-region: ${{ env.AWS_REGION }}
-  #     - name: Download current task definition
-  #       run: |
-  #         aws ecs describe-task-definition \
-  #           --task-definition "avinyx-sentinel-frontend" \
-  #           --query taskDefinition > task-definition.json
-  #     - name: Update image in task definition
-  #       uses: aws-actions/amazon-ecs-render-task-definition@v1
-  #       id: render
-  #       with:
-  #         task-definition: task-definition.json
-  #         container-name: frontend
-  #         image: ${{ env.ECR_REGISTRY }}/avinyx-sentinel-frontend:${{ github.sha }}
-  #     - name: Deploy to ECS
-  #       uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-  #       with:
-  #         task-definition: ${{ steps.render.outputs.task-definition }}
-  #         service: frontend
-  #         cluster: ${{ env.ECS_CLUSTER }}
-  #         wait-for-service-stability: true
-  #         wait-for-minutes: 10
+  
+  deploy-frontend:
+    name: Deploy Frontend
+    needs: [migrate]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "avinyx-sentinel-frontend" \
+            --query taskDefinition > task-definition.json
+      - name: Update image in task definition
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        id: render
+        with:
+          task-definition: task-definition.json
+          container-name: frontend
+          image: ${{ env.ECR_REGISTRY }}/avinyx-sentinel-frontend:${{ github.sha }}
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: frontend
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-for-minutes: 10
