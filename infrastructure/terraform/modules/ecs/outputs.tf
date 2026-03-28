@@ -35,5 +35,8 @@ output "http_service_names" {
 
 output "worker_service_names" {
   description = "Map of worker service names"
-  value       = { for name, svc in aws_ecs_service.worker : name => svc.name }
+  value = merge(
+    { for name, svc in aws_ecs_service.worker : name => svc.name },
+    { for name, svc in aws_ecs_service.worker_gpu : name => svc.name }
+  )
 }
