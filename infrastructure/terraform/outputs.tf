@@ -7,6 +7,16 @@ output "vpc_id" {
   value       = module.vpc.vpc_id
 }
 
+output "private_subnet_ids" {
+  description = "Private subnet IDs (for ECS tasks and migrations)"
+  value       = module.vpc.private_subnet_ids
+}
+
+output "ecs_security_group_id" {
+  description = "ECS security group ID"
+  value       = module.vpc.ecs_security_group_id
+}
+
 ################################################################################
 # ALB
 ################################################################################

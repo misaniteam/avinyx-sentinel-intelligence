@@ -242,7 +242,7 @@ jobs:
             --cluster "${{ env.ECS_CLUSTER }}" \
             --task-definition "avinyx-sentinel-migrate-${{ env.ENVIRONMENT }}" \
             --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=${{ vars.PRIVATE_SUBNETS }},securityGroups=${{ vars.SECURITY_GROUPS }},assignPublicIp=DISABLED}" \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ vars.PRIVATE_SUBNETS }}],securityGroups=[${{ vars.SECURITY_GROUPS }}],assignPublicIp=DISABLED}" \
             --overrides '{"containerOverrides":[{"name":"migrate","command":["alembic","upgrade","head"]}]}' \
             --query 'tasks[0].taskArn' \
             --output text)
