@@ -63,7 +63,7 @@ export default function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t("title")}</h1>
         <Button onClick={handleAdd}>
-          <Plus className="mr-2 h-4 w-4" /> {t("addUser")}
+          <Plus className="mr-1 h-4 w-4 text-theme-primary" /> {t("addUser")}
         </Button>
       </div>
       <Card>
@@ -105,15 +105,15 @@ export default function AdminUsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(user)}>
-                          <Pencil className="mr-2 h-4 w-4" />
+                        <DropdownMenuItem onClick={() => handleEdit(user)} className="cursor-pointer group">
+                          <Pencil className="mr-1 h-4 w-4 text-theme-primary group-hover:text-primary" />
                           {tc("edit")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDeleteClick(user)}
-                          className="text-destructive"
+                          className="cursor-pointer group"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
+                          <Trash2 className="mr-1 h-4 w-4 text-theme-primary group-hover:text-primary" />
                           {tc("delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>

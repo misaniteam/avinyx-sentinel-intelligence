@@ -89,8 +89,9 @@ export default function MediaFeedsPage() {
                       {item.external_links && item.external_links.length > 0 && (
                         <div className="flex items-center gap-1">
                           {item.external_links.slice(0, 3).map((link, i) => (
-                            <a key={i} href={link} target="_blank" rel="noopener noreferrer" className="hover:text-foreground" title={link}>
-                              <ExternalLink className="h-3 w-3" /> External Link
+                            <a  key={i} href={link} target="_blank" rel="noopener noreferrer" className="hover:text-foreground flex gap-2 text-theme-primary" title={link}>
+                              <ExternalLink className="h-3 w-3" /> 
+                              <span>External Link</span>
                             </a>
                           ))}
                         </div>
