@@ -2,7 +2,7 @@
 
 import uuid
 from unittest.mock import MagicMock, patch
-from tests.conftest import FakeDBResult
+from conftest import FakeDBResult
 
 
 class FakeReport:
@@ -37,7 +37,7 @@ class TestCreateReport:
         self._patch_db_for_create(fake_db)
 
         resp = client.post(
-            "/reports/",
+            "/analytics/reports/",
             json={"name": "Weekly Sentiment", "format": "pdf", "config": {}},
         )
         assert resp.status_code == 201
@@ -50,7 +50,7 @@ class TestCreateReport:
         self._patch_db_for_create(fake_db)
 
         resp = client.post(
-            "/reports/",
+            "/analytics/reports/",
             json={"name": "Image Report", "format": "image"},
         )
         assert resp.status_code == 201
@@ -60,7 +60,7 @@ class TestCreateReport:
         self._patch_db_for_create(fake_db)
 
         resp = client.post(
-            "/reports/",
+            "/analytics/reports/",
             json={"name": "CSV Export", "format": "csv"},
         )
         assert resp.status_code == 201
@@ -68,7 +68,7 @@ class TestCreateReport:
 
     def test_rejects_invalid_format(self, client, fake_db):
         resp = client.post(
-            "/reports/",
+            "/analytics/reports/",
             json={"name": "Bad Report", "format": "xlsx"},
         )
         assert resp.status_code == 422
@@ -80,7 +80,7 @@ class TestGenerateReport:
         fake_report = FakeReport(id=report_id, status="pending")
         fake_db.set_execute_result(FakeDBResult(scalar=fake_report))
 
-        resp = client.post(f"/reports/{report_id}/generate")
+        resp = client.post(f"/analytics/reports/{report_id}/generate")
         assert resp.status_code == 200
         assert resp.json()["status"] == "generating"
 
@@ -89,13 +89,13 @@ class TestGenerateReport:
         fake_report = FakeReport(id=report_id, status="generating")
         fake_db.set_execute_result(FakeDBResult(scalar=fake_report))
 
-        resp = client.post(f"/reports/{report_id}/generate")
+        resp = client.post(f"/analytics/reports/{report_id}/generate")
         assert resp.status_code == 409
         assert "already being generated" in resp.json()["detail"]
 
     def test_returns_404_if_report_not_found(self, client, fake_db):
         fake_db.set_execute_result(FakeDBResult(scalar=None))
-        resp = client.post(f"/reports/{uuid.uuid4()}/generate")
+        resp = client.post(f"/analytics/reports/{uuid.uuid4()}/generate")
         assert resp.status_code == 404
 
 
@@ -105,13 +105,13 @@ class TestDownloadReport:
         fake_report = FakeReport(id=report_id, status="pending", generated_file=None)
         fake_db.set_execute_result(FakeDBResult(scalar=fake_report))
 
-        resp = client.get(f"/reports/{report_id}/download")
+        resp = client.get(f"/analytics/reports/{report_id}/download")
         assert resp.status_code == 400
         assert "not been generated" in resp.json()["detail"]
 
     def test_returns_404_if_report_not_found(self, client, fake_db):
         fake_db.set_execute_result(FakeDBResult(scalar=None))
-        resp = client.get(f"/reports/{uuid.uuid4()}/download")
+        resp = client.get(f"/analytics/reports/{uuid.uuid4()}/download")
         assert resp.status_code == 404
 
     @patch("routers.reports._get_s3_client")
@@ -132,7 +132,7 @@ class TestDownloadReport:
         )
         mock_s3_factory.return_value = mock_s3
 
-        resp = client.get(f"/reports/{report_id}/download")
+        resp = client.get(f"/analytics/reports/{report_id}/download")
         assert resp.status_code == 200
         data = resp.json()
         assert data["download_url"] == "https://s3.example.com/report.pdf"
