@@ -44,7 +44,9 @@ class BedrockProvider(BaseAIProvider):
         # Use explicit credentials if provided, otherwise fall back to
         # default credential chain (ECS task role, instance profile, etc.)
         if self._access_key and self._secret_key:
-            kwargs["endpoint_url"] = f"https://bedrock-runtime.{self._region}.amazonaws.com"
+            kwargs["endpoint_url"] = (
+                f"https://bedrock-runtime.{self._region}.amazonaws.com"
+            )
             kwargs["aws_access_key_id"] = self._access_key
             kwargs["aws_secret_access_key"] = self._secret_key
         return kwargs
