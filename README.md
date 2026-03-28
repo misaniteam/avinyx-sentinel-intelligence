@@ -1,6 +1,6 @@
 # Avinyx Sentinel Intelligence
 
-Multi-tenant SaaS platform for political parties to track social media/news sentiment, voter analytics, and campaign management.
+Multi-tenant platform for political parties to track social media/news sentiment, voter analytics, and campaign management.
 
 ## Features
 
