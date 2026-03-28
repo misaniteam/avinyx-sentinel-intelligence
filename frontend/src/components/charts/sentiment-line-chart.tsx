@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   LineChart,
@@ -9,19 +9,28 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from 'recharts';
-import { format, parseISO } from 'date-fns';
-import type { SentimentTrend } from '@/types';
-import { CHART_COLORS, PLATFORM_COLORS, tooltipStyle, axisStyle } from './chart-theme';
+} from "recharts";
+import { format, parseISO } from "date-fns";
+import type { SentimentTrend } from "@/types";
+import {
+  CHART_COLORS,
+  PLATFORM_COLORS,  
+  getAxisStyle,  
+  getTooltipStyle,
+} from "./chart-theme";
+import { useTheme } from "next-themes";
 
 interface SentimentLineChartProps {
   data: SentimentTrend[];
   height?: number;
 }
 
-export function SentimentLineChart({ data, height = 300 }: SentimentLineChartProps) {
+export function SentimentLineChart({
+  data,
+  height = 300,
+}: SentimentLineChartProps) {
   const platforms = Array.from(
-    new Set(data.map((d) => d.platform).filter((p): p is string => p !== null))
+    new Set(data.map((d) => d.platform).filter((p): p is string => p !== null)),
   );
 
   const hasPlatforms = platforms.length > 0;
@@ -35,15 +44,17 @@ export function SentimentLineChart({ data, height = 300 }: SentimentLineChartPro
       periodMap.set(key, { period_start_ts: parseISO(key).getTime() });
     }
     const entry = periodMap.get(key)!;
-    const lineKey = hasPlatforms ? (item.platform ?? 'overall') : 'overall';
+    const lineKey = hasPlatforms ? (item.platform ?? "overall") : "overall";
     entry[lineKey] = item.avg_sentiment;
   }
 
   const chartData = Array.from(periodMap.values()).sort(
-    (a, b) => a.period_start_ts - b.period_start_ts
+    (a, b) => a.period_start_ts - b.period_start_ts,
   );
 
-  const lineKeys = hasPlatforms ? platforms : ['overall'];
+  const lineKeys = hasPlatforms ? platforms : ["overall"];
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -51,13 +62,13 @@ export function SentimentLineChart({ data, height = 300 }: SentimentLineChartPro
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
           dataKey="period_start_ts"
-          tickFormatter={(val: number) => format(new Date(val), 'MMM dd')}
-          {...axisStyle}
+          tickFormatter={(val: number) => format(new Date(val), "MMM dd")}
+          {...getAxisStyle(isDark)}
         />
-        <YAxis domain={[-1, 1]} {...axisStyle} />
+        <YAxis domain={[-1, 1]} {...getAxisStyle(isDark)} />
         <Tooltip
-          {...tooltipStyle}
-          labelFormatter={(val: number) => format(new Date(val), 'MMM dd')}
+          {...getTooltipStyle(isDark)}
+          labelFormatter={(val: number) => format(new Date(val), "MMM dd")}
         />
         <Legend />
         {lineKeys.map((key) => (
