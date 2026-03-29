@@ -53,6 +53,7 @@ async def setup(request: SetupRequest, db: AsyncSession = Depends(get_db)):
 
     token_data = {
         "sub": str(user.id),
+        "full_name": user.full_name,
         "tenant_id": None,
         "is_super_admin": True,
         "roles": [],
@@ -96,6 +97,7 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
 
     token_data = {
         "sub": str(user.id),
+        "full_name": user.full_name,
         "tenant_id": str(user.tenant_id) if user.tenant_id else None,
         "is_super_admin": user.is_super_admin,
         "roles": role_names,
@@ -145,6 +147,7 @@ async def refresh(request: RefreshRequest, db: AsyncSession = Depends(get_db)):
 
     token_data = {
         "sub": str(user.id),
+        "full_name": user.full_name,
         "tenant_id": str(user.tenant_id) if user.tenant_id else None,
         "is_super_admin": user.is_super_admin,
         "roles": role_names,

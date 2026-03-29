@@ -5,6 +5,7 @@ import { api, setAccessToken, getAccessToken } from "@/lib/api/client";
 
 interface AuthUser {
   sub: string;
+  full_name: string | null;
   email?: string;
   tenant_id: string | null;
   is_super_admin: boolean;
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const payload = JSON.parse(atob(token.split(".")[1]));
       return {
         sub: payload.sub,
+        full_name: payload.full_name || null,
         tenant_id: payload.tenant_id,
         is_super_admin: payload.is_super_admin || false,
         roles: payload.roles || [],

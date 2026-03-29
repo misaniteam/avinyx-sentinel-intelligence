@@ -7,5 +7,14 @@
   "engagementMetrics": "এনগেজমেন্ট মেট্রিক্স",
   "sentimentHeatmap": "মনোভাব হিটম্যাপ",
   "geographicSentiment": "ভৌগলিক মনোভাব বণ্টন",
-  "loadingHeatmap": "হিটম্যাপ ডেটা লোড হচ্ছে..."
+  "loadingHeatmap": "হিটম্যাপ ডেটা লোড হচ্ছে...",
+  "voterStats": {
+    "unknownLocation": "অজানা অবস্থান",
+    "totalVoters": "মোট ভোটার",
+    "male": "পুরুষ",
+    "female": "মহিলা",
+    "other": "অন্যান্য",
+    "avgAge": "গড় বয়স",
+    "statusBreakdown": "স্থিতি বিশ্লেষণ"
+  }
 }

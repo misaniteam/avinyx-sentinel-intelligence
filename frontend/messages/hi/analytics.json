@@ -7,5 +7,14 @@
   "engagementMetrics": "सहभागिता मेट्रिक्स",
   "sentimentHeatmap": "भावना हीटमैप",
   "geographicSentiment": "भौगोलिक भावना वितरण",
-  "loadingHeatmap": "हीटमैप डेटा लोड हो रहा है..."
+  "loadingHeatmap": "हीटमैप डेटा लोड हो रहा है...",
+  "voterStats": {
+    "unknownLocation": "अज्ञात स्थान",
+    "totalVoters": "कुल मतदाता",
+    "male": "पुरुष",
+    "female": "महिला",
+    "other": "अन्य",
+    "avgAge": "औसत आयु",
+    "statusBreakdown": "स्थिति विवरण"
+  }
 }

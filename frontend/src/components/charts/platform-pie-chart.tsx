@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { PlatformBreakdown } from "@/types";
-import { getTooltipStyle, NEWS_COLORS, PLATFORM_LABELS, tooltipStyle } from "./chart-theme";
+import { getTooltipStyle, PLATFORM_COLORS, PLATFORM_LABELS, tooltipStyle } from "./chart-theme";
 import { useTheme } from "next-themes";
 
 interface PlatformPieChartProps {
@@ -75,7 +75,7 @@ export function PlatformPieChart({
             <Cell
               key={`cell-${index}`}
               fill={
-                NEWS_COLORS[entry.platform as keyof typeof NEWS_COLORS] ??
+                PLATFORM_COLORS[entry.platform as keyof typeof PLATFORM_COLORS] ??
                 "#9ca3af"
               }
             />

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import { queryKeys } from "./query-keys";
-import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedListResponse, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus, VoterListGroupsResponse, VoterListGroupDetailResponse, VoterListUploadResponse, AllVoterEntriesResponse, TopicKeyword } from "@/types";
+import type { DashboardSummary, SentimentTrend, HeatmapPoint, VoterLocationStats, Campaign, Voter, MediaFeedListResponse, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus, VoterListGroupsResponse, VoterListGroupDetailResponse, VoterListUploadResponse, AllVoterEntriesResponse, TopicKeyword } from "@/types";
 
 // Dashboard
 export function useDashboardSummary() {
@@ -30,6 +30,14 @@ export function useHeatmapData(filter?: string, dateFrom?: string, dateTo?: stri
       const qs = params.toString();
       return api.get(`api/analytics/heatmap/data${qs ? `?${qs}` : ""}`).json<HeatmapPoint[]>();
     },
+  });
+}
+
+export function useVoterLocationStats() {
+  return useQuery({
+    queryKey: queryKeys.heatmap.voterLocationStats,
+    queryFn: () =>
+      api.get("api/analytics/heatmap/voter-location-stats").json<VoterLocationStats[]>(),
   });
 }
 

@@ -7,5 +7,14 @@
   "engagementMetrics": "Engagement Metrics",
   "sentimentHeatmap": "Sentiment Heatmap",
   "geographicSentiment": "Geographic Sentiment Distribution",
-  "loadingHeatmap": "Loading heatmap data..."
+  "loadingHeatmap": "Loading heatmap data...",
+  "voterStats": {
+    "unknownLocation": "Unknown Location",
+    "totalVoters": "Total Voters",
+    "male": "Male",
+    "female": "Female",
+    "other": "Other",
+    "avgAge": "Avg. Age",
+    "statusBreakdown": "Status Breakdown"
+  }
 }

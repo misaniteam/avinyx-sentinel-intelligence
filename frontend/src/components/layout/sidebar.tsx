@@ -18,7 +18,6 @@ import {
   FileUp,
   Settings,
   Shield,
-  Building2,
   Server,
   Tags,
   ShieldCheck,
@@ -427,9 +426,8 @@ export function Sidebar() {
           </Button>
           {!isOpen && (
             <span className="text-muted">
-              {user?.is_super_admin
-                ? t("superAdmin")
-                : user?.roles?.[0] || t("user")}
+              {user?.full_name
+                || (user?.is_super_admin ? t("superAdmin") : t("user"))}
             </span>
           )}
         </div>

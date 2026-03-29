@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useHeatmapData } from '@/lib/api/hooks';
+import { useHeatmapData, useVoterLocationStats } from '@/lib/api/hooks';
 import { useTenant } from '@/lib/tenant/tenant-provider';
 import MapProvider from '@/components/heatmap/map-provider';
 import SentimentHeatmap from '@/components/heatmap/sentiment-heatmap';
 import HeatmapControls from '@/components/heatmap/heatmap-controls';
+import VoterStatsMarkers from '@/components/heatmap/voter-stats-markers';
 import { useTranslations } from 'next-intl';
 
 export default function HeatmapPage() {
@@ -21,6 +22,8 @@ export default function HeatmapPage() {
     dateFrom || undefined,
     dateTo || undefined,
   );
+
+  const { data: voterStats } = useVoterLocationStats();
 
   const center = constituency
     ? { lat: constituency.lat, lng: constituency.lng }
@@ -54,7 +57,11 @@ export default function HeatmapPage() {
                 data={data ?? []}
                 center={center}
                 zoom={constituency ? 12 : undefined}
-              />
+              >
+                {voterStats && voterStats.length > 0 && (
+                  <VoterStatsMarkers data={voterStats} />
+                )}
+              </SentimentHeatmap>
             </MapProvider>
           )}
         </CardContent>

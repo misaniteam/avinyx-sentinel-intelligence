@@ -1,10 +1,11 @@
 export const PLATFORM_LABELS: Record<string, string> = {
   news_api: "News API",
   news_rss: "News RSS",
-};
-export const NEWS_COLORS = {
-  news_api: "#8e3501", // blue
-  news_rss: "#ec5901", // green
+  facebook: "Facebook",
+  instagram: "Instagram",
+  youtube: "YouTube",
+  twitter: "Twitter",
+  news: "News",
 };
 
 // chart-theme.ts
@@ -38,11 +39,12 @@ export const CHART_COLORS = {
 } as const;
 
 export const PLATFORM_COLORS: Record<string, string> = {
+  news_api: "#8e3501",
+  news_rss: "#ec5901",
   facebook: "#1877F2",
   instagram: "#E4405F",
   youtube: "#FF0000",
   twitter: "#1DA1F2",
-  news: "#6B7280",
 };
 
 export const tooltipStyle = {

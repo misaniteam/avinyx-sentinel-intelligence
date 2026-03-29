@@ -128,6 +128,21 @@ export interface HeatmapPoint {
   weight: number;
 }
 
+export interface VoterLocationStats {
+  group_id: string;
+  location_name: string | null;
+  part_no: string | null;
+  part_name: string | null;
+  lat: number;
+  lng: number;
+  total_count: number;
+  male_count: number;
+  female_count: number;
+  other_gender_count: number;
+  average_age: number | null;
+  status_counts: Record<string, number>;
+}
+
 export interface Report {
   id: string;
   name: string;

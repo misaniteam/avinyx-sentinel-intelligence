@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { Map, useMap } from '@vis.gl/react-google-maps';
 import type { HeatmapPoint } from '@/types';
 
@@ -9,6 +9,7 @@ interface SentimentHeatmapProps {
   radius?: number;
   center?: { lat: number; lng: number };
   zoom?: number;
+  children?: ReactNode;
 }
 
 function HeatmapLayer({ data, radius = 30 }: { data: HeatmapPoint[]; radius?: number }) {
@@ -48,16 +49,18 @@ function HeatmapLayer({ data, radius = 30 }: { data: HeatmapPoint[]; radius?: nu
   return null;
 }
 
-export default function SentimentHeatmap({ data, radius = 30, center, zoom }: SentimentHeatmapProps) {
+export default function SentimentHeatmap({ data, radius = 30, center, zoom, children }: SentimentHeatmapProps) {
   return (
     <Map
       defaultCenter={center ?? { lat: 20.5937, lng: 78.9629 }}
       defaultZoom={zoom ?? 5}
       gestureHandling="greedy"
       disableDefaultUI={false}
+      mapId="sentinel-heatmap"
       style={{ width: '100%', height: '100%' }}
     >
       <HeatmapLayer data={data} radius={radius} />
+      {children}
     </Map>
   );
 }

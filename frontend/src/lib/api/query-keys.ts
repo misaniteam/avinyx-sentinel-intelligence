@@ -32,6 +32,7 @@ export const queryKeys = {
   },
   heatmap: {
     data: (filter?: string, dateFrom?: string, dateTo?: string) => ["heatmap", filter, dateFrom, dateTo] as const,
+    voterLocationStats: ["heatmap", "voter-location-stats"] as const,
   },
   ingestedData: {
     all: ["ingested-data"] as const,
