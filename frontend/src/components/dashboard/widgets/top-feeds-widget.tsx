@@ -101,7 +101,7 @@ function TopFeedsSkeleton() {
 
 export default function TopFeedsWidget() {
   const t = useTranslations('dashboard');
-  const { data, isLoading } = useMediaFeeds(undefined, 0, 50);
+  const { data, isLoading } = useMediaFeeds({ skip: 0, limit: 50 });
 
   const { topNews, topYouTube } = useMemo(() => {
     if (!data?.items) return { topNews: [], topYouTube: [] };
