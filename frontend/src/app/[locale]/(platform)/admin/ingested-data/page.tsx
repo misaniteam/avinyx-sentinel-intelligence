@@ -25,7 +25,73 @@ import {
   X,
 } from "lucide-react";
 import { platformConfig } from "@/lib/constants/platforms";
+import { LinkifyText } from "@/components/shared/linkify-text";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Link2 } from "lucide-react";
 import type { IngestedDataItem } from "@/types";
+
+/**
+ * Parse a url field that may be a single URL string or a JSON array of URLs.
+ */
+function parseUrls(url: string | null | undefined): string[] {
+  if (!url) return [];
+  const trimmed = url.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.filter((u: unknown) => typeof u === "string" && u.length > 0);
+    } catch { /* not JSON, treat as single URL */ }
+  }
+  return [trimmed];
+}
+
+function UrlLinks({ url }: { url: string | null | undefined }) {
+  const urls = parseUrls(url);
+
+  if (urls.length === 0) return <p>—</p>;
+
+  if (urls.length === 1) {
+    return (
+      <a
+        href={urls[0]}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:underline inline-flex items-center gap-1"
+      >
+        Open URL <ExternalLink className="h-3 w-3" />
+      </a>
+    );
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="text-blue-600 hover:underline inline-flex items-center gap-1 text-sm">
+          <Link2 className="h-3 w-3" />
+          {urls.length} Links
+          <ChevronDown className="h-3 w-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-96 max-h-64 overflow-y-auto p-2" align="start">
+        <div className="space-y-1">
+          {urls.map((u, i) => (
+            <a
+              key={i}
+              href={u}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-blue-600 hover:bg-muted rounded px-2 py-1.5 truncate"
+              title={u}
+            >
+              <ExternalLink className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">{u}</span>
+            </a>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const PAGE_SIZE = 50;
 
@@ -73,7 +139,7 @@ function ExpandedRow({ item }: { item: IngestedDataItem }) {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="col-span-2">
             <p className="font-medium text-muted-foreground mb-1">{t("content")}</p>
-            <p className="whitespace-pre-wrap">{item.content || tc("noContent")}</p>
+            <p className="whitespace-pre-wrap">{item.content ? <LinkifyText text={item.content} /> : tc("noContent")}</p>
           </div>
           <div>
             <p className="font-medium text-muted-foreground mb-1">{t("externalId")}</p>
@@ -81,18 +147,7 @@ function ExpandedRow({ item }: { item: IngestedDataItem }) {
           </div>
           <div>
             <p className="font-medium text-muted-foreground mb-1">{t("url")}</p>
-            {item.url ? (
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline inline-flex items-center gap-1"
-              >
-                {tc("open")} <ExternalLink className="h-3 w-3" />
-              </a>
-            ) : (
-              <p>—</p>
-            )}
+            <UrlLinks url={item.url} />
           </div>
           <div>
             <p className="font-medium text-muted-foreground mb-1">{tc("region")}</p>

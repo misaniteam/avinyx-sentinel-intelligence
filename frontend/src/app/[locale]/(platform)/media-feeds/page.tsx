@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useTranslations } from "next-intl";
 import { platformConfig } from "@/lib/constants/platforms";
+import { LinkifyText } from "@/components/shared/linkify-text";
 import { ExternalLink } from "lucide-react";
 
 function decodeHtmlEntities(text: string): string {
@@ -65,8 +66,8 @@ export default function MediaFeedsPage() {
                         </p>
                       )}
                       {item.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
-                          {decodeHtmlEntities(item.description)}
+                        <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap">
+                          <LinkifyText text={decodeHtmlEntities(item.description)} />
                         </p>
                       )}
                     </div>
