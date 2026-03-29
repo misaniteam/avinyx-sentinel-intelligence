@@ -179,6 +179,7 @@ module "ecs" {
   ecr_repository_urls   = module.ecr.repository_urls
   alb_target_group_arn          = module.alb.target_group_arn
   frontend_target_group_arn     = module.alb.frontend_target_group_arn
+  enable_gpu                    = var.enable_gpu
   tags                          = local.common_tags
 
   # Non-sensitive environment variables only

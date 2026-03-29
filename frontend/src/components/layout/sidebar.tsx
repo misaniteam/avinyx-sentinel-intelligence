@@ -425,7 +425,13 @@ export function Sidebar() {
           <Button variant="ghost" size="icon">
             <LogOut className="h-5 w-5" />
           </Button>
-          <span className="text-muted">Log out</span>
+          {!isOpen && (
+            <span className="text-muted">
+              {user?.is_super_admin
+                ? t("superAdmin")
+                : user?.roles?.[0] || t("user")}
+            </span>
+          )}
         </div>
       </div>
     </div>

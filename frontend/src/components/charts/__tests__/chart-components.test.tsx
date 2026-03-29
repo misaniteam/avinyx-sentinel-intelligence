@@ -34,6 +34,7 @@ vi.mock('recharts', () => {
     CartesianGrid: MockElement,
     Tooltip: MockElement,
     Legend: MockElement,
+    LabelList: MockElement,
   };
 });
 

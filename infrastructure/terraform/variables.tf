@@ -105,3 +105,13 @@ variable "firebase_database_url" {
   type        = string
   default     = ""
 }
+
+################################################################################
+# GPU
+################################################################################
+
+variable "enable_gpu" {
+  description = "Enable EC2 GPU instances for OCR-accelerated voter list processing"
+  type        = bool
+  default     = false
+}

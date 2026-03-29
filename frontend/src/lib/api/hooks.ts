@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import { queryKeys } from "./query-keys";
-import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedItem, MediaFeedListResponse, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus, VoterListGroupsResponse, VoterListGroupDetailResponse, VoterListUploadResponse, AllVoterEntriesResponse, TopicKeyword } from "@/types";
+import type { DashboardSummary, SentimentTrend, HeatmapPoint, Campaign, Voter, MediaFeedListResponse, DataSource, Report, Tenant, User, Role, TenantOnboardRequest, IngestedDataResponse, InfrastructureStatus, VoterListGroupsResponse, VoterListGroupDetailResponse, VoterListUploadResponse, AllVoterEntriesResponse, TopicKeyword } from "@/types";
 
 // Dashboard
 export function useDashboardSummary() {
@@ -173,14 +173,29 @@ export function useDeleteVoterListGroup() {
 }
 
 // Media Feeds
-export function useMediaFeeds(platform?: string, skip = 0, limit = 50) {
-  const params = new URLSearchParams();
-  if (platform) params.set("platform", platform);
-  if (skip) params.set("skip", String(skip));
-  params.set("limit", String(limit));
+export function useMediaFeeds(params?: {
+  platform?: string;
+  sentiment?: string;
+  topic?: string;
+  skip?: number;
+  limit?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params?.platform) searchParams.set("platform", params.platform);
+  if (params?.sentiment) searchParams.set("sentiment", params.sentiment);
+  if (params?.topic) searchParams.set("topic", params.topic);
+  if (params?.skip) searchParams.set("skip", String(params.skip));
+  searchParams.set("limit", String(params?.limit ?? 50));
   return useQuery({
-    queryKey: [...queryKeys.mediaFeeds.all, platform, skip, limit],
-    queryFn: () => api.get(`api/campaigns/media-feeds?${params}`).json<MediaFeedListResponse>(),
+    queryKey: [...queryKeys.mediaFeeds.all, params?.platform, params?.sentiment, params?.topic, params?.skip, params?.limit],
+    queryFn: () => api.get(`api/campaigns/media-feeds?${searchParams}`).json<MediaFeedListResponse>(),
+  });
+}
+
+export function useMediaFeedTopics() {
+  return useQuery({
+    queryKey: [...queryKeys.mediaFeeds.all, "topics"],
+    queryFn: () => api.get("api/campaigns/media-feeds/topics").json<string[]>(),
   });
 }
 

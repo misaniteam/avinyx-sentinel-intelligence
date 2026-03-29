@@ -14,7 +14,7 @@ logger = structlog.get_logger()
 BATCH_SIZE = 500
 
 
-async def process_voter_list(message: dict):
+async def process_voter_list(message: dict, surya_engine=None):
     """
     End-to-end processing:
     S3 → Textract OCR + parse → DB
@@ -140,7 +140,7 @@ async def process_voter_list(message: dict):
     total_inserted = 0
 
     try:
-        async for chunk_voters in extract_voters_from_pdf(pdf_bytes, language):
+        async for chunk_voters in extract_voters_from_pdf(pdf_bytes, language, surya_engine=surya_engine):
             if not chunk_voters:
                 continue
 

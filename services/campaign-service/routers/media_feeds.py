@@ -1,7 +1,7 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func
+from sqlalchemy import select, desc, func, text
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.media import MediaFeed
 from sentinel_shared.auth.dependencies import get_current_tenant, require_permissions
@@ -42,12 +42,18 @@ async def list_media_feeds(
     tenant_id: str = Depends(get_current_tenant),
     user: dict = Depends(require_permissions("media:read")),
     platform: str | None = None,
+    sentiment: str | None = None,
+    topic: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
     base = select(MediaFeed).where(MediaFeed.tenant_id == tenant_id)
     if platform:
         base = base.where(MediaFeed.platform == platform)
+    if sentiment:
+        base = base.where(MediaFeed.sentiment_label == sentiment)
+    if topic:
+        base = base.where(MediaFeed.topics.op("@>")(func.jsonb_build_array(topic)))
 
     # Total count
     count_result = await db.execute(select(func.count()).select_from(base.subquery()))
@@ -81,3 +87,21 @@ async def list_media_feeds(
         ],
         total=total,
     )
+
+
+@router.get("/topics", response_model=list[str])
+async def list_media_feed_topics(
+    db: AsyncSession = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant),
+    user: dict = Depends(require_permissions("media:read")),
+):
+    """Get distinct topics across all media feeds for the tenant."""
+    result = await db.execute(
+        text(
+            "SELECT DISTINCT topic FROM media_feeds, "
+            "jsonb_array_elements_text(topics) AS topic "
+            "WHERE tenant_id = :tid ORDER BY topic"
+        ),
+        {"tid": tenant_id},
+    )
+    return [row[0] for row in result.fetchall()]

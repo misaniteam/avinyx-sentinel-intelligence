@@ -44,5 +44,20 @@
   "permissions": "অনুমতিসমূহ",
   "clear": "মুছুন",
   "to": "থেকে",
-  "open": "খুলুন"
+  "open": "খুলুন",
+  "showNeutral": "নিরপেক্ষ আইটেম দেখান",
+  "topHighlights": "শীর্ষ হাইলাইট",
+  "allFeeds": "সমস্ত ফিড",
+  "neutralItems": "নিরপেক্ষ আইটেম",
+  "onlyNeutralItems": "সমস্ত আইটেম নিরপেক্ষ। দেখতে \"নিরপেক্ষ আইটেম দেখান\" চেক করুন।",
+  "allPlatforms": "সমস্ত প্ল্যাটফর্ম",
+  "allSentiments": "সমস্ত মনোভাব",
+  "allTopics": "সমস্ত বিষয়",
+  "positive": "ইতিবাচক",
+  "negative": "নেতিবাচক",
+  "neutral": "নিরপেক্ষ",
+  "sentiment": "মনোভাব",
+  "topic": "বিষয়",
+  "noResults": "কোনো ফলাফল পাওয়া যায়নি",
+  "page": "পৃষ্ঠা"
 }

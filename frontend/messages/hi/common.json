@@ -44,5 +44,20 @@
   "permissions": "अनुमतियाँ",
   "clear": "साफ़ करें",
   "to": "तक",
-  "open": "खोलें"
+  "open": "खोलें",
+  "showNeutral": "तटस्थ आइटम दिखाएँ",
+  "topHighlights": "शीर्ष हाइलाइट्स",
+  "allFeeds": "सभी फ़ीड",
+  "neutralItems": "तटस्थ आइटम",
+  "onlyNeutralItems": "सभी आइटम तटस्थ हैं। उन्हें देखने के लिए \"तटस्थ आइटम दिखाएँ\" चेक करें।",
+  "allPlatforms": "सभी प्लेटफ़ॉर्म",
+  "allSentiments": "सभी भावनाएँ",
+  "allTopics": "सभी विषय",
+  "positive": "सकारात्मक",
+  "negative": "नकारात्मक",
+  "neutral": "तटस्थ",
+  "sentiment": "भावना",
+  "topic": "विषय",
+  "noResults": "कोई परिणाम नहीं मिला",
+  "page": "पृष्ठ"
 }
