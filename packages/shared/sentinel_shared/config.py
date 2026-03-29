@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     bedrock_voter_model_id: str = "apac.anthropic.claude-sonnet-4-20250514-v1:0"
     bedrock_voter_pages_per_chunk: int = 5
 
+    # OCR engine for Bengali/Hindi voter extraction ("surya" or "bedrock_vision")
+    ocr_engine: str = "surya"
+
     # Textract (real AWS — separate from LocalStack)
     aws_textract_region: str = "ap-south-1"
     aws_textract_access_key_id: str = ""
