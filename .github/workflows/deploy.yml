@@ -317,6 +317,8 @@ jobs:
           task-definition: task-definition.json
           container-name: ${{ matrix.service }}
           image: ${{ env.ECR_REGISTRY }}/avinyx-sentinel-${{ matrix.service }}:${{ github.sha }}
+          environment-variables: |
+            ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2

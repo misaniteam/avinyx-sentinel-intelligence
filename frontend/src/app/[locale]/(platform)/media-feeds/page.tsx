@@ -27,6 +27,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
+import { YouTubeCarousel } from "@/components/media/youtube-carousel";
 import { toast } from "sonner";
 import type { MediaFeedItem } from "@/types";
 
@@ -196,8 +197,9 @@ export default function MediaFeedsPage() {
   // On first page with no sentiment filter, show highlighted section
   const showHighlights = page === 0 && !sentimentFilter && !topicFilter;
 
-  const { highlighted, rest } = useMemo(() => {
-    if (!feeds || feeds.length === 0 || !showHighlights) return { highlighted: [], rest: feeds || [] };
+  const { highlighted, youtubeVideos, rest } = useMemo(() => {
+    if (!feeds || feeds.length === 0 || !showHighlights)
+      return { highlighted: [], youtubeVideos: [], rest: feeds || [] };
 
     const positiveOrNegative = feeds.filter((f) => getSentimentCategory(f) !== "neutral");
 
@@ -207,24 +209,22 @@ export default function MediaFeedsPage() {
       return scoreB - scoreA;
     });
 
-    const youtubeTop = sorted.filter((f) => f.platform === "youtube");
+    // Collect top YouTube videos for carousel
+    const ytVideos = sorted.filter((f) => f.platform === "youtube").slice(0, 10);
+    const ytIds = new Set(ytVideos.map((f) => f.id));
+
     const othersTop = sorted.filter((f) => f.platform !== "youtube");
     const highlightedIds = new Set<string>();
     const highlightedItems: MediaFeedItem[] = [];
 
-    for (const item of youtubeTop) {
-      if (highlightedItems.length >= 4) break;
-      highlightedItems.push(item);
-      highlightedIds.add(item.id);
-    }
     for (const item of othersTop) {
       if (highlightedItems.length >= 4) break;
       highlightedItems.push(item);
       highlightedIds.add(item.id);
     }
 
-    const remaining = feeds.filter((f) => !highlightedIds.has(f.id));
-    return { highlighted: highlightedItems, rest: remaining };
+    const remaining = feeds.filter((f) => !highlightedIds.has(f.id) && !ytIds.has(f.id));
+    return { highlighted: highlightedItems, youtubeVideos: ytVideos, rest: remaining };
   }, [feeds, showHighlights]);
 
   const platformOptions = Object.entries(platformConfig).map(([key, val]) => ({
@@ -349,6 +349,9 @@ export default function MediaFeedsPage() {
         </div>
       ) : (
         <>
+          {/* YouTube video carousel */}
+          {youtubeVideos.length > 0 && <YouTubeCarousel videos={youtubeVideos} />}
+
           {/* Highlighted top items (first page, no filters) */}
           {highlighted.length > 0 && (
             <div>
