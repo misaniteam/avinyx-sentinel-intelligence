@@ -113,5 +113,5 @@ variable "firebase_database_url" {
 variable "enable_gpu" {
   description = "Enable EC2 GPU instances for OCR-accelerated voter list processing"
   type        = bool
-  default     = false
+  default     = true
 }

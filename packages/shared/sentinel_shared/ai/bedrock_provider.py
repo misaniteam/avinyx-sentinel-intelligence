@@ -16,11 +16,20 @@ logger = structlog.get_logger()
 MAX_RETRIES = 5
 RETRY_BACKOFF_BASE = 2
 INTER_REQUEST_DELAY = 3  # seconds between API calls to avoid throttling
+BATCH_SIZE = 5  # Max items per single Bedrock API call
 
 ANALYZE_AND_EXTRACT_SYSTEM = """You analyze content and extract structured information. Return JSON with exactly two keys:
 1. "sentiment": {"sentiment_score": float -1.0 to 1.0, "sentiment_label": "positive"/"negative"/"neutral", "topics": [strings], "entities": [{"name": string, "type": string}], "summary": string}
 2. "extraction": {"title": string (concise title, generate if not obvious), "description": string (cleaned plain text, max ~500 chars), "image_url": string (most relevant image URL or ""), "source_link": string (canonical URL or ""), "external_links": [URLs found in content]}
 Return only valid JSON."""
+
+ANALYZE_AND_EXTRACT_BATCH_SYSTEM = """You analyze multiple content items and extract structured information for each.
+You will receive multiple items, each labeled with an index (ITEM 0, ITEM 1, etc.).
+Return a JSON object with a single key "results" containing an array. Each element corresponds to one input item in order.
+Each element must have exactly two keys:
+1. "sentiment": {"sentiment_score": float -1.0 to 1.0, "sentiment_label": "positive"/"negative"/"neutral", "topics": [strings], "entities": [{"name": string, "type": string}], "summary": string}
+2. "extraction": {"title": string (concise title, generate if not obvious), "description": string (cleaned plain text, max ~500 chars), "image_url": string (most relevant image URL or ""), "source_link": string (canonical URL or ""), "external_links": [URLs found in content]}
+The "results" array MUST have exactly the same number of elements as input items. Return only valid JSON."""
 
 
 class BedrockProvider(BaseAIProvider):
@@ -178,6 +187,84 @@ class BedrockProvider(BaseAIProvider):
                     await asyncio.sleep(30)
         return results
 
+    @staticmethod
+    def _build_batch_user_content(
+        texts: list[str], raw_payloads: list[dict | None]
+    ) -> str:
+        parts = []
+        for i, (text, payload) in enumerate(zip(texts, raw_payloads)):
+            payload_str = json.dumps(payload or {}, default=str)[:2000]
+            parts.append(
+                f"--- ITEM {i} ---\nContent text:\n{text}\n\nRaw platform data:\n{payload_str}"
+            )
+        return "\n\n".join(parts)
+
+    @staticmethod
+    def _parse_batch_response(
+        response_text: str, expected_count: int
+    ) -> list[tuple[SentimentResult, ContentExtractionResult]] | None:
+        try:
+            data = json.loads(response_text)
+            items = data.get("results", data) if isinstance(data, dict) else data
+            if not isinstance(items, list) or len(items) != expected_count:
+                logger.warning(
+                    "batch_count_mismatch",
+                    expected=expected_count,
+                    got=len(items) if isinstance(items, list) else "not_a_list",
+                )
+                return None
+            results = []
+            for item_data in items:
+                sentiment = SentimentResult(**(item_data.get("sentiment", {})))
+                extraction = ContentExtractionResult(
+                    **(item_data.get("extraction", {}))
+                )
+                results.append((sentiment, extraction))
+            return results
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+            logger.error("batch_parse_failed", error=str(e))
+            return None
+
+    async def _process_single(
+        self, system_prompt: str, text: str, payload: dict | None
+    ) -> tuple[SentimentResult, ContentExtractionResult]:
+        """Process a single item — used as fallback when batch parsing fails."""
+        payload_str = json.dumps(payload or {}, default=str)[:2000]
+        user_content = f"Content text:\n{text}\n\nRaw platform data:\n{payload_str}"
+        try:
+            response_text = await self._invoke(
+                system_prompt, user_content, max_tokens=2048
+            )
+            data = json.loads(response_text)
+            sentiment = SentimentResult(**(data.get("sentiment", {})))
+            extraction = ContentExtractionResult(**(data.get("extraction", {})))
+            return (sentiment, extraction)
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+            logger.error("bedrock_parse_failed", error=str(e))
+            return (
+                SentimentResult(
+                    sentiment_score=0.0,
+                    sentiment_label="neutral",
+                    summary="Analysis failed",
+                ),
+                ContentExtractionResult(),
+            )
+        except Exception as e:
+            is_throttle = self._is_throttling_error(e)
+            logger.error(
+                "bedrock_invoke_failed", error=str(e), throttled=is_throttle
+            )
+            if is_throttle:
+                await asyncio.sleep(30)
+            return (
+                SentimentResult(
+                    sentiment_score=0.0,
+                    sentiment_label="neutral",
+                    summary="Analysis failed",
+                ),
+                ContentExtractionResult(),
+            )
+
     async def analyze_and_extract(
         self,
         texts: list[str],
@@ -185,63 +272,78 @@ class BedrockProvider(BaseAIProvider):
         topic_keywords: list[dict] | None = None,
     ) -> list[tuple[SentimentResult, ContentExtractionResult]]:
         keyword_context = build_topic_keywords_prompt(topic_keywords)
-        system_prompt = (
+
+        # Single-item path (unchanged behavior)
+        if len(texts) == 1:
+            single_system = (
+                ANALYZE_AND_EXTRACT_SYSTEM + keyword_context
+                if keyword_context
+                else ANALYZE_AND_EXTRACT_SYSTEM
+            )
+            result = await self._process_single(
+                single_system, texts[0], raw_payloads[0]
+            )
+            return [result]
+
+        # Batch path — chunk items and send each chunk as one API call
+        batch_system = (
+            ANALYZE_AND_EXTRACT_BATCH_SYSTEM + keyword_context
+            if keyword_context
+            else ANALYZE_AND_EXTRACT_BATCH_SYSTEM
+        )
+        single_system = (
             ANALYZE_AND_EXTRACT_SYSTEM + keyword_context
             if keyword_context
             else ANALYZE_AND_EXTRACT_SYSTEM
         )
-        results = []
-        for i, (text, payload) in enumerate(zip(texts, raw_payloads)):
-            if i > 0:
+
+        all_results: list[tuple[SentimentResult, ContentExtractionResult]] = []
+
+        for chunk_start in range(0, len(texts), BATCH_SIZE):
+            chunk_texts = texts[chunk_start : chunk_start + BATCH_SIZE]
+            chunk_payloads = raw_payloads[chunk_start : chunk_start + BATCH_SIZE]
+
+            if chunk_start > 0:
                 await asyncio.sleep(INTER_REQUEST_DELAY)
-            payload_str = json.dumps(payload or {}, default=str)[:2000]
-            user_content = f"Content text:\n{text}\n\nRaw platform data:\n{payload_str}"
+
+            # Try batch call
             try:
+                user_content = self._build_batch_user_content(
+                    chunk_texts, chunk_payloads
+                )
                 response_text = await self._invoke(
-                    system_prompt, user_content, max_tokens=2048
+                    batch_system,
+                    user_content,
+                    max_tokens=2048 * len(chunk_texts),
                 )
-                data = json.loads(response_text)
-                sentiment = SentimentResult(**(data.get("sentiment", {})))
-                extraction = ContentExtractionResult(**(data.get("extraction", {})))
-                results.append((sentiment, extraction))
-            except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-                logger.error(
-                    "bedrock_parse_failed",
-                    error=str(e),
-                    response_preview=response_text[:500]
-                    if "response_text" in dir()
-                    else "no response",
-                )
-                results.append(
-                    (
-                        SentimentResult(
-                            sentiment_score=0.0,
-                            sentiment_label="neutral",
-                            summary="Analysis failed",
-                        ),
-                        ContentExtractionResult(),
+                parsed = self._parse_batch_response(response_text, len(chunk_texts))
+                if parsed is not None:
+                    all_results.extend(parsed)
+                    logger.info(
+                        "batch_success", chunk_size=len(chunk_texts)
                     )
-                )
+                    continue
             except Exception as e:
-                # Throttling or other API errors — log, add fallback, and add extra cooldown
                 is_throttle = self._is_throttling_error(e)
-                logger.error(
-                    "bedrock_invoke_failed",
+                logger.warning(
+                    "batch_invoke_failed",
                     error=str(e),
                     throttled=is_throttle,
-                    item_index=i,
-                )
-                results.append(
-                    (
-                        SentimentResult(
-                            sentiment_score=0.0,
-                            sentiment_label="neutral",
-                            summary="Analysis failed",
-                        ),
-                        ContentExtractionResult(),
-                    )
+                    chunk_size=len(chunk_texts),
                 )
                 if is_throttle:
-                    # Back off significantly before attempting the next item
                     await asyncio.sleep(30)
-        return results
+
+            # Fallback: process chunk items individually
+            logger.info(
+                "batch_fallback_to_individual", chunk_size=len(chunk_texts)
+            )
+            for j, (text, payload) in enumerate(
+                zip(chunk_texts, chunk_payloads)
+            ):
+                if j > 0:
+                    await asyncio.sleep(INTER_REQUEST_DELAY)
+                result = await self._process_single(single_system, text, payload)
+                all_results.append(result)
+
+        return all_results

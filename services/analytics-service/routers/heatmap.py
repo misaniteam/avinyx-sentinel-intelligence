@@ -76,6 +76,8 @@ class VoterLocationStatsItem(BaseModel):
     part_name: Optional[str]
     lat: float
     lng: float
+    status: str
+    year: int
     total_count: int
     male_count: int
     female_count: int
@@ -92,13 +94,12 @@ async def voter_location_stats(
 ):
     """Aggregate voter entry stats per VoterListGroup that has location coordinates."""
 
-    # Get all groups with location for this tenant
+    # Get all groups with location for this tenant (any status)
     groups_result = await db.execute(
         select(VoterListGroup).where(
             VoterListGroup.tenant_id == tenant_id,
             VoterListGroup.location_lat.isnot(None),
             VoterListGroup.location_lng.isnot(None),
-            VoterListGroup.status == "completed",
         )
     )
     groups = groups_result.scalars().all()
@@ -161,8 +162,6 @@ async def voter_location_stats(
     items = []
     for gid, group in group_map.items():
         stats = stats_rows.get(gid)
-        if not stats or stats.total_count == 0:
-            continue
 
         items.append(
             VoterLocationStatsItem(
@@ -172,11 +171,13 @@ async def voter_location_stats(
                 part_name=group.part_name,
                 lat=group.location_lat,
                 lng=group.location_lng,
-                total_count=stats.total_count,
-                male_count=stats.male_count,
-                female_count=stats.female_count,
-                other_gender_count=stats.other_gender_count,
-                average_age=round(stats.average_age, 1) if stats.average_age else None,
+                status=group.status,
+                year=group.year,
+                total_count=stats.total_count if stats else 0,
+                male_count=stats.male_count if stats else 0,
+                female_count=stats.female_count if stats else 0,
+                other_gender_count=stats.other_gender_count if stats else 0,
+                average_age=round(stats.average_age, 1) if stats and stats.average_age else None,
                 status_counts=status_map.get(gid, {}),
             )
         )

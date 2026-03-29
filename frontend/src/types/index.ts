@@ -135,6 +135,8 @@ export interface VoterLocationStats {
   part_name: string | null;
   lat: number;
   lng: number;
+  status: string;
+  year: number;
   total_count: number;
   male_count: number;
   female_count: number;

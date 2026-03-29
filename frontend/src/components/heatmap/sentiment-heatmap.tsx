@@ -56,7 +56,7 @@ export default function SentimentHeatmap({ data, radius = 30, center, zoom, chil
       defaultZoom={zoom ?? 5}
       gestureHandling="greedy"
       disableDefaultUI={false}
-      mapId="sentinel-heatmap"
+      mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
       style={{ width: '100%', height: '100%' }}
     >
       <HeatmapLayer data={data} radius={radius} />
