@@ -77,7 +77,9 @@ class TestParseLlmResponse:
         assert len(voters) == 0
 
     def test_gender_normalization(self):
-        response = '[{"name": "Test", "serial_no": 1, "voter_no": "1", "gender": "পুরুষ"}]'
+        response = (
+            '[{"name": "Test", "serial_no": 1, "voter_no": "1", "gender": "পুরুষ"}]'
+        )
         voters = _parse_llm_response(response, chunk_index=0)
         assert voters[0]["gender"] == "Male"
 

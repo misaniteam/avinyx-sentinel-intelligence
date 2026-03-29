@@ -140,9 +140,7 @@ async def process_voter_list(message: dict):
     total_inserted = 0
 
     try:
-        async for chunk_voters in extract_voters_from_pdf(
-            pdf_bytes, language
-        ):
+        async for chunk_voters in extract_voters_from_pdf(pdf_bytes, language):
             if not chunk_voters:
                 continue
 
