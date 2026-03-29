@@ -1,14 +1,30 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMediaFeeds } from "@/lib/api/hooks";
+import { useMediaFeeds, useMediaFeedTopics } from "@/lib/api/hooks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useTranslations } from "next-intl";
 import { platformConfig } from "@/lib/constants/platforms";
-import { ExternalLink, TrendingUp, TrendingDown, Youtube } from "lucide-react";
+import {
+  ExternalLink,
+  TrendingUp,
+  TrendingDown,
+  Youtube,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import type { MediaFeedItem } from "@/types";
+
+const PAGE_SIZE = 20;
 
 function decodeHtmlEntities(text: string): string {
   const el = document.createElement("textarea");
@@ -124,60 +140,135 @@ function FeedCard({ item, highlighted = false }: { item: MediaFeedItem; highligh
 export default function MediaFeedsPage() {
   const t = useTranslations("navigation");
   const tc = useTranslations("common");
-  const { data, isLoading } = useMediaFeeds();
-  const feeds = data?.items;
-  const [showNeutral, setShowNeutral] = useState(false);
 
-  const { highlighted, nonNeutral, neutral } = useMemo(() => {
-    if (!feeds || feeds.length === 0) return { highlighted: [], nonNeutral: [], neutral: [] };
+  const [platformFilter, setPlatformFilter] = useState<string>("");
+  const [sentimentFilter, setSentimentFilter] = useState<string>("");
+  const [topicFilter, setTopicFilter] = useState<string>("");
+  const [page, setPage] = useState(0);
+
+  const { data, isLoading } = useMediaFeeds({
+    platform: platformFilter || undefined,
+    sentiment: sentimentFilter || undefined,
+    topic: topicFilter || undefined,
+    skip: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  });
+  const { data: topics } = useMediaFeedTopics();
+
+  const feeds = data?.items;
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  // On first page with no sentiment filter, show highlighted section
+  const showHighlights = page === 0 && !sentimentFilter && !topicFilter;
+
+  const { highlighted, rest } = useMemo(() => {
+    if (!feeds || feeds.length === 0 || !showHighlights) return { highlighted: [], rest: feeds || [] };
 
     const positiveOrNegative = feeds.filter((f) => getSentimentCategory(f) !== "neutral");
-    const neutralItems = feeds.filter((f) => getSentimentCategory(f) === "neutral");
 
-    // Sort by absolute sentiment score descending to get most extreme sentiments
     const sorted = [...positiveOrNegative].sort((a, b) => {
       const scoreA = Math.abs(a.sentiment_score ?? 0);
       const scoreB = Math.abs(b.sentiment_score ?? 0);
       return scoreB - scoreA;
     });
 
-    // Pick top 1-4 highlighted items, preferring YouTube
     const youtubeTop = sorted.filter((f) => f.platform === "youtube");
     const othersTop = sorted.filter((f) => f.platform !== "youtube");
     const highlightedIds = new Set<string>();
     const highlightedItems: MediaFeedItem[] = [];
 
-    // Add top YouTube items first (up to 2)
     for (const item of youtubeTop) {
       if (highlightedItems.length >= 4) break;
       highlightedItems.push(item);
       highlightedIds.add(item.id);
     }
-    // Fill remaining with other platforms
     for (const item of othersTop) {
       if (highlightedItems.length >= 4) break;
       highlightedItems.push(item);
       highlightedIds.add(item.id);
     }
 
-    const remaining = positiveOrNegative.filter((f) => !highlightedIds.has(f.id));
+    const remaining = feeds.filter((f) => !highlightedIds.has(f.id));
+    return { highlighted: highlightedItems, rest: remaining };
+  }, [feeds, showHighlights]);
 
-    return { highlighted: highlightedItems, nonNeutral: remaining, neutral: neutralItems };
-  }, [feeds]);
+  const platformOptions = Object.entries(platformConfig).map(([key, val]) => ({
+    value: key,
+    label: val.label,
+  }));
+
+  const handleFilterChange = (setter: (v: string) => void) => (value: string) => {
+    setter(value === "all" ? "" : value);
+    setPage(0);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t("mediaFeeds")}</h1>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={showNeutral}
-            onCheckedChange={(checked) => setShowNeutral(checked === true)}
-          />
-          <span className="text-sm text-muted-foreground">
-            {tc("showNeutral") ?? "Show neutral items"}
-          </span>
-        </label>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Select value={platformFilter || "all"} onValueChange={handleFilterChange(setPlatformFilter)}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder={tc("allPlatforms")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{tc("allPlatforms")}</SelectItem>
+            {platformOptions.map((p) => (
+              <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={sentimentFilter || "all"} onValueChange={handleFilterChange(setSentimentFilter)}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder={tc("allSentiments")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{tc("allSentiments")}</SelectItem>
+            <SelectItem value="positive">{tc("positive")}</SelectItem>
+            <SelectItem value="negative">{tc("negative")}</SelectItem>
+            <SelectItem value="neutral">{tc("neutral")}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={topicFilter || "all"} onValueChange={handleFilterChange(setTopicFilter)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder={tc("allTopics")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{tc("allTopics")}</SelectItem>
+            {topics?.map((topic) => (
+              <SelectItem key={topic} value={topic}>{topic}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {(platformFilter || sentimentFilter || topicFilter) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPlatformFilter("");
+              setSentimentFilter("");
+              setTopicFilter("");
+              setPage(0);
+            }}
+          >
+            {tc("clear")}
+          </Button>
+        )}
+
+        <span className="ml-auto text-sm text-muted-foreground">
+          {total > 0 && tc("showing", {
+            from: page * PAGE_SIZE + 1,
+            to: Math.min((page + 1) * PAGE_SIZE, total),
+            total,
+          })}
+        </span>
       </div>
 
       {isLoading ? (
@@ -188,10 +279,10 @@ export default function MediaFeedsPage() {
         </div>
       ) : (
         <>
-          {/* Highlighted top items */}
+          {/* Highlighted top items (first page, no filters) */}
           {highlighted.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold mb-3">{tc("topHighlights") ?? "Top Highlights"}</h2>
+              <h2 className="text-lg font-semibold mb-3">{tc("topHighlights")}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {highlighted.map((item) => (
                   <FeedCard key={item.id} item={item} highlighted />
@@ -200,38 +291,51 @@ export default function MediaFeedsPage() {
             </div>
           )}
 
-          {/* Remaining non-neutral items */}
-          {nonNeutral.length > 0 && (
+          {/* Feed items */}
+          {rest.length > 0 && (
             <div className="space-y-4">
-              {highlighted.length > 0 && (
-                <h2 className="text-lg font-semibold">{tc("allFeeds") ?? "All Feeds"}</h2>
+              {showHighlights && highlighted.length > 0 && (
+                <h2 className="text-lg font-semibold">{tc("allFeeds")}</h2>
               )}
-              {nonNeutral.map((item) => (
-                <FeedCard key={item.id} item={item} />
-              ))}
-            </div>
-          )}
-
-          {/* Neutral items (toggled) */}
-          {showNeutral && neutral.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-muted-foreground">
-                {tc("neutralItems") ?? "Neutral Items"} ({neutral.length})
-              </h2>
-              {neutral.map((item) => (
+              {rest.map((item) => (
                 <FeedCard key={item.id} item={item} />
               ))}
             </div>
           )}
 
           {(!feeds || feeds.length === 0) && (
-            <p className="text-muted-foreground text-center py-12">{t("noMediaItemsYet")}</p>
+            <p className="text-muted-foreground text-center py-12">
+              {platformFilter || sentimentFilter || topicFilter
+                ? tc("noResults")
+                : t("noMediaItemsYet")}
+            </p>
           )}
 
-          {feeds && feeds.length > 0 && nonNeutral.length === 0 && highlighted.length === 0 && !showNeutral && (
-            <p className="text-muted-foreground text-center py-12">
-              {tc("onlyNeutralItems") ?? "All items are neutral. Check \"Show neutral items\" to see them."}
-            </p>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {tc("previous")}
+              </Button>
+              <span className="text-sm text-muted-foreground px-3">
+                {tc("page")} {page + 1} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                {tc("next")}
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </>
       )}
