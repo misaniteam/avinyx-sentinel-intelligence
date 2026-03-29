@@ -73,7 +73,7 @@ const baseSchema = z.object({
 const brand24ConfigSchema = z.object({
   api_key: z.string().min(1, "API key is required"),
   project_id: z.string().min(1, "Project ID is required"),
-  search_queries: z.union([z.string(), z.array(z.string())]).optional(),
+  account_id: z.string().optional(),
 });
 
 const youtubeConfigSchema = z.object({
@@ -169,7 +169,7 @@ const PLATFORM_CONFIG_FIELDS: Record<string, ConfigFieldDef[]> = {
   brand24: [
     { name: "api_key", labelKey: "fields.apiKey", type: "password", required: true },
     { name: "project_id", labelKey: "fields.projectId", type: "text", required: true },
-    { name: "search_queries", labelKey: "fields.hashtagsTopics", type: "tags", placeholderKey: "placeholders.hashtagsTopics" },
+    { name: "account_id", labelKey: "fields.accountId", type: "text", placeholderKey: "placeholders.accountId" },
   ],
   youtube: [
     { name: "api_key", labelKey: "fields.apiKey", type: "password", required: true },

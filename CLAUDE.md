@@ -146,7 +146,7 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 7. No changes needed to the worker orchestrator
 
 ### Existing connectors (registered in `handlers/__init__.py`):
-- `brand24` — Brand24 API for Facebook/Instagram (config: `api_key`, `project_id`, `search_queries`)
+- `brand24` — Brand24 API Data for aggregated social media analytics — daily metrics, sentiment, topics, events (config: `api_key`, `project_id`, optional `account_id`)
 - `youtube` — YouTube Data API v3 (config: `api_key`, `channel_ids`, `search_queries`)
 - `twitter` — Twitter/X API v2 (config: `api_key`, `api_secret`, `bearer_token`, `search_queries`)
 - `news_rss` — RSS feed ingestion (config: `feed_urls`)

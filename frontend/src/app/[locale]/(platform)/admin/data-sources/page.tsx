@@ -82,11 +82,11 @@ export default function AdminDataSourcesPage() {
     if (!dsToDelete) return;
     try {
       await deleteDataSource.mutateAsync(dsToDelete.id);
-      toast.success(t("deleteSuccess"));
+      toast.success(t("dataSourceDeleted"));
       setDeleteDialogOpen(false);
       setDsToDelete(undefined);
     } catch {
-      toast.error(t("deleteFailed"));
+      toast.error(t("failedDelete"));
     }
   }
 

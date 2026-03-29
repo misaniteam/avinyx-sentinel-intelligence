@@ -53,6 +53,7 @@
   "fields": {
     "apiKey": "API कुंजी",
     "projectId": "प्रोजेक्ट ID",
+    "accountId": "अकाउंट ID",
     "hashtagsTopics": "हैशटैग / विषय",
     "channelIds": "चैनल IDs",
     "apiSecret": "API सीक्रेट",
@@ -68,6 +69,7 @@
     "subreddits": "सबरेडिट्स"
   },
   "placeholders": {
+    "accountId": "Brand24 अकाउंट ID (वैकल्पिक, प्रोजेक्ट प्रबंधन के लिए)",
     "hashtagsTopics": "हैशटैग या विषय टाइप करें और Enter दबाएँ",
     "channelIds": "कॉमा से अलग चैनल IDs",
     "feedUrls": "प्रति पंक्ति एक URL",

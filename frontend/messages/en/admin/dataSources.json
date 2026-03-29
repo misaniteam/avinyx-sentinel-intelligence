@@ -53,6 +53,7 @@
   "fields": {
     "apiKey": "API Key",
     "projectId": "Project ID",
+    "accountId": "Account ID",
     "hashtagsTopics": "Hashtags / Topics",
     "channelIds": "Channel IDs",
     "apiSecret": "API Secret",
@@ -68,6 +69,7 @@
     "subreddits": "Subreddits"
   },
   "placeholders": {
+    "accountId": "Brand24 account ID (optional, for project management)",
     "hashtagsTopics": "Type a hashtag or topic and press Enter",
     "channelIds": "Comma-separated channel IDs",
     "feedUrls": "One URL per line",

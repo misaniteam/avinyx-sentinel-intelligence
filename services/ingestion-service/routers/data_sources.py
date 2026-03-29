@@ -36,7 +36,7 @@ SENSITIVE_KEY_PATTERNS = ("key", "secret", "token", "password")
 PLATFORM_CONFIG_SCHEMA: dict[str, dict] = {
     "brand24": {
         "required": ["api_key", "project_id"],
-        "optional": ["search_queries"],
+        "optional": ["account_id"],
     },
     "youtube": {
         "required": ["api_key"],
