@@ -123,12 +123,21 @@ class TextractClient:
 
     def _get_client_kwargs(self):
         region = self.settings.aws_textract_region
-        return {
+        kwargs = {
             "region_name": region,
-            "endpoint_url": f"https://textract.{region}.amazonaws.com",
-            "aws_access_key_id": self.settings.aws_textract_access_key_id,
-            "aws_secret_access_key": self.settings.aws_textract_secret_access_key,
         }
+        # Use explicit credentials if provided, otherwise fall back to
+        # default credential chain (ECS task role, instance profile, etc.)
+        if (
+            self.settings.aws_textract_access_key_id
+            and self.settings.aws_textract_secret_access_key
+        ):
+            kwargs["endpoint_url"] = f"https://textract.{region}.amazonaws.com"
+            kwargs["aws_access_key_id"] = self.settings.aws_textract_access_key_id
+            kwargs["aws_secret_access_key"] = (
+                self.settings.aws_textract_secret_access_key
+            )
+        return kwargs
 
     async def detect_text(self, page_pdf_bytes: bytes, page_num: int) -> str:
         """Send a single-page PDF to Textract and return extracted text."""
@@ -180,19 +189,27 @@ class BedrockClient:
         self._session = get_session()
 
     def _get_client_kwargs(self):
-        # Use same IAM credentials as Textract, same region
         region = self.settings.aws_textract_region
-        return {
+        kwargs = {
             "region_name": region,
-            "endpoint_url": f"https://bedrock-runtime.{region}.amazonaws.com",
-            "aws_access_key_id": self.settings.aws_textract_access_key_id,
-            "aws_secret_access_key": self.settings.aws_textract_secret_access_key,
             "config": AioConfig(
                 read_timeout=600,
                 connect_timeout=10,
                 retries={"max_attempts": 0},  # we handle retries ourselves
             ),
         }
+        # Use explicit credentials if provided, otherwise fall back to
+        # default credential chain (ECS task role, instance profile, etc.)
+        if (
+            self.settings.aws_textract_access_key_id
+            and self.settings.aws_textract_secret_access_key
+        ):
+            kwargs["endpoint_url"] = f"https://bedrock-runtime.{region}.amazonaws.com"
+            kwargs["aws_access_key_id"] = self.settings.aws_textract_access_key_id
+            kwargs["aws_secret_access_key"] = (
+                self.settings.aws_textract_secret_access_key
+            )
+        return kwargs
 
     async def extract_voters(
         self, text: str, chunk_index: int, language: str = "en"
@@ -555,13 +572,15 @@ def _parse_llm_response(text: str, chunk_index: int) -> list[dict]:
 async def extract_voters_from_pdf(
     pdf_bytes: bytes,
     language: str = "en",
+    surya_engine=None,
 ) -> AsyncGenerator[list[dict], None]:
     """
     Extract voter records from a PDF, yielding deduplicated voters per chunk.
 
-    Pipeline varies by language:
+    Pipeline varies by language and OCR engine config:
     - English: Textract OCR → Bedrock text extraction
-    - Bengali/Hindi: PDF → PNG images → Bedrock vision extraction
+    - Bengali/Hindi + surya: Surya OCR (local GPU) → Bedrock text extraction
+    - Bengali/Hindi + no surya: PDF → PNG images → Bedrock vision extraction (fallback)
 
     Yields a list[dict] after each chunk so the caller can insert to DB
     incrementally. Deduplicates by epic_no across chunks.
@@ -655,12 +674,85 @@ async def extract_voters_from_pdf(
             except Exception as e:
                 logger.warning("bedrock_chunk_skipped", chunk=i, error=str(e))
 
+    elif surya_engine is not None:
+        # ---- BENGALI / HINDI: Surya OCR (local GPU) → Bedrock text extraction ----
+        # Self-hosted OCR eliminates Bedrock vision API throttling entirely.
+        # Mirrors the English pipeline: OCR → text → Bedrock text extraction.
+        logger.info("surya_ocr_mode", language=language, device=surya_engine.device)
+
+        # Skip first 2 pages (cover/summary + polling station map — no voter data)
+        voter_pages = pages[2:] if len(pages) > 2 else pages
+        logger.info(
+            "surya_pages_skipped",
+            skipped=len(pages) - len(voter_pages),
+            processing=len(voter_pages),
+        )
+
+        page_texts = []
+        for i, page_bytes in enumerate(voter_pages):
+            try:
+                png = _pdf_page_to_png(page_bytes, dpi=300)
+                png = _enhance_image(png)
+                text = surya_engine.extract_text(png, language)
+
+                if surya_engine.validate_quality(text, language):
+                    page_texts.append(text)
+                    logger.info(
+                        "surya_page_ok",
+                        page=i + 1,
+                        chars=len(text),
+                    )
+                else:
+                    logger.warning(
+                        "surya_page_low_quality",
+                        page=i + 1,
+                        chars=len(text),
+                    )
+                    # Still include it — partial data is better than none
+                    if text.strip():
+                        page_texts.append(text)
+            except Exception as e:
+                logger.warning("surya_page_failed", page=i + 1, error=str(e))
+
+        if not page_texts:
+            logger.warning("no_text_extracted_surya")
+            return
+
+        full_text_len = sum(len(t) for t in page_texts)
+        logger.info(
+            "surya_ocr_complete",
+            pages_with_text=len(page_texts),
+            total_chars=full_text_len,
+        )
+
+        # Chunk pages and send to Bedrock text extraction (same as English)
+        text_chunks = []
+        for i in range(0, len(page_texts), pages_per_chunk):
+            chunk_pages = page_texts[i : i + pages_per_chunk]
+            text_chunks.append("\n\n--- PAGE BREAK ---\n\n".join(chunk_pages))
+
+        logger.info(
+            "surya_bedrock_chunks_prepared",
+            chunks=len(text_chunks),
+            pages_per_chunk=pages_per_chunk,
+        )
+
+        for i, chunk_text in enumerate(text_chunks):
+            try:
+                voters = await bedrock.extract_voters(
+                    chunk_text, chunk_index=i, language=language
+                )
+                unique = _deduplicate(voters)
+                if unique:
+                    yield unique
+            except Exception as e:
+                logger.warning("bedrock_text_chunk_skipped", chunk=i, error=str(e))
+
     else:
-        # ---- BENGALI / HINDI: PDF pages → strip images → Bedrock vision ----
+        # ---- BENGALI / HINDI FALLBACK: Bedrock vision (original pipeline) ----
+        # Used when OCR_ENGINE=bedrock_vision or surya_engine is not available.
         # Split each page into horizontal strips for better character accuracy.
-        # Dense Bengali/Hindi text on full pages causes misreading; smaller
-        # focused strips give significantly more accurate results.
-        logger.info("vision_mode", language=language, reason="non-English script")
+        logger.info("vision_mode", language=language, reason="non-English script (bedrock_vision fallback)")
 
         # Skip first 2 pages (cover/summary + polling station map — no voter data)
         voter_pages = pages[2:] if len(pages) > 2 else pages

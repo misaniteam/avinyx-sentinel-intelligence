@@ -116,6 +116,8 @@ variable "worker_services" {
     cpu           = number
     memory        = number
     desired_count = number
+    gpu           = optional(number, 0)
+    launch_type   = optional(string, "FARGATE")
   }))
   default = {
     "ingestion-worker" = {
@@ -129,11 +131,25 @@ variable "worker_services" {
       desired_count = 1
     }
     "voter-service" = {
-      cpu           = 512
-      memory        = 1024
+      cpu           = 2048
+      memory        = 8192
       desired_count = 1
+      gpu           = 1
+      launch_type   = "EC2"
     }
   }
+}
+
+variable "enable_gpu" {
+  description = "Enable EC2 GPU capacity provider for GPU-accelerated worker services"
+  type        = bool
+  default     = false
+}
+
+variable "gpu_instance_type" {
+  description = "EC2 instance type for GPU workers (must have NVIDIA GPU)"
+  type        = string
+  default     = "g4dn.xlarge"
 }
 
 variable "service_environment" {

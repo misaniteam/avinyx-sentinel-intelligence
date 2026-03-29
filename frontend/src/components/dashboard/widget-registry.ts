@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 import type { ComponentType, LazyExoticComponent } from 'react';
-import { BarChart3, PieChart, TrendingUp, Activity, Gauge, LayoutGrid } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, Activity, Gauge, LayoutGrid, Newspaper } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface WidgetDefinition {
@@ -76,6 +76,17 @@ export const widgetRegistry = new Map<string, WidgetDefinition>([
       icon: Gauge,
       component: lazy(() => import('./widgets/sentiment-distribution-widget')),
       defaultLayout: { w: 6, h: 4, minW: 3, minH: 3 },
+      permission: 'dashboard:view',
+    },
+  ],
+  [
+    'top-feeds',
+    {
+      type: 'top-feeds',
+      labelKey: 'widgets.topFeeds',
+      icon: Newspaper,
+      component: lazy(() => import('./widgets/top-feeds-widget')),
+      defaultLayout: { w: 6, h: 5, minW: 4, minH: 4 },
       permission: 'dashboard:view',
     },
   ],

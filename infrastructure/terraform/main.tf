@@ -179,6 +179,7 @@ module "ecs" {
   ecr_repository_urls   = module.ecr.repository_urls
   alb_target_group_arn          = module.alb.target_group_arn
   frontend_target_group_arn     = module.alb.frontend_target_group_arn
+  enable_gpu                    = var.enable_gpu
   tags                          = local.common_tags
 
   # Non-sensitive environment variables only
@@ -187,6 +188,8 @@ module "ecs" {
     SQS_AI_PIPELINE_URL           = module.sqs.queue_urls["sentinel-ai-pipeline"]
     SQS_NOTIFICATIONS_URL         = module.sqs.queue_urls["sentinel-notifications"]
     S3_REPORTS_BUCKET             = module.s3.reports_bucket_id
+    S3_UPLOADS_BUCKET             = module.s3.uploads_bucket_id
+    S3_VOTER_DOCS_BUCKET          = module.s3.voter_docs_bucket_id
     FIREBASE_DATABASE_URL         = var.firebase_database_url
     AWS_DEFAULT_REGION            = var.region
     AUTH_SERVICE_URL              = "http://auth-service.sentinel.local:8001"

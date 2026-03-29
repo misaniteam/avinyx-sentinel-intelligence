@@ -38,12 +38,13 @@ interface WidgetInstance {
 }
 
 const DEFAULT_WIDGET_TYPES = [
-  "summary-stats",
-  "sentiment-trend",
-  "platform-breakdown",
-  "top-topics",
-  "engagement",
-  "sentiment-distribution",
+  'summary-stats',
+  'top-feeds',
+  'sentiment-trend',
+  'platform-breakdown',
+  'top-topics',
+  'engagement',
+  'sentiment-distribution',
 ];
 
 function getDefaultWidgets(): WidgetInstance[] {
@@ -52,12 +53,13 @@ function getDefaultWidgets(): WidgetInstance[] {
 
 function getDefaultLayouts(): Layouts {
   const lg: Layout[] = [
-    { i: "summary-stats", x: 0, y: 0, w: 12, h: 2, minW: 6, minH: 2 },
-    { i: "sentiment-trend", x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
-    { i: "platform-breakdown", x: 6, y: 2, w: 6, h: 4, minW: 3, minH: 3 },
-    { i: "top-topics", x: 0, y: 6, w: 6, h: 4, minW: 4, minH: 3 },
-    { i: "engagement", x: 6, y: 6, w: 6, h: 4, minW: 4, minH: 3 },
-    { i: "sentiment-distribution", x: 0, y: 10, w: 6, h: 4, minW: 3, minH: 3 },
+    { i: 'summary-stats', x: 0, y: 0, w: 12, h: 2, minW: 6, minH: 2 },
+    { i: 'top-feeds', x: 0, y: 2, w: 12, h: 5, minW: 4, minH: 4 },
+    { i: 'sentiment-trend', x: 0, y: 7, w: 6, h: 4, minW: 4, minH: 3 },
+    { i: 'platform-breakdown', x: 6, y: 7, w: 6, h: 4, minW: 3, minH: 3 },
+    { i: 'top-topics', x: 0, y: 11, w: 6, h: 4, minW: 4, minH: 3 },
+    { i: 'engagement', x: 6, y: 11, w: 6, h: 4, minW: 4, minH: 3 },
+    { i: 'sentiment-distribution', x: 0, y: 15, w: 6, h: 4, minW: 3, minH: 3 },
   ];
   return { lg };
 }
