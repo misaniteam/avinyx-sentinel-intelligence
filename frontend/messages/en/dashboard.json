@@ -9,10 +9,14 @@
     "platformBreakdown": "Platform Breakdown",
     "topTopics": "Top Topics",
     "engagementMetrics": "Engagement Metrics",
-    "sentimentDistribution": "Sentiment Distribution"
+    "sentimentDistribution": "Sentiment Distribution",
+    "topFeeds": "Top News & Videos"
   },
   "totalMentions": "Total Mentions",
   "avgSentiment": "Avg Sentiment",
   "positive": "Positive",
-  "negative": "Negative"
+  "negative": "Negative",
+  "topYouTube": "Top YouTube",
+  "topNews": "Top News",
+  "noTopFeeds": "No top news or videos yet"
 }
