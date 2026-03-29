@@ -334,13 +334,6 @@ resource "aws_iam_role_policy" "task_sqs_sns_s3" {
           "arn:aws:bedrock:*:*:inference-profile/apac.anthropic.*",
         ]
       },
-      {
-        Effect = "Allow"
-        Action = [
-          "textract:DetectDocumentText",
-        ]
-        Resource = "*"
-      },
     ]
   })
 }

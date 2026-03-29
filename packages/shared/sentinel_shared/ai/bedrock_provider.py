@@ -35,11 +35,9 @@ The "results" array MUST have exactly the same number of elements as input items
 class BedrockProvider(BaseAIProvider):
     def __init__(self, model: str | None = None, **kwargs):
         settings = get_settings()
-        self.model = model or settings.bedrock_voter_model_id
+        self.model = model or "apac.anthropic.claude-sonnet-4-20250514-v1:0"
         self._session = get_session()
-        self._region = settings.aws_textract_region
-        self._access_key = settings.aws_textract_access_key_id
-        self._secret_key = settings.aws_textract_secret_access_key
+        self._region = settings.aws_bedrock_region
 
     def _client_kwargs(self):
         kwargs = {
@@ -50,14 +48,6 @@ class BedrockProvider(BaseAIProvider):
                 retries={"max_attempts": 0},
             ),
         }
-        # Use explicit credentials if provided, otherwise fall back to
-        # default credential chain (ECS task role, instance profile, etc.)
-        if self._access_key and self._secret_key:
-            kwargs["endpoint_url"] = (
-                f"https://bedrock-runtime.{self._region}.amazonaws.com"
-            )
-            kwargs["aws_access_key_id"] = self._access_key
-            kwargs["aws_secret_access_key"] = self._secret_key
         return kwargs
 
     @staticmethod

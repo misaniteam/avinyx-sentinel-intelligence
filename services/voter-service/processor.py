@@ -7,17 +7,17 @@ from sentinel_shared.models.tenant import Tenant
 from sentinel_shared.storage.s3 import S3Client
 from sentinel_shared.config import get_settings
 
-from textract_extractor import extract_voters_from_pdf
+from claude_extractor import extract_voters_from_pdf
 
 logger = structlog.get_logger()
 
 BATCH_SIZE = 500
 
 
-async def process_voter_list(message: dict, surya_engine=None):
+async def process_voter_list(message: dict):
     """
     End-to-end processing:
-    S3 → Textract OCR + parse → DB
+    S3 → Claude API extraction → DB
 
     Guarantees:
     - No duplicate processing
@@ -141,7 +141,7 @@ async def process_voter_list(message: dict, surya_engine=None):
 
     try:
         async for chunk_voters in extract_voters_from_pdf(
-            pdf_bytes, language, surya_engine=surya_engine
+            pdf_bytes, language
         ):
             if not chunk_voters:
                 continue

@@ -131,11 +131,9 @@ variable "worker_services" {
       desired_count = 1
     }
     "voter-service" = {
-      cpu           = 2048
-      memory        = 8192
+      cpu           = 512
+      memory        = 1024
       desired_count = 1
-      gpu           = 1
-      launch_type   = "EC2"
     }
   }
 }

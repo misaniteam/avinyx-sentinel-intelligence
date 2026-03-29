@@ -215,6 +215,14 @@ export function useMediaFeedTopics() {
   });
 }
 
+export function useDeleteMediaFeed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`api/campaigns/media-feeds/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.mediaFeeds.all }),
+  });
+}
+
 // Ingested Data
 export function useIngestedData(params?: {
   platform?: string;

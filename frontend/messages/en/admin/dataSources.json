@@ -24,7 +24,8 @@
   "failedCreate": "Failed to create data source",
   "failedUpdate": "Failed to update data source",
   "deleteDataSource": "Delete Data Source",
-  "deleteConfirm": "Are you sure you want to delete the \"{name}\" data source? This action cannot be undone.",
+  "deleteTitle": "Delete Data Source",
+  "deleteConfirm": "Are you sure you want to delete the \"{name}\" data source? All ingested data and media feeds from this source will also be permanently deleted. This action cannot be undone.",
   "platforms": {
     "brand24": "Brand24",
     "youtube": "YouTube",

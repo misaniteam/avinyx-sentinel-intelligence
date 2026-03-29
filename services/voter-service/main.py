@@ -19,21 +19,6 @@ async def main():
     sqs = SQSClient()
     settings = get_settings()
 
-    # Pre-load Surya OCR models at startup (avoids first-message latency)
-    surya_engine = None
-    if settings.ocr_engine == "surya":
-        try:
-            from ocr_engine import SuryaOCREngine
-
-            surya_engine = SuryaOCREngine()
-            logger.info("surya_ready", device=surya_engine.device)
-        except Exception as e:
-            logger.warning(
-                "surya_init_failed",
-                error=str(e),
-                fallback="bedrock_vision",
-            )
-
     while True:
         try:
             messages = await sqs.receive_messages(
@@ -47,7 +32,7 @@ async def main():
                 try:
                     body = json.loads(msg["Body"])
 
-                    await process_voter_list(body, surya_engine=surya_engine)
+                    await process_voter_list(body)
 
                     await sqs.delete_message(
                         settings.sqs_voter_list_queue, msg["ReceiptHandle"]

@@ -20,6 +20,7 @@ logger = structlog.get_logger()
 async def process_message(message: dict):
     body = json.loads(message["Body"])
     tenant_id = body["tenant_id"]
+    data_source_id = body.get("data_source_id")
     platform = body["platform"]
     config = body["config"]
     since = body.get("since")
@@ -91,6 +92,11 @@ async def process_message(message: dict):
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
         )
+
+        # Set data_source_id on all items
+        if data_source_id:
+            for item in items:
+                item.data_source_id = data_source_id
 
         # Set geo data on items that lack it
         if location_context:

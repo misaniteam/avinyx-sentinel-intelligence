@@ -5,9 +5,10 @@ from urllib.parse import urlparse
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.data_source import DataSource
+from sentinel_shared.models.media import RawMediaItem, SentimentAnalysis, MediaFeed
 from sentinel_shared.auth.dependencies import (
     get_current_tenant_required,
     require_permissions,
@@ -291,6 +292,7 @@ async def create_data_source(
                 settings.sqs_ingestion_queue,
                 {
                     "tenant_id": str(ds.tenant_id),
+                    "data_source_id": str(ds.id),
                     "platform": ds.platform,
                     "config": ds.config or {},
                     "since": None,
@@ -400,5 +402,28 @@ async def delete_data_source(
     ds = result.scalar_one_or_none()
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")
+
+    # Find all RawMediaItem IDs linked to this data source
+    media_item_ids_result = await db.execute(
+        select(RawMediaItem.id).where(RawMediaItem.data_source_id == source_id)
+    )
+    media_item_ids = [row[0] for row in media_item_ids_result.all()]
+
+    if media_item_ids:
+        # Delete SentimentAnalysis records linked to these media items
+        await db.execute(
+            delete(SentimentAnalysis).where(
+                SentimentAnalysis.media_item_id.in_(media_item_ids)
+            )
+        )
+        # Delete MediaFeed records linked to these media items
+        await db.execute(
+            delete(MediaFeed).where(MediaFeed.media_item_id.in_(media_item_ids))
+        )
+        # Delete the RawMediaItem records
+        await db.execute(
+            delete(RawMediaItem).where(RawMediaItem.data_source_id == source_id)
+        )
+
     await db.delete(ds)
     await db.commit()

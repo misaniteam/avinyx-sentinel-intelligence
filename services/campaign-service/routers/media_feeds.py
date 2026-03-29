@@ -1,9 +1,9 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, asc, func, text
+from sqlalchemy import select, delete, desc, asc, func, text
 from sentinel_shared.database.session import get_db
-from sentinel_shared.models.media import MediaFeed
+from sentinel_shared.models.media import MediaFeed, SentimentAnalysis, RawMediaItem
 from sentinel_shared.auth.dependencies import get_current_tenant, require_permissions
 from pydantic import BaseModel
 from datetime import datetime
@@ -127,3 +127,34 @@ async def list_media_feed_topics(
         {"tid": tenant_id},
     )
     return [row[0] for row in result.fetchall()]
+
+
+@router.delete("/{feed_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_media_feed(
+    feed_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant),
+    user: dict = Depends(require_permissions("media:write")),
+):
+    result = await db.execute(
+        select(MediaFeed).where(
+            MediaFeed.id == feed_id,
+            MediaFeed.tenant_id == tenant_id,
+        )
+    )
+    feed = result.scalar_one_or_none()
+    if not feed:
+        raise HTTPException(status_code=404, detail="Media feed not found")
+
+    media_item_id = feed.media_item_id
+
+    # Delete MediaFeed, SentimentAnalysis, and the source RawMediaItem
+    await db.delete(feed)
+    if media_item_id:
+        await db.execute(
+            delete(SentimentAnalysis).where(
+                SentimentAnalysis.media_item_id == media_item_id
+            )
+        )
+        await db.execute(delete(RawMediaItem).where(RawMediaItem.id == media_item_id))
+    await db.commit()

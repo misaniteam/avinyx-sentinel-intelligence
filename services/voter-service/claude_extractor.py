@@ -6,8 +6,7 @@ from collections.abc import AsyncGenerator
 
 import pymupdf
 import structlog
-from aiobotocore.session import get_session
-from aiobotocore.config import AioConfig
+from anthropic import AsyncAnthropic
 from PIL import Image, ImageEnhance, ImageFilter
 
 from sentinel_shared.config import get_settings
@@ -42,7 +41,7 @@ DOCUMENT LAYOUT — each page contains voter entries in a grid of numbered boxes
 - Top-left corner: serial number (1, 2, 3...)
 - Next to or below serial number: EPIC number (alphanumeric ID like XEQ2646875 or WB/04/025/0385377)
 - নির্বাচকের নাম / नाम / Name: the VOTER'S OWN full name (this is one person's name)
-- পিতার নাম / स्वामीর নাম / पिता का नाम / पति का नाम: the RELATIVE'S name (father, husband, or mother — a DIFFERENT person)
+- পিতার নাম / स्वामीर নাम / पिता का नाम / पति का नाम: the RELATIVE'S name (father, husband, or mother — a DIFFERENT person)
 - বয়স / आयु / Age: a number (the voter's age)
 - লিঙ্গ / लिंग / Gender: পুরুষ (Male) or মহিলা (Female)
 - বাড়ির নং / मकान नंबर / House No: house/door number
@@ -112,152 +111,48 @@ Rules:
 
 
 # =========================================================
-# TEXTRACT CLIENT (OCR)
+# CLAUDE VOTER CLIENT
 # =========================================================
 
 
-class TextractClient:
+class ClaudeVoterClient:
+    """Anthropic Claude API client for voter data extraction."""
+
     def __init__(self):
         self.settings = get_settings()
-        self._session = get_session()
-
-    def _get_client_kwargs(self):
-        region = self.settings.aws_textract_region
-        kwargs = {
-            "region_name": region,
-        }
-        # Use explicit credentials if provided, otherwise fall back to
-        # default credential chain (ECS task role, instance profile, etc.)
-        if (
-            self.settings.aws_textract_access_key_id
-            and self.settings.aws_textract_secret_access_key
-        ):
-            kwargs["endpoint_url"] = f"https://textract.{region}.amazonaws.com"
-            kwargs["aws_access_key_id"] = self.settings.aws_textract_access_key_id
-            kwargs["aws_secret_access_key"] = (
-                self.settings.aws_textract_secret_access_key
-            )
-        return kwargs
-
-    async def detect_text(self, page_pdf_bytes: bytes, page_num: int) -> str:
-        """Send a single-page PDF to Textract and return extracted text."""
-        for attempt in range(MAX_RETRIES + 1):
-            try:
-                async with self._session.create_client(
-                    "textract", **self._get_client_kwargs()
-                ) as client:
-                    response = await client.detect_document_text(
-                        Document={"Bytes": page_pdf_bytes}
-                    )
-
-                lines = [
-                    block["Text"]
-                    for block in response.get("Blocks", [])
-                    if block["BlockType"] == "LINE" and block.get("Text")
-                ]
-
-                text = "\n".join(lines)
-                logger.info(
-                    "textract_page", page=page_num, lines=len(lines), chars=len(text)
-                )
-                return text
-
-            except Exception as e:
-                if attempt < MAX_RETRIES:
-                    wait = RETRY_BACKOFF_BASE ** (attempt + 1)
-                    logger.warning(
-                        "textract_retry",
-                        page=page_num,
-                        attempt=attempt + 1,
-                        wait=wait,
-                        error=str(e),
-                    )
-                    await asyncio.sleep(wait)
-                else:
-                    logger.error("textract_page_failed", page=page_num, error=str(e))
-                    raise
-
-
-# =========================================================
-# BEDROCK CLIENT (LLM structured extraction)
-# =========================================================
-
-
-class BedrockClient:
-    def __init__(self):
-        self.settings = get_settings()
-        self._session = get_session()
-
-    def _get_client_kwargs(self):
-        region = self.settings.aws_textract_region
-        kwargs = {
-            "region_name": region,
-            "config": AioConfig(
-                read_timeout=600,
-                connect_timeout=10,
-                retries={"max_attempts": 0},  # we handle retries ourselves
-            ),
-        }
-        # Use explicit credentials if provided, otherwise fall back to
-        # default credential chain (ECS task role, instance profile, etc.)
-        if (
-            self.settings.aws_textract_access_key_id
-            and self.settings.aws_textract_secret_access_key
-        ):
-            kwargs["endpoint_url"] = f"https://bedrock-runtime.{region}.amazonaws.com"
-            kwargs["aws_access_key_id"] = self.settings.aws_textract_access_key_id
-            kwargs["aws_secret_access_key"] = (
-                self.settings.aws_textract_secret_access_key
-            )
-        return kwargs
+        self.client = AsyncAnthropic(api_key=self.settings.anthropic_api_key)
+        self.model = self.settings.claude_voter_model_id
 
     async def extract_voters(
         self, text: str, chunk_index: int, language: str = "en"
     ) -> list[dict]:
-        """Send OCR text to Bedrock LLM and get structured voter JSON back."""
-        model_id = self.settings.bedrock_voter_model_id
+        """Send OCR text to Claude and get structured voter JSON back."""
         language_name = LANGUAGE_NAMES.get(language, "English")
-
-        body = json.dumps(
-            {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 65536,
-                "temperature": 0,
-                "system": SYSTEM_PROMPT,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": f"The document is in {language_name}. Extract all voter records from this electoral roll text:\n\n{text}",
-                    }
-                ],
-            }
-        )
 
         for attempt in range(MAX_RETRIES + 1):
             try:
-                async with self._session.create_client(
-                    "bedrock-runtime", **self._get_client_kwargs()
-                ) as client:
-                    response = await client.invoke_model(
-                        modelId=model_id,
-                        body=body,
-                        contentType="application/json",
-                        accept="application/json",
-                    )
-                    response_body = await response["body"].read()
-
-                result = json.loads(response_body)
-                response_text = result["content"][0]["text"]
-
+                response = await self.client.messages.create(
+                    model=self.model,
+                    max_tokens=65536,
+                    temperature=0,
+                    system=SYSTEM_PROMPT,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": f"The document is in {language_name}. Extract all voter records from this electoral roll text:\n\n{text}",
+                        }
+                    ],
+                )
+                response_text = response.content[0].text
                 voters = _parse_llm_response(response_text, chunk_index)
-                logger.info("bedrock_chunk", chunk=chunk_index, voters=len(voters))
+                logger.info("claude_text_chunk", chunk=chunk_index, voters=len(voters))
                 return voters
 
             except Exception as e:
                 if attempt < MAX_RETRIES:
                     wait = RETRY_BACKOFF_BASE ** (attempt + 1)
                     logger.warning(
-                        "bedrock_retry",
+                        "claude_text_retry",
                         chunk=chunk_index,
                         attempt=attempt + 1,
                         wait=wait,
@@ -266,18 +161,16 @@ class BedrockClient:
                     await asyncio.sleep(wait)
                 else:
                     logger.error(
-                        "bedrock_chunk_failed", chunk=chunk_index, error=str(e)
+                        "claude_text_chunk_failed", chunk=chunk_index, error=str(e)
                     )
                     raise
 
     async def extract_voters_from_images(
         self, page_images: list[bytes], chunk_index: int, language: str = "bn"
     ) -> list[dict]:
-        """Send PDF page images to Bedrock Claude vision for structured extraction."""
-        model_id = self.settings.bedrock_voter_model_id
+        """Send page images to Claude vision for structured extraction."""
         language_name = LANGUAGE_NAMES.get(language, "Bengali")
 
-        # Build multimodal content: images + text prompt
         content = []
         for img_bytes in page_images:
             content.append(
@@ -303,35 +196,19 @@ class BedrockClient:
             }
         )
 
-        body = json.dumps(
-            {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 65536,
-                "temperature": 0,
-                "system": VISION_SYSTEM_PROMPT,
-                "messages": [{"role": "user", "content": content}],
-            }
-        )
-
         for attempt in range(VISION_MAX_RETRIES + 1):
             try:
-                async with self._session.create_client(
-                    "bedrock-runtime", **self._get_client_kwargs()
-                ) as client:
-                    response = await client.invoke_model(
-                        modelId=model_id,
-                        body=body,
-                        contentType="application/json",
-                        accept="application/json",
-                    )
-                    response_body = await response["body"].read()
-
-                result = json.loads(response_body)
-                response_text = result["content"][0]["text"]
-
+                response = await self.client.messages.create(
+                    model=self.model,
+                    max_tokens=65536,
+                    temperature=0,
+                    system=VISION_SYSTEM_PROMPT,
+                    messages=[{"role": "user", "content": content}],
+                )
+                response_text = response.content[0].text
                 voters = _parse_llm_response(response_text, chunk_index)
                 logger.info(
-                    "bedrock_vision_chunk", chunk=chunk_index, voters=len(voters)
+                    "claude_vision_chunk", chunk=chunk_index, voters=len(voters)
                 )
                 return voters
 
@@ -339,7 +216,7 @@ class BedrockClient:
                 if attempt < VISION_MAX_RETRIES:
                     wait = VISION_RETRY_BACKOFF_BASE ** (attempt + 1)
                     logger.warning(
-                        "bedrock_vision_retry",
+                        "claude_vision_retry",
                         chunk=chunk_index,
                         attempt=attempt + 1,
                         wait=wait,
@@ -348,7 +225,7 @@ class BedrockClient:
                     await asyncio.sleep(wait)
                 else:
                     logger.error(
-                        "bedrock_vision_chunk_failed", chunk=chunk_index, error=str(e)
+                        "claude_vision_chunk_failed", chunk=chunk_index, error=str(e)
                     )
                     raise
 
@@ -572,28 +449,26 @@ def _parse_llm_response(text: str, chunk_index: int) -> list[dict]:
 async def extract_voters_from_pdf(
     pdf_bytes: bytes,
     language: str = "en",
-    surya_engine=None,
 ) -> AsyncGenerator[list[dict], None]:
     """
     Extract voter records from a PDF, yielding deduplicated voters per chunk.
 
-    Pipeline varies by language and OCR engine config:
-    - English: Textract OCR → Bedrock text extraction
-    - Bengali/Hindi + surya: Surya OCR (local GPU) → Bedrock text extraction
-    - Bengali/Hindi + no surya: PDF → PNG images → Bedrock vision extraction (fallback)
+    Pipeline varies by language:
+    - English: pymupdf text extraction → Claude API text-based structured extraction
+    - Bengali/Hindi: PDF → PNG strips → Claude API vision extraction
 
     Yields a list[dict] after each chunk so the caller can insert to DB
     incrementally. Deduplicates by epic_no across chunks.
     """
     settings = get_settings()
-    pages_per_chunk = settings.bedrock_voter_pages_per_chunk
+    pages_per_chunk = settings.voter_pages_per_chunk
 
     # Step 1: Split PDF into single pages
     pages = _split_pdf_to_pages(pdf_bytes)
 
     logger.info("extraction_start", pages=len(pages), language=language)
 
-    bedrock = BedrockClient()
+    claude = ClaudeVoterClient()
     seen_epics: set[str] = set()
     seen_serials: dict[
         int, dict
@@ -629,21 +504,18 @@ async def extract_voters_from_pdf(
         return unique
 
     if language == "en":
-        # ---- ENGLISH: Textract OCR → Bedrock text ----
-        textract = TextractClient()
-
+        # ---- ENGLISH: pymupdf text extraction → Claude text ----
+        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
         page_texts = []
-        for i, page_bytes in enumerate(pages):
-            try:
-                text = await textract.detect_text(page_bytes, page_num=i + 1)
-                if text.strip():
-                    page_texts.append(text)
-            except Exception as e:
-                logger.warning("textract_page_skipped", page=i + 1, error=str(e))
+        for i in range(len(doc)):
+            text = doc[i].get_text()
+            if text.strip():
+                page_texts.append(text)
+        doc.close()
 
         full_text_len = sum(len(t) for t in page_texts)
         logger.info(
-            "textract_ocr_complete",
+            "pymupdf_text_complete",
             pages_with_text=len(page_texts),
             total_chars=full_text_len,
         )
@@ -658,104 +530,27 @@ async def extract_voters_from_pdf(
             text_chunks.append("\n\n--- PAGE BREAK ---\n\n".join(chunk_pages))
 
         logger.info(
-            "bedrock_chunks_prepared",
+            "claude_text_chunks_prepared",
             chunks=len(text_chunks),
             pages_per_chunk=pages_per_chunk,
         )
 
         for i, chunk_text in enumerate(text_chunks):
             try:
-                voters = await bedrock.extract_voters(
+                voters = await claude.extract_voters(
                     chunk_text, chunk_index=i, language=language
                 )
                 unique = _deduplicate(voters)
                 if unique:
                     yield unique
             except Exception as e:
-                logger.warning("bedrock_chunk_skipped", chunk=i, error=str(e))
-
-    elif surya_engine is not None:
-        # ---- BENGALI / HINDI: Surya OCR (local GPU) → Bedrock text extraction ----
-        # Self-hosted OCR eliminates Bedrock vision API throttling entirely.
-        # Mirrors the English pipeline: OCR → text → Bedrock text extraction.
-        logger.info("surya_ocr_mode", language=language, device=surya_engine.device)
-
-        # Skip first 2 pages (cover/summary + polling station map — no voter data)
-        voter_pages = pages[2:] if len(pages) > 2 else pages
-        logger.info(
-            "surya_pages_skipped",
-            skipped=len(pages) - len(voter_pages),
-            processing=len(voter_pages),
-        )
-
-        page_texts = []
-        for i, page_bytes in enumerate(voter_pages):
-            try:
-                png = _pdf_page_to_png(page_bytes, dpi=300)
-                png = _enhance_image(png)
-                text = surya_engine.extract_text(png, language)
-
-                if surya_engine.validate_quality(text, language):
-                    page_texts.append(text)
-                    logger.info(
-                        "surya_page_ok",
-                        page=i + 1,
-                        chars=len(text),
-                    )
-                else:
-                    logger.warning(
-                        "surya_page_low_quality",
-                        page=i + 1,
-                        chars=len(text),
-                    )
-                    # Still include it — partial data is better than none
-                    if text.strip():
-                        page_texts.append(text)
-            except Exception as e:
-                logger.warning("surya_page_failed", page=i + 1, error=str(e))
-
-        if not page_texts:
-            logger.warning("no_text_extracted_surya")
-            return
-
-        full_text_len = sum(len(t) for t in page_texts)
-        logger.info(
-            "surya_ocr_complete",
-            pages_with_text=len(page_texts),
-            total_chars=full_text_len,
-        )
-
-        # Chunk pages and send to Bedrock text extraction (same as English)
-        text_chunks = []
-        for i in range(0, len(page_texts), pages_per_chunk):
-            chunk_pages = page_texts[i : i + pages_per_chunk]
-            text_chunks.append("\n\n--- PAGE BREAK ---\n\n".join(chunk_pages))
-
-        logger.info(
-            "surya_bedrock_chunks_prepared",
-            chunks=len(text_chunks),
-            pages_per_chunk=pages_per_chunk,
-        )
-
-        for i, chunk_text in enumerate(text_chunks):
-            try:
-                voters = await bedrock.extract_voters(
-                    chunk_text, chunk_index=i, language=language
-                )
-                unique = _deduplicate(voters)
-                if unique:
-                    yield unique
-            except Exception as e:
-                logger.warning("bedrock_text_chunk_skipped", chunk=i, error=str(e))
+                logger.warning("claude_text_chunk_skipped", chunk=i, error=str(e))
 
     else:
-        # ---- BENGALI / HINDI FALLBACK: Bedrock vision (original pipeline) ----
-        # Used when OCR_ENGINE=bedrock_vision or surya_engine is not available.
-        # Split each page into horizontal strips for better character accuracy.
+        # ---- BENGALI / HINDI: PDF → PNG strips → Claude vision ----
         logger.info(
             "vision_mode",
             language=language,
-            reason="non-English script (bedrock_vision fallback)",
         )
 
         # Skip first 2 pages (cover/summary + polling station map — no voter data)
@@ -792,15 +587,15 @@ async def extract_voters_from_pdf(
 
         for i, chunk_images in enumerate(image_chunks):
             try:
-                voters = await bedrock.extract_voters_from_images(
+                voters = await claude.extract_voters_from_images(
                     chunk_images, chunk_index=i, language=language
                 )
                 unique = _deduplicate(voters)
                 if unique:
                     yield unique
             except Exception as e:
-                logger.warning("bedrock_vision_chunk_skipped", chunk=i, error=str(e))
+                logger.warning("claude_vision_chunk_skipped", chunk=i, error=str(e))
 
-            # Delay between vision API calls to avoid throttling
+            # Delay between vision API calls to avoid rate limiting
             if i < len(image_chunks) - 1:
                 await asyncio.sleep(VISION_INTER_CHUNK_DELAY)

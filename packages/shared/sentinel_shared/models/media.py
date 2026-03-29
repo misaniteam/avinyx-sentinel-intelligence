@@ -35,6 +35,12 @@ class RawMediaItem(Base, TimestampMixin, TenantMixin):
         nullable=False,
         index=True,
     )
+    data_source_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("data_sources.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     platform = Column(String(50), nullable=False, index=True)
     external_id = Column(String(1024), nullable=False)
     content = Column(Text, nullable=True)

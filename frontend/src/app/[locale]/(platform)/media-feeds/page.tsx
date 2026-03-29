@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMediaFeeds, useMediaFeedTopics } from "@/lib/api/hooks";
+import { useMediaFeeds, useMediaFeedTopics, useDeleteMediaFeed } from "@/lib/api/hooks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
+  Trash2,
 } from "lucide-react";
+import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
+import { toast } from "sonner";
 import type { MediaFeedItem } from "@/types";
 
 const PAGE_SIZE = 20;
@@ -49,14 +52,23 @@ function getSentimentCategory(item: MediaFeedItem): "positive" | "negative" | "n
   return "neutral";
 }
 
-function FeedCard({ item, highlighted = false }: { item: MediaFeedItem; highlighted?: boolean }) {
+function FeedCard({ item, highlighted = false, onDelete }: { item: MediaFeedItem; highlighted?: boolean; onDelete?: (item: MediaFeedItem) => void }) {
   const tc = useTranslations("common");
   const platform = platformConfig[item.platform];
   const sentimentCategory = getSentimentCategory(item);
   const isYouTube = item.platform === "youtube";
 
   return (
-    <Card className={highlighted ? "border-2 border-primary/40 shadow-md" : ""}>
+    <Card className={`relative group ${highlighted ? "border-2 border-primary/40 shadow-md" : ""}`}>
+      {onDelete && (
+        <button
+          onClick={() => onDelete(item)}
+          className="absolute top-2 right-2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          title={tc("delete")}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
       <CardContent className="flex items-start gap-4 p-4">
         {item.image_url && (
           <img
@@ -159,6 +171,8 @@ export default function MediaFeedsPage() {
   const [dateTo, setDateTo] = useState<string>("");
   const [sortValue, setSortValue] = useState<string>("published_at:desc");
   const [page, setPage] = useState(0);
+  const [feedToDelete, setFeedToDelete] = useState<MediaFeedItem | null>(null);
+  const deleteFeed = useDeleteMediaFeed();
 
   const [sortBy, sortOrder] = sortValue.split(":") as [string, string];
 
@@ -341,7 +355,7 @@ export default function MediaFeedsPage() {
               <h2 className="text-lg font-semibold mb-3">{tc("topHighlights")}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {highlighted.map((item) => (
-                  <FeedCard key={item.id} item={item} highlighted />
+                  <FeedCard key={item.id} item={item} highlighted onDelete={setFeedToDelete} />
                 ))}
               </div>
             </div>
@@ -354,7 +368,7 @@ export default function MediaFeedsPage() {
                 <h2 className="text-lg font-semibold">{tc("allFeeds")}</h2>
               )}
               {rest.map((item) => (
-                <FeedCard key={item.id} item={item} />
+                <FeedCard key={item.id} item={item} onDelete={setFeedToDelete} />
               ))}
             </div>
           )}
@@ -395,6 +409,26 @@ export default function MediaFeedsPage() {
           )}
         </>
       )}
+
+      <DeleteConfirmDialog
+        open={!!feedToDelete}
+        onOpenChange={(open) => { if (!open) setFeedToDelete(null); }}
+        title={tc("delete")}
+        description={tc("deleteMediaFeedConfirm")}
+        onConfirm={() => {
+          if (!feedToDelete) return;
+          deleteFeed.mutate(feedToDelete.id, {
+            onSuccess: () => {
+              toast.success(tc("mediaFeedDeleted"));
+              setFeedToDelete(null);
+            },
+            onError: () => {
+              toast.error(tc("failedDeleteMediaFeed"));
+            },
+          });
+        }}
+        isPending={deleteFeed.isPending}
+      />
     </div>
   );
 }

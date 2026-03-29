@@ -9,5 +9,5 @@ export default function TopTopicsWidget() {
 
   if (isLoading || !data) return <Skeleton className="h-[250px] w-full" />;
 
-  return <TopTopicsBarChart data={data} height={250} />;
+  return <TopTopicsBarChart data={data} />;
 }

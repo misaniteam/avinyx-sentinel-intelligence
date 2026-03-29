@@ -41,6 +41,7 @@ async def check_and_dispatch_polls():
                     # Dispatch ingestion job to SQS
                     message = {
                         "tenant_id": str(ds.tenant_id),
+                        "data_source_id": str(ds.id),
                         "platform": ds.platform,
                         "config": ds.config or {},
                         "since": ds.last_polled_at.isoformat()

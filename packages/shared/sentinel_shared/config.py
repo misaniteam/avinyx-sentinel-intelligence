@@ -33,16 +33,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     aws_bedrock_region: str = "ap-south-1"
-    bedrock_voter_model_id: str = "apac.anthropic.claude-sonnet-4-20250514-v1:0"
-    bedrock_voter_pages_per_chunk: int = 5
 
-    # OCR engine for Bengali/Hindi voter extraction ("surya" or "bedrock_vision")
-    ocr_engine: str = "surya"
-
-    # Textract (real AWS — separate from LocalStack)
-    aws_textract_region: str = "ap-south-1"
-    aws_textract_access_key_id: str = ""
-    aws_textract_secret_access_key: str = ""
+    # Voter extraction (Claude API)
+    claude_voter_model_id: str = "claude-sonnet-4-20250514"
+    voter_pages_per_chunk: int = 5
 
     # Service URLs
     auth_service_url: str = "http://auth-service:8001"
