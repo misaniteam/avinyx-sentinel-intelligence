@@ -131,7 +131,7 @@ class ClaudeVoterClient:
 
         for attempt in range(MAX_RETRIES + 1):
             try:
-                response = await self.client.messages.create(
+                async with self.client.messages.stream(
                     model=self.model,
                     max_tokens=65536,
                     temperature=0,
@@ -142,7 +142,8 @@ class ClaudeVoterClient:
                             "content": f"The document is in {language_name}. Extract all voter records from this electoral roll text:\n\n{text}",
                         }
                     ],
-                )
+                ) as stream:
+                    response = await stream.get_final_message()
                 response_text = response.content[0].text
                 voters = _parse_llm_response(response_text, chunk_index)
                 logger.info("claude_text_chunk", chunk=chunk_index, voters=len(voters))
@@ -198,13 +199,14 @@ class ClaudeVoterClient:
 
         for attempt in range(VISION_MAX_RETRIES + 1):
             try:
-                response = await self.client.messages.create(
+                async with self.client.messages.stream(
                     model=self.model,
                     max_tokens=65536,
                     temperature=0,
                     system=VISION_SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": content}],
-                )
+                ) as stream:
+                    response = await stream.get_final_message()
                 response_text = response.content[0].text
                 voters = _parse_llm_response(response_text, chunk_index)
                 logger.info(
