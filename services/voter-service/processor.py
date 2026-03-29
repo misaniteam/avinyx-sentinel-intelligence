@@ -140,7 +140,9 @@ async def process_voter_list(message: dict, surya_engine=None):
     total_inserted = 0
 
     try:
-        async for chunk_voters in extract_voters_from_pdf(pdf_bytes, language, surya_engine=surya_engine):
+        async for chunk_voters in extract_voters_from_pdf(
+            pdf_bytes, language, surya_engine=surya_engine
+        ):
             if not chunk_voters:
                 continue
 

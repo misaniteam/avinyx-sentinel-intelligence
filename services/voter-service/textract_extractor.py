@@ -752,7 +752,11 @@ async def extract_voters_from_pdf(
         # ---- BENGALI / HINDI FALLBACK: Bedrock vision (original pipeline) ----
         # Used when OCR_ENGINE=bedrock_vision or surya_engine is not available.
         # Split each page into horizontal strips for better character accuracy.
-        logger.info("vision_mode", language=language, reason="non-English script (bedrock_vision fallback)")
+        logger.info(
+            "vision_mode",
+            language=language,
+            reason="non-English script (bedrock_vision fallback)",
+        )
 
         # Skip first 2 pages (cover/summary + polling station map — no voter data)
         voter_pages = pages[2:] if len(pages) > 2 else pages

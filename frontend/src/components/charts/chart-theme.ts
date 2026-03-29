@@ -1,8 +1,4 @@
-interface PLATFORM_LABELS {
-  [key: string]: string;
-}
-
-export const PLATFORM_LABELS: PLATFORM_LABELS = {
+export const PLATFORM_LABELS: Record<string, string> = {
   news_api: "News API",
   news_rss: "News RSS",
 };
