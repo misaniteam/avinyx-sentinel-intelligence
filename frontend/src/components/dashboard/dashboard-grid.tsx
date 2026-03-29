@@ -1,11 +1,17 @@
-'use client';
+"use client";
 
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
-import type { Layout, Layouts } from 'react-grid-layout';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
-import { Button } from '@/components/ui/button';
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
+import { Responsive, WidthProvider } from "react-grid-layout";
+import type { Layout, Layouts } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,16 +19,18 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Plus, RotateCcw } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { widgetRegistry, type WidgetDefinition } from './widget-registry';
-import { WidgetContainer } from './widget-container';
+} from "@/components/ui/dialog";
+import { Plus, RotateCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { widgetRegistry, type WidgetDefinition } from "./widget-registry";
+import { WidgetContainer } from "./widget-container";
+import { Calendar } from "../ui/calendar";
+import { DatePicker } from "../ui/DatePicker";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-const STORAGE_KEY = 'sentinel-dashboard-layout';
-const WIDGETS_STORAGE_KEY = 'sentinel-dashboard-widgets';
+const STORAGE_KEY = "sentinel-dashboard-layout";
+const WIDGETS_STORAGE_KEY = "sentinel-dashboard-widgets";
 
 interface WidgetInstance {
   id: string;
@@ -57,7 +65,7 @@ function getDefaultLayouts(): Layouts {
 }
 
 function loadFromStorage<T>(key: string, fallback: () => T): T {
-  if (typeof window === 'undefined') return fallback();
+  if (typeof window === "undefined") return fallback();
   try {
     const stored = localStorage.getItem(key);
     if (stored) return JSON.parse(stored) as T;
@@ -68,28 +76,32 @@ function loadFromStorage<T>(key: string, fallback: () => T): T {
 }
 
 export function DashboardGrid() {
-  const t = useTranslations('dashboard');
+  const t = useTranslations("dashboard");
   const [widgets, setWidgets] = useState<WidgetInstance[]>(() =>
-    loadFromStorage(WIDGETS_STORAGE_KEY, getDefaultWidgets)
+    loadFromStorage(WIDGETS_STORAGE_KEY, getDefaultWidgets),
   );
   const [layouts, setLayouts] = useState<Layouts>(() =>
-    loadFromStorage(STORAGE_KEY, getDefaultLayouts)
+    loadFromStorage(STORAGE_KEY, getDefaultLayouts),
   );
   const [dialogOpen, setDialogOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [date, setDate] = useState<Date | undefined>(new Date());
 
   // Save layouts to localStorage with debounce
-  const handleLayoutChange = useCallback((_currentLayout: Layout[], allLayouts: Layouts) => {
-    setLayouts(allLayouts);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(allLayouts));
-      } catch {
-        // ignore storage errors
-      }
-    }, 500);
-  }, []);
+  const handleLayoutChange = useCallback(
+    (_currentLayout: Layout[], allLayouts: Layouts) => {
+      setLayouts(allLayouts);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(allLayouts));
+        } catch {
+          // ignore storage errors
+        }
+      }, 500);
+    },
+    [],
+  );
 
   // Save widgets to localStorage whenever they change
   useEffect(() => {
@@ -134,7 +146,15 @@ export function DashboardGrid() {
 
       // Add layout entry at the bottom
       const { w, h, minW, minH } = definition.defaultLayout;
-      const newLayoutItem: Layout = { i: id, x: 0, y: Infinity, w, h, minW, minH };
+      const newLayoutItem: Layout = {
+        i: id,
+        x: 0,
+        y: Infinity,
+        w,
+        h,
+        minW,
+        minH,
+      };
 
       setLayouts((prev) => {
         const updated: Layouts = {};
@@ -149,7 +169,7 @@ export function DashboardGrid() {
 
       setDialogOpen(false);
     },
-    [widgets]
+    [widgets],
   );
 
   const handleResetLayout = useCallback(() => {
@@ -185,43 +205,48 @@ export function DashboardGrid() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end gap-2">
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-1 h-4 w-4 text-theme-primary" />
-              {t('addWidget')}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t('addWidget')}</DialogTitle>
-              <DialogDescription>
-                {t('addWidgetDescription')}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-2 gap-3">
-              {Array.from(widgetRegistry.values()).map((def) => {
-                const Icon = def.icon;
-                return (
-                  <Button
-                    key={def.type}
-                    className="flex h-auto flex-col items-center gap-2 p-4"
-                    onClick={() => handleAddWidget(def)}
-                  >
-                    <Icon className="h-6 w-6" />
-                    <span className="text-xs">{t(def.labelKey)}</span>
-                  </Button>
-                );
-              })}
-            </div>
-          </DialogContent>
-        </Dialog>
+      <div className="flex items-center justify-between">
+        {/* <DatePicker /> */}
+       
 
-        <Button onClick={handleResetLayout}>
-          <RotateCcw className="mr-1 h-4 w-4 text-theme-primary" />
-          {t('resetLayout')}
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-1 h-4 w-4 text-theme-primary" />
+                {t("addWidget")}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("addWidget")}</DialogTitle>
+                <DialogDescription>
+                  {t("addWidgetDescription")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from(widgetRegistry.values()).map((def) => {
+                  const Icon = def.icon;
+                  return (
+                    <Button
+                      key={def.type}
+                      className="flex h-auto flex-col items-center gap-2 p-4"
+                      onClick={() => handleAddWidget(def)}
+                    >
+                      <Icon className="h-6 w-6" />
+                      <span className="text-xs">{t(def.labelKey)}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Button onClick={handleResetLayout}>
+            <RotateCcw className="mr-1 h-4 w-4 text-theme-primary" />
+            {t("resetLayout")}
+          </Button>
+        </div>
       </div>
 
       <ResponsiveGridLayout

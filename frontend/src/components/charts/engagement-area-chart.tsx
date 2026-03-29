@@ -12,7 +12,8 @@ import {
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import type { EngagementPoint } from '@/types';
-import { tooltipStyle, axisStyle } from './chart-theme';
+import {  getAxisStyle, getTooltipStyle } from './chart-theme';
+import { useTheme } from 'next-themes';
 
 interface EngagementAreaChartProps {
   data: EngagementPoint[];
@@ -23,7 +24,8 @@ export function EngagementAreaChart({ data, height = 300 }: EngagementAreaChartP
   const sorted = [...data].sort(
     (a, b) => parseISO(a.period_start).getTime() - parseISO(b.period_start).getTime()
   );
-
+ const { theme } = useTheme();
+  const isDark = theme === "dark";
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={sorted}>
@@ -31,11 +33,11 @@ export function EngagementAreaChart({ data, height = 300 }: EngagementAreaChartP
         <XAxis
           dataKey="period_start"
           tickFormatter={(val: string) => format(parseISO(val), 'MMM dd')}
-          {...axisStyle}
+          {...getAxisStyle(isDark)}
         />
-        <YAxis {...axisStyle} />
+        <YAxis {...getAxisStyle(isDark)} />
         <Tooltip
-          {...tooltipStyle}
+          {...getTooltipStyle(isDark)}
           labelFormatter={(val: string) => format(parseISO(val), 'MMM dd')}
         />
         <Legend />
