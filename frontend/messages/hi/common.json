@@ -59,5 +59,11 @@
   "sentiment": "भावना",
   "topic": "विषय",
   "noResults": "कोई परिणाम नहीं मिला",
-  "page": "पृष्ठ"
+  "page": "पृष्ठ",
+  "from": "से",
+  "newestFirst": "नवीनतम पहले",
+  "oldestFirst": "पुराना पहले",
+  "highestSentiment": "उच्चतम भावना",
+  "lowestSentiment": "न्यूनतम भावना",
+  "platformAZ": "प्लेटफ़ॉर्म A-Z"
 }

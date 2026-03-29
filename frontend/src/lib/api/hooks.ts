@@ -185,6 +185,10 @@ export function useMediaFeeds(params?: {
   platform?: string;
   sentiment?: string;
   topic?: string;
+  date_from?: string;
+  date_to?: string;
+  sort_by?: string;
+  sort_order?: string;
   skip?: number;
   limit?: number;
 }) {
@@ -192,10 +196,14 @@ export function useMediaFeeds(params?: {
   if (params?.platform) searchParams.set("platform", params.platform);
   if (params?.sentiment) searchParams.set("sentiment", params.sentiment);
   if (params?.topic) searchParams.set("topic", params.topic);
+  if (params?.date_from) searchParams.set("date_from", params.date_from);
+  if (params?.date_to) searchParams.set("date_to", params.date_to);
+  if (params?.sort_by) searchParams.set("sort_by", params.sort_by);
+  if (params?.sort_order) searchParams.set("sort_order", params.sort_order);
   if (params?.skip) searchParams.set("skip", String(params.skip));
   searchParams.set("limit", String(params?.limit ?? 50));
   return useQuery({
-    queryKey: [...queryKeys.mediaFeeds.all, params?.platform, params?.sentiment, params?.topic, params?.skip, params?.limit],
+    queryKey: [...queryKeys.mediaFeeds.all, params?.platform, params?.sentiment, params?.topic, params?.date_from, params?.date_to, params?.sort_by, params?.sort_order, params?.skip, params?.limit],
     queryFn: () => api.get(`api/campaigns/media-feeds?${searchParams}`).json<MediaFeedListResponse>(),
   });
 }

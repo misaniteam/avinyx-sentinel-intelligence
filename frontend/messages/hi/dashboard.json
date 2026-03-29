@@ -10,7 +10,8 @@
     "topTopics": "शीर्ष विषय",
     "engagementMetrics": "सहभागिता मेट्रिक्स",
     "sentimentDistribution": "भावना वितरण",
-    "topFeeds": "शीर्ष समाचार और वीडियो"
+    "topFeeds": "शीर्ष समाचार और वीडियो",
+    "negativeAnalysis": "नकारात्मक कवरेज विश्लेषण"
   },
   "totalMentions": "कुल उल्लेख",
   "avgSentiment": "औसत भावना",
@@ -18,5 +19,15 @@
   "negative": "नकारात्मक",
   "topYouTube": "शीर्ष यूट्यूब",
   "topNews": "शीर्ष समाचार",
-  "noTopFeeds": "अभी तक कोई शीर्ष समाचार या वीडियो नहीं"
+  "noTopFeeds": "अभी तक कोई शीर्ष समाचार या वीडियो नहीं",
+  "negativeAnalysis": {
+    "threat": "खतरा",
+    "articlesAnalyzed": "लेख विश्लेषित",
+    "sources": "स्रोत",
+    "negativeThemes": "नकारात्मक विषय",
+    "recommendedActions": "अनुशंसित कार्रवाई",
+    "noNegativeArticles": "कोई नकारात्मक कवरेज नहीं पाई गई",
+    "showMore": "{count} और कार्रवाई",
+    "showLess": "कम दिखाएं"
+  }
 }

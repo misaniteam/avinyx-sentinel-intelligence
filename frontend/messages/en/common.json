@@ -59,5 +59,11 @@
   "sentiment": "Sentiment",
   "topic": "Topic",
   "noResults": "No results found",
-  "page": "Page"
+  "page": "Page",
+  "from": "From",
+  "newestFirst": "Newest First",
+  "oldestFirst": "Oldest First",
+  "highestSentiment": "Highest Sentiment",
+  "lowestSentiment": "Lowest Sentiment",
+  "platformAZ": "Platform A-Z"
 }

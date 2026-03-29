@@ -1,7 +1,7 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func, text
+from sqlalchemy import select, desc, asc, func, text
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.media import MediaFeed
 from sentinel_shared.auth.dependencies import get_current_tenant, require_permissions
@@ -36,6 +36,14 @@ class MediaFeedListResponse(BaseModel):
     total: int
 
 
+ALLOWED_SORT_FIELDS = {
+    "published_at": MediaFeed.published_at,
+    "sentiment_score": MediaFeed.sentiment_score,
+    "platform": MediaFeed.platform,
+    "author": MediaFeed.author,
+}
+
+
 @router.get("/", response_model=MediaFeedListResponse)
 async def list_media_feeds(
     db: AsyncSession = Depends(get_db),
@@ -44,6 +52,10 @@ async def list_media_feeds(
     platform: str | None = None,
     sentiment: str | None = None,
     topic: str | None = None,
+    date_from: datetime | None = Query(None),
+    date_to: datetime | None = Query(None),
+    sort_by: str = Query("published_at", pattern="^(published_at|sentiment_score|platform|author)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
@@ -54,13 +66,19 @@ async def list_media_feeds(
         base = base.where(MediaFeed.sentiment_label == sentiment)
     if topic:
         base = base.where(MediaFeed.topics.op("@>")(func.jsonb_build_array(topic)))
+    if date_from:
+        base = base.where(MediaFeed.published_at >= date_from)
+    if date_to:
+        base = base.where(MediaFeed.published_at <= date_to)
 
     # Total count
     count_result = await db.execute(select(func.count()).select_from(base.subquery()))
     total = count_result.scalar() or 0
 
-    # Paginated results
-    query = base.order_by(desc(MediaFeed.published_at)).offset(skip).limit(limit)
+    # Sorting
+    sort_column = ALLOWED_SORT_FIELDS.get(sort_by, MediaFeed.published_at)
+    order_func = desc if sort_order == "desc" else asc
+    query = base.order_by(order_func(sort_column).nulls_last()).offset(skip).limit(limit)
     result = await db.execute(query)
     rows = result.scalars().all()
 

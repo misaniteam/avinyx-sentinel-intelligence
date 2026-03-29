@@ -29,6 +29,7 @@ export const queryKeys = {
   dashboard: {
     summary: ["dashboard", "summary"] as const,
     trends: (period: string) => ["dashboard", "trends", period] as const,
+    negativeAnalysis: ["dashboard", "negative-analysis"] as const,
   },
   heatmap: {
     data: (filter?: string, dateFrom?: string, dateTo?: string) => ["heatmap", filter, dateFrom, dateTo] as const,

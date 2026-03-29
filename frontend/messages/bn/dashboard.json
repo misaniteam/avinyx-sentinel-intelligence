@@ -10,7 +10,8 @@
     "topTopics": "শীর্ষ বিষয়",
     "engagementMetrics": "এনগেজমেন্ট মেট্রিক্স",
     "sentimentDistribution": "মনোভাব বণ্টন",
-    "topFeeds": "শীর্ষ সংবাদ ও ভিডিও"
+    "topFeeds": "শীর্ষ সংবাদ ও ভিডিও",
+    "negativeAnalysis": "নেতিবাচক কভারেজ বিশ্লেষণ"
   },
   "totalMentions": "মোট উল্লেখ",
   "avgSentiment": "গড় মনোভাব",
@@ -18,5 +19,15 @@
   "negative": "নেতিবাচক",
   "topYouTube": "শীর্ষ ইউটিউব",
   "topNews": "শীর্ষ সংবাদ",
-  "noTopFeeds": "এখনো কোনো শীর্ষ সংবাদ বা ভিডিও নেই"
+  "noTopFeeds": "এখনো কোনো শীর্ষ সংবাদ বা ভিডিও নেই",
+  "negativeAnalysis": {
+    "threat": "হুমকি",
+    "articlesAnalyzed": "নিবন্ধ বিশ্লেষিত",
+    "sources": "উৎস",
+    "negativeThemes": "নেতিবাচক বিষয়",
+    "recommendedActions": "প্রস্তাবিত পদক্ষেপ",
+    "noNegativeArticles": "কোনো নেতিবাচক কভারেজ পাওয়া যায়নি",
+    "showMore": "আরো {count}টি পদক্ষেপ",
+    "showLess": "কম দেখান"
+  }
 }

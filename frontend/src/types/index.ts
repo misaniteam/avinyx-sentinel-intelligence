@@ -97,6 +97,29 @@ export interface DashboardSummary {
   };
 }
 
+export interface NegativePoint {
+  theme: string;
+  severity: 'high' | 'medium' | 'low';
+  summary: string;
+  sources_count: number;
+  sample_titles: string[];
+}
+
+export interface Actionable {
+  action: string;
+  priority: 'urgent' | 'high' | 'medium';
+  type: string;
+  addresses_themes: string[];
+}
+
+export interface NegativeAnalysis {
+  negative_points: NegativePoint[];
+  actionables: Actionable[];
+  overall_threat_level: 'critical' | 'high' | 'moderate' | 'low';
+  summary: string;
+  analyzed_count: number;
+}
+
 export interface SentimentTrend {
   period_start: string;
   platform: string | null;

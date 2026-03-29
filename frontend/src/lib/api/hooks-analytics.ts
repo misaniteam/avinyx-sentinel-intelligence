@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import { queryKeys } from './query-keys';
-import type { PlatformBreakdown, TopicCount, EngagementPoint, Report, ReportGenerateResponse, ReportDownloadResponse } from '@/types';
+import type { PlatformBreakdown, TopicCount, EngagementPoint, Report, ReportGenerateResponse, ReportDownloadResponse, NegativeAnalysis } from '@/types';
 
 export function usePlatformBreakdown(dateFrom?: string, dateTo?: string) {
   return useQuery({
@@ -67,5 +67,16 @@ export function useReportDownloadUrl() {
   return useMutation({
     mutationFn: (reportId: string) =>
       api.get(`api/analytics/reports/${reportId}/download`).json<ReportDownloadResponse>(),
+  });
+}
+
+export function useNegativeAnalysis(refresh?: boolean) {
+  return useQuery({
+    queryKey: queryKeys.dashboard.negativeAnalysis,
+    queryFn: () => {
+      const params = refresh ? '?refresh=true' : '';
+      return api.get(`api/analytics/dashboard/negative-analysis${params}`).json<NegativeAnalysis>();
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes to match backend cache
   });
 }

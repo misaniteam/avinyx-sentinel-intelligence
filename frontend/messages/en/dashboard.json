@@ -10,7 +10,8 @@
     "topTopics": "Top Topics",
     "engagementMetrics": "Engagement Metrics",
     "sentimentDistribution": "Sentiment Distribution",
-    "topFeeds": "Top News & Videos"
+    "topFeeds": "Top News & Videos",
+    "negativeAnalysis": "Negative Coverage Analysis"
   },
   "totalMentions": "Total Mentions",
   "avgSentiment": "Avg Sentiment",
@@ -18,5 +19,15 @@
   "negative": "Negative",
   "topYouTube": "Top YouTube",
   "topNews": "Top News",
-  "noTopFeeds": "No top news or videos yet"
+  "noTopFeeds": "No top news or videos yet",
+  "negativeAnalysis": {
+    "threat": "threat",
+    "articlesAnalyzed": "articles analyzed",
+    "sources": "sources",
+    "negativeThemes": "Negative Themes",
+    "recommendedActions": "Recommended Actions",
+    "noNegativeArticles": "No negative coverage detected",
+    "showMore": "{count} more actions",
+    "showLess": "Show less"
+  }
 }

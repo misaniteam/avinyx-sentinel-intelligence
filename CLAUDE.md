@@ -121,7 +121,7 @@ npm test                   # Vitest
 2. **Tenant Admin** — Auto-created on tenant onboarding, has all tenant permissions
 3. **Custom Roles** — RBAC with permission strings (e.g., `dashboard:view`, `voters:write`)
 
-**JWT claims:** `sub`, `tenant_id`, `is_super_admin`, `roles`, `permissions`, `constituency_code`
+**JWT claims:** `sub`, `full_name`, `tenant_id`, `is_super_admin`, `roles`, `permissions`, `constituency_code`
 
 **Auth dependencies** (`sentinel_shared/auth/dependencies.py`):
 - `get_current_user` — Extracts user from JWT Bearer token
@@ -162,7 +162,7 @@ All frontend requests go through `api-gateway` at `/api/*`:
 | auth-service | `auth.py` `/auth`, `users.py` `/auth/users`, `roles.py` `/auth/roles`, `settings.py` `/auth/tenant-settings` |
 | tenant-service | `tenants.py` `/tenants/tenants` |
 | ingestion-service | `data_sources.py` `/ingestion/data-sources`, `ingested_data.py` `/ingestion/ingested-data`, `file_upload.py` `/ingestion/file-upload`, `voter_list_upload.py` `/ingestion/voter-list-upload`, `voter_list_data.py` `/ingestion/voter-lists` |
-| analytics-service | `dashboard.py`, `heatmap.py`, `platforms.py`, `reports.py`, `topics.py` — all `/analytics/*` |
+| analytics-service | `dashboard.py` `/analytics/dashboard` (summary, trends, negative-analysis), `heatmap.py` `/analytics/heatmap` (data, voter-location-stats), `platforms.py`, `reports.py`, `topics.py` — all `/analytics/*` |
 | campaign-service | `campaigns.py` `/campaigns/campaigns`, `voters.py` `/campaigns/voters`, `media_feeds.py` `/campaigns/media-feeds`, `topic_keywords.py` `/campaigns/topic-keywords` |
 | notification-service | Inline in `main.py` — 4 endpoints under `/notifications/*` |
 | logging-service | `ingest.py`, `query.py` — all `/logs/*` |
@@ -236,8 +236,9 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 ## AI Pipeline Service
 
 - **Queue:** `sentinel-ai-pipeline` — processes `RawMediaItem` records through AI providers
-- **Flow:** Receive tenant_id → query pending items → fetch TopicKeyword records → AI `analyze_and_extract()` → create SentimentAnalysis + upsert MediaFeed → mark completed/failed
-- **Batching:** 3 items/cycle, 10s inter-batch delay, loops until no pending items
+- **Flow:** Receive tenant_id → query pending items in batches → fetch TopicKeyword records → AI `analyze_and_extract()` → create SentimentAnalysis + upsert MediaFeed → mark completed/failed
+- **Batching:** 5 items/batch (`BATCH_SIZE`), single API call per batch, 5s inter-batch delay, loops until no pending items
+- **Bedrock batch mode:** Multiple items combined into one prompt with `--- ITEM N ---` delimiters; model returns `{"results": [...]}` array. Falls back to individual calls if batch parsing fails.
 - **Status tracking:** `RawMediaItem.ai_status`: `pending` → `processing` → `completed`/`failed`
 - **Failure:** Items marked `failed` (not reset to pending) to prevent retry storms
 
@@ -245,7 +246,7 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 - **Base:** `BaseAIProvider` in `sentinel_shared/ai/base.py` — `analyze_sentiment()`, `extract_topics()`, `analyze_and_extract(topic_keywords=None)`
 - **Claude:** `ClaudeProvider` — `claude-sonnet-4-20250514`, Anthropic messaging API
 - **OpenAI:** `OpenAIProvider` — `gpt-4o`, JSON response format
-- **Bedrock:** `BedrockProvider` — aiobotocore async, 5 retries with aggressive backoff for throttles, 3s inter-request delay, per-item error handling with 30s throttle cooldown
+- **Bedrock:** `BedrockProvider` — aiobotocore async, 5 retries with aggressive backoff for throttles, 3s inter-request delay, per-item error handling with 30s throttle cooldown, batch mode (up to 5 items per API call with individual fallback)
 - **Result models:** `SentimentResult` (score -1.0→1.0, label, topics, entities, summary), `ContentExtractionResult` (title, description, image_url, source_link, external_links)
 
 ### Topic Keywords (Sentiment Guidance)
@@ -261,9 +262,25 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 ## Media Feeds
 
 - **Model:** `MediaFeed` in `sentinel_shared/models/media.py` — AI-enriched content with sentiment, topics, extracted metadata
-- **Backend:** `GET /api/campaigns/media-feeds` — filters: platform, sentiment, topic; pagination; permission: `media:read`
-- **Frontend:** `/media-feeds` — Card-based view with sentiment badges, topic pills, images, external links
+- **Backend:** `GET /api/campaigns/media-feeds` — filters: platform, sentiment, topic, date_from, date_to; sort: published_at/sentiment_score/platform/author (asc/desc); pagination; permission: `media:read`
+- **Frontend:** `/media-feeds` — Card-based view with sentiment badges, topic pills, images, external links, date range filter, sort dropdown
 - **Hook:** `useMediaFeeds()` in `lib/api/hooks.ts`
+
+## Heatmap Voter Stats
+
+- **Backend:** `GET /api/analytics/heatmap/voter-location-stats` — aggregates voter entry stats per `VoterListGroup` with location coordinates (any status)
+- **Response per group:** location_name, part_no/part_name, lat/lng, status, year, total/male/female/other counts, average_age, status_counts (e.g., `{"UNDER ADJUDICATION": 5, "SHIFTED": 2}`)
+- **Frontend:** `VoterStatsMarkers` component renders `AdvancedMarker` pins on heatmap; click opens `InfoWindow` tooltip with stats
+- **Hook:** `useVoterLocationStats()` in `lib/api/hooks.ts`
+
+## Negative Coverage Analysis
+
+- **Backend:** `GET /api/analytics/dashboard/negative-analysis` — fetches top 10 negative `MediaFeed` items, deduplicates by title, sends to AI for thematic analysis
+- **AI output:** negative themes (with severity, summary, source counts), actionable recommendations (with priority, type, addressed themes), overall threat level, executive summary
+- **Caching:** 15-minute in-memory cache per tenant; `?refresh=true` to bypass
+- **Frontend:** Dashboard widget (`negative-analysis`) showing threat level badge, negative theme cards, recommended action cards with expand/collapse
+- **Hook:** `useNegativeAnalysis()` in `lib/api/hooks-analytics.ts`
+- **Action types:** public_statement, policy_response, social_media, community_outreach, legal, internal
 
 ## Frontend Architecture
 
@@ -290,9 +307,9 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 - `<LocationSearch>` — Google Places Autocomplete, falls back to text input without API key
 - Sidebar: Main navigation + Administration section (auto-filtered by permissions)
 
-### Dashboard Widgets (7)
+### Dashboard Widgets (8)
 `react-grid-layout` (`<ResponsiveGridLayout>`) — drag-drop/resize, layout persisted to `localStorage`
-Widgets: summary-stats, sentiment-trend, platform-breakdown, top-topics, engagement, sentiment-distribution, top-feeds
+Widgets: summary-stats, sentiment-trend, platform-breakdown, top-topics, engagement, sentiment-distribution, top-feeds, negative-analysis
 
 ### Charts (`components/charts/`)
 Pure presentational — accept typed data props, never call hooks internally:
@@ -332,8 +349,8 @@ SentimentLineChart, PlatformPieChart, TopTopicsBarChart, EngagementAreaChart, Se
 ## Google Maps
 
 - `@vis.gl/react-google-maps` with `visualization` + `places` libraries
-- Requires `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
-- Components: `MapProvider`, `SentimentHeatmap`, `HeatmapControls`
+- Requires `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; optional `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` (needed for AdvancedMarker voter stats markers)
+- Components: `MapProvider`, `SentimentHeatmap`, `HeatmapControls`, `VoterStatsMarkers`
 - Default center: India (20.59, 78.96), zoom 5
 
 ## Constituency System
@@ -404,6 +421,8 @@ Copy `.env.example` to `.env` for local dev. LocalStack provides SQS/SNS/S3 at `
 
 Required: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (heatmap + location search), `NEXT_PUBLIC_FIREBASE_CONFIG` (JSON string)
 
+Optional: `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` (enables AdvancedMarker for voter stats on heatmap — create in Google Cloud Console > Map Management)
+
 **Local frontend dev:** Copy `NEXT_PUBLIC_*` vars from root `.env` to `frontend/.env.local` — Next.js only reads client-side env vars from this file.
 
 ## Terraform Infrastructure
@@ -411,7 +430,7 @@ Required: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (heatmap + location search), `NEXT_P
 8 modules in `infrastructure/terraform/modules/`:
 - **vpc** — VPC, 2 public + 2 private subnets, NAT Gateway, security groups
 - **ecr** — 10 ECR repos (immutable tags, scan-on-push, 10-image lifecycle)
-- **ecs** — Fargate cluster, Cloud Map, task defs for 7 HTTP + 2 worker + 1 frontend, IAM, auto-scaling
+- **ecs** — Fargate cluster + optional EC2 GPU capacity provider (`enable_gpu=true`), Cloud Map, task defs for 7 HTTP + 2 worker + 1 frontend, IAM, auto-scaling
 - **rds** — PostgreSQL 16, Multi-AZ, encrypted, auto-backups (7 days), Secrets Manager
 - **sqs** — 3 queues with DLQs, SSE encryption, 300s visibility timeout
 - **s3** — Reports bucket (versioned, IA lifecycle) + Frontend bucket (CloudFront OAC)

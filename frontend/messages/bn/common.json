@@ -59,5 +59,11 @@
   "sentiment": "মনোভাব",
   "topic": "বিষয়",
   "noResults": "কোনো ফলাফল পাওয়া যায়নি",
-  "page": "পৃষ্ঠা"
+  "page": "পৃষ্ঠা",
+  "from": "থেকে",
+  "newestFirst": "নতুন প্রথমে",
+  "oldestFirst": "পুরানো প্রথমে",
+  "highestSentiment": "সর্বোচ্চ মনোভাব",
+  "lowestSentiment": "সর্বনিম্ন মনোভাব",
+  "platformAZ": "প্ল্যাটফর্ম A-Z"
 }

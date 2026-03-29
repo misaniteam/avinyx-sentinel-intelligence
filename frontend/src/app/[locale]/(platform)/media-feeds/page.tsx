@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/select";
 import { useTranslations } from "next-intl";
 import { platformConfig } from "@/lib/constants/platforms";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   ExternalLink,
   TrendingUp,
@@ -21,10 +23,19 @@ import {
   Youtube,
   ChevronLeft,
   ChevronRight,
+  ArrowUpDown,
 } from "lucide-react";
 import type { MediaFeedItem } from "@/types";
 
 const PAGE_SIZE = 20;
+
+const SORT_OPTIONS = [
+  { value: "published_at:desc", labelKey: "newestFirst" },
+  { value: "published_at:asc", labelKey: "oldestFirst" },
+  { value: "sentiment_score:desc", labelKey: "highestSentiment" },
+  { value: "sentiment_score:asc", labelKey: "lowestSentiment" },
+  { value: "platform:asc", labelKey: "platformAZ" },
+] as const;
 
 function decodeHtmlEntities(text: string): string {
   const el = document.createElement("textarea");
@@ -144,12 +155,21 @@ export default function MediaFeedsPage() {
   const [platformFilter, setPlatformFilter] = useState<string>("");
   const [sentimentFilter, setSentimentFilter] = useState<string>("");
   const [topicFilter, setTopicFilter] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [sortValue, setSortValue] = useState<string>("published_at:desc");
   const [page, setPage] = useState(0);
+
+  const [sortBy, sortOrder] = sortValue.split(":") as [string, string];
 
   const { data, isLoading } = useMediaFeeds({
     platform: platformFilter || undefined,
     sentiment: sentimentFilter || undefined,
     topic: topicFilter || undefined,
+    date_from: dateFrom || undefined,
+    date_to: dateTo || undefined,
+    sort_by: sortBy,
+    sort_order: sortOrder,
     skip: page * PAGE_SIZE,
     limit: PAGE_SIZE,
   });
@@ -247,7 +267,41 @@ export default function MediaFeedsPage() {
           </SelectContent>
         </Select>
 
-        {(platformFilter || sentimentFilter || topicFilter) && (
+        <div className="flex items-center gap-2">
+          <Label htmlFor="date-from" className="text-sm font-medium whitespace-nowrap">{tc("from")}</Label>
+          <Input
+            id="date-from"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
+            className="w-[145px] h-9"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label htmlFor="date-to" className="text-sm font-medium whitespace-nowrap">{tc("to")}</Label>
+          <Input
+            id="date-to"
+            type="date"
+            value={dateTo}
+            onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
+            className="w-[145px] h-9"
+          />
+        </div>
+
+        <Select value={sortValue} onValueChange={(v) => { setSortValue(v); setPage(0); }}>
+          <SelectTrigger className="w-[190px]">
+            <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{tc(opt.labelKey)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {(platformFilter || sentimentFilter || topicFilter || dateFrom || dateTo) && (
           <Button
             variant="ghost"
             size="sm"
@@ -255,6 +309,8 @@ export default function MediaFeedsPage() {
               setPlatformFilter("");
               setSentimentFilter("");
               setTopicFilter("");
+              setDateFrom("");
+              setDateTo("");
               setPage(0);
             }}
           >

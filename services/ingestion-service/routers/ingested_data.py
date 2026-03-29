@@ -55,9 +55,9 @@ async def list_ingested_data(
     if search:
         conditions.append(RawMediaItem.content.ilike(f"%{search}%"))
     if date_from:
-        conditions.append(RawMediaItem.created_at >= date_from)
+        conditions.append(RawMediaItem.published_at >= date_from)
     if date_to:
-        conditions.append(RawMediaItem.created_at <= date_to)
+        conditions.append(RawMediaItem.published_at <= date_to)
 
     # Count query
     count_query = select(func.count()).select_from(RawMediaItem).where(*conditions)
