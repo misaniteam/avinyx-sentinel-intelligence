@@ -237,11 +237,11 @@ async def negative_analysis(
     user_content = "\n\n".join(articles_text)
 
     # Get tenant AI provider config
-    tenant_result = await db.execute(
-        select(Tenant).where(Tenant.id == tenant_id)
-    )
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = tenant_result.scalar_one_or_none()
-    ai_provider_name = (tenant.settings or {}).get("ai_provider", "bedrock") if tenant else "bedrock"
+    ai_provider_name = (
+        (tenant.settings or {}).get("ai_provider", "bedrock") if tenant else "bedrock"
+    )
     ai_config = (tenant.settings or {}).get("ai_config", {}) if tenant else {}
 
     # Add topic keywords context

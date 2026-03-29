@@ -54,7 +54,9 @@ async def list_media_feeds(
     topic: str | None = None,
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
-    sort_by: str = Query("published_at", pattern="^(published_at|sentiment_score|platform|author)$"),
+    sort_by: str = Query(
+        "published_at", pattern="^(published_at|sentiment_score|platform|author)$"
+    ),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
@@ -78,7 +80,9 @@ async def list_media_feeds(
     # Sorting
     sort_column = ALLOWED_SORT_FIELDS.get(sort_by, MediaFeed.published_at)
     order_func = desc if sort_order == "desc" else asc
-    query = base.order_by(order_func(sort_column).nulls_last()).offset(skip).limit(limit)
+    query = (
+        base.order_by(order_func(sort_column).nulls_last()).offset(skip).limit(limit)
+    )
     result = await db.execute(query)
     rows = result.scalars().all()
 

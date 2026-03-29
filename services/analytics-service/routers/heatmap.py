@@ -177,7 +177,9 @@ async def voter_location_stats(
                 male_count=stats.male_count if stats else 0,
                 female_count=stats.female_count if stats else 0,
                 other_gender_count=stats.other_gender_count if stats else 0,
-                average_age=round(stats.average_age, 1) if stats and stats.average_age else None,
+                average_age=round(stats.average_age, 1)
+                if stats and stats.average_age
+                else None,
                 status_counts=status_map.get(gid, {}),
             )
         )

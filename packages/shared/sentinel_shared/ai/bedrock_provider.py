@@ -251,9 +251,7 @@ class BedrockProvider(BaseAIProvider):
             )
         except Exception as e:
             is_throttle = self._is_throttling_error(e)
-            logger.error(
-                "bedrock_invoke_failed", error=str(e), throttled=is_throttle
-            )
+            logger.error("bedrock_invoke_failed", error=str(e), throttled=is_throttle)
             if is_throttle:
                 await asyncio.sleep(30)
             return (
@@ -319,9 +317,7 @@ class BedrockProvider(BaseAIProvider):
                 parsed = self._parse_batch_response(response_text, len(chunk_texts))
                 if parsed is not None:
                     all_results.extend(parsed)
-                    logger.info(
-                        "batch_success", chunk_size=len(chunk_texts)
-                    )
+                    logger.info("batch_success", chunk_size=len(chunk_texts))
                     continue
             except Exception as e:
                 is_throttle = self._is_throttling_error(e)
@@ -335,12 +331,8 @@ class BedrockProvider(BaseAIProvider):
                     await asyncio.sleep(30)
 
             # Fallback: process chunk items individually
-            logger.info(
-                "batch_fallback_to_individual", chunk_size=len(chunk_texts)
-            )
-            for j, (text, payload) in enumerate(
-                zip(chunk_texts, chunk_payloads)
-            ):
+            logger.info("batch_fallback_to_individual", chunk_size=len(chunk_texts))
+            for j, (text, payload) in enumerate(zip(chunk_texts, chunk_payloads)):
                 if j > 0:
                     await asyncio.sleep(INTER_REQUEST_DELAY)
                 result = await self._process_single(single_system, text, payload)
