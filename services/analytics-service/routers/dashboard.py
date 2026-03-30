@@ -8,7 +8,6 @@ from sqlalchemy import select, func
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.media import (
     SentimentAnalysis,
-    SentimentAggregate,
     RawMediaItem,
     MediaFeed,
 )
