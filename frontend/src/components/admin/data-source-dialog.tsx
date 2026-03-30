@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { FileUp, X, FileText, FileSpreadsheet } from "lucide-react";
+import { FileUp, X, FileText, FileSpreadsheet, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -30,10 +30,15 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { TagInput } from "@/components/ui/tag-input";
-import { useCreateDataSource, useUpdateDataSource, useUploadFileDataSource } from "@/lib/api/hooks";
+import { useCreateDataSource, useUpdateDataSource, useUploadFileDataSource, useUploadFacebookImport } from "@/lib/api/hooks";
 import type { DataSource } from "@/types";
 
-const PLATFORM_VALUES = ["brand24", "youtube", "twitter", "news_rss", "news_api", "reddit", "file_upload"] as const;
+const PLATFORM_VALUES = ["brand24", "youtube", "twitter", "news_rss", "news_api", "reddit", "file_upload", "facebook_import"] as const;
+
+const FILE_UPLOAD_PLATFORMS = new Set(["file_upload", "facebook_import"]);
+function isFileUploadType(platform: string): boolean {
+  return FILE_UPLOAD_PLATFORMS.has(platform);
+}
 
 const LANGUAGE_VALUES = ["en", "es", "fr", "de", "hi", "pt", "ar", "zh", "ja"] as const;
 
@@ -249,9 +254,10 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
   const createDataSource = useCreateDataSource();
   const updateDataSource = useUpdateDataSource();
   const uploadFileDataSource = useUploadFileDataSource();
+  const uploadFacebookImport = useUploadFacebookImport();
 
   const isCreate = mode === "create";
-  const isFileUpload = dataSource?.platform === "file_upload";
+  const isFileUpload = isFileUploadType(dataSource?.platform ?? "");
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileErrors, setFileErrors] = useState<string[]>([]);
@@ -345,8 +351,8 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
   async function onSubmit(data: FormData) {
     const platform = data.platform;
 
-    // Handle file_upload platform separately
-    if (platform === "file_upload") {
+    // Handle file upload type platforms separately
+    if (isFileUploadType(platform)) {
       if (selectedFiles.length === 0) {
         toast.error(t("fileUpload.noFilesError"));
         return;
@@ -359,12 +365,17 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
 
       const formData = new FormData();
       formData.append("name", data.name);
-      for (const file of selectedFiles) {
-        formData.append("files", file);
+      if (platform === "facebook_import") {
+        formData.append("file", selectedFiles[0]);
+      } else {
+        for (const file of selectedFiles) {
+          formData.append("files", file);
+        }
       }
 
       try {
-        await uploadFileDataSource.mutateAsync(formData);
+        const uploadMutation = platform === "facebook_import" ? uploadFacebookImport : uploadFileDataSource;
+        await uploadMutation.mutateAsync(formData);
         toast.success(t("createSuccess"));
         onOpenChange(false);
       } catch {
@@ -432,13 +443,14 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
     }
   }
 
-  const isPending = createDataSource.isPending || updateDataSource.isPending || uploadFileDataSource.isPending;
+  const isPending = createDataSource.isPending || updateDataSource.isPending || uploadFileDataSource.isPending || uploadFacebookImport.isPending;
   const configFieldDefs = getConfigFieldDefsForPlatform(watchedPlatform);
-  const isFileUploadPlatform = watchedPlatform === "file_upload";
+  const isFileUploadPlatform = isFileUploadType(watchedPlatform);
+  const isFacebookImport = watchedPlatform === "facebook_import";
 
   // For edit mode on file_upload, extract stored file info from config
   const existingFiles = useMemo(() => {
-    if (!dataSource || dataSource.platform !== "file_upload") return [];
+    if (!dataSource || !isFileUploadType(dataSource.platform)) return [];
     const files = dataSource.config?.files;
     if (!Array.isArray(files)) return [];
     return files as Array<{ filename: string; s3_key: string; content_type: string; size: number }>;
@@ -451,9 +463,11 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
           <DialogTitle>{isCreate ? t("addDataSource") : t("editDataSource")}</DialogTitle>
           <DialogDescription>
             {isCreate
-              ? isFileUploadPlatform
-                ? t("fileUpload.createDescription")
-                : t("createDescription")
+              ? isFacebookImport
+                ? t("facebookImport.createDescription")
+                : isFileUploadPlatform
+                  ? t("fileUpload.createDescription")
+                  : t("createDescription")
               : t("editDescription")}
           </DialogDescription>
         </DialogHeader>
@@ -547,10 +561,40 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
             <>
               <Separator />
               <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground">{t("fileUpload.sectionTitle")}</h4>
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  {isFacebookImport ? t("facebookImport.sectionTitle") : t("fileUpload.sectionTitle")}
+                </h4>
                 <p className="text-sm text-muted-foreground">
-                  {t("fileUpload.description")}
+                  {isFacebookImport ? t("facebookImport.description") : t("fileUpload.description")}
                 </p>
+
+                {isFacebookImport && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                      const token = sessionStorage.getItem("sentinel_access_token");
+                      // Fetch with auth token and trigger download
+                      fetch(`${apiUrl}/api/ingestion/facebook-import/template`, {
+                        headers: token ? { Authorization: `Bearer ${token}` } : {},
+                      })
+                        .then((res) => res.blob())
+                        .then((blob) => {
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "facebook_posts_template.xlsx";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        });
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("facebookImport.downloadTemplate")}
+                  </Button>
+                )}
 
                 <div className="space-y-3">
                   <div
@@ -558,18 +602,22 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <FileUp className="h-8 w-8 text-muted-foreground/50 mb-2" />
-                    <p className="text-sm font-medium">{t("fileUpload.dropzoneLabel")}</p>
+                    <p className="text-sm font-medium">
+                      {isFacebookImport ? t("facebookImport.dropzoneLabel") : t("fileUpload.dropzoneLabel")}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("fileUpload.acceptedFormats")}
+                      {isFacebookImport ? t("facebookImport.acceptedFormats") : t("fileUpload.acceptedFormats")}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {t("fileUpload.limits", { maxFiles: MAX_FILES, maxSize: "50 MB" })}
+                      {isFacebookImport
+                        ? t("facebookImport.limits", { maxSize: "50 MB" })
+                        : t("fileUpload.limits", { maxFiles: MAX_FILES, maxSize: "50 MB" })}
                     </p>
                     <input
                       ref={fileInputRef}
                       type="file"
-                      multiple
-                      accept={ACCEPTED_FILE_EXTENSIONS}
+                      multiple={!isFacebookImport}
+                      accept={isFacebookImport ? ".xlsx" : ACCEPTED_FILE_EXTENSIONS}
                       onChange={handleFileSelect}
                       className="hidden"
                     />
@@ -734,10 +782,14 @@ export function DataSourceDialog({ open, onOpenChange, mode, dataSource }: DataS
             <Button type="submit" disabled={isPending}>
               {isPending
                 ? isCreate
-                  ? isFileUploadPlatform ? t("fileUpload.uploading") : tc("creating")
+                  ? isFacebookImport
+                    ? t("facebookImport.uploading")
+                    : isFileUploadPlatform ? t("fileUpload.uploading") : tc("creating")
                   : tc("saving")
                 : isCreate
-                  ? isFileUploadPlatform ? t("fileUpload.uploadButton") : t("addDataSource")
+                  ? isFacebookImport
+                    ? t("facebookImport.uploadButton")
+                    : isFileUploadPlatform ? t("fileUpload.uploadButton") : t("addDataSource")
                   : tc("save")}
             </Button>
           </DialogFooter>

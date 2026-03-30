@@ -7,6 +7,7 @@ from routers import (
     data_sources_router,
     ingested_data_router,
     file_upload_router,
+    facebook_import_router,
     voter_list_upload_router,
     voter_list_data_router,
 )
@@ -49,6 +50,11 @@ app.include_router(
 )
 app.include_router(
     file_upload_router, prefix="/ingestion/file-upload", tags=["file-upload"]
+)
+app.include_router(
+    facebook_import_router,
+    prefix="/ingestion/facebook-import",
+    tags=["facebook-import"],
 )
 app.include_router(
     voter_list_upload_router, prefix="/ingestion/voter-list-upload", tags=["voter-list"]

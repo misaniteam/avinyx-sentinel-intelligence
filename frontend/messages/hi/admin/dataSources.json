@@ -33,7 +33,19 @@
     "news_rss": "न्यूज़ RSS",
     "news_api": "न्यूज़ API",
     "reddit": "Reddit",
-    "file_upload": "फ़ाइल अपलोड"
+    "file_upload": "फ़ाइल अपलोड",
+    "facebook_import": "फेसबुक पोस्ट इम्पोर्ट"
+  },
+  "facebookImport": {
+    "sectionTitle": "फेसबुक पोस्ट इम्पोर्ट",
+    "createDescription": "फेसबुक पोस्ट डेटा इम्पोर्ट करने के लिए एक XLSX फ़ाइल अपलोड करें।",
+    "description": "कॉलम के साथ एक Excel (.xlsx) फ़ाइल अपलोड करें: title, author, datetime, post_link, reaction_count, comments।",
+    "downloadTemplate": "नमूना टेम्पलेट डाउनलोड करें",
+    "dropzoneLabel": "XLSX फ़ाइल चुनने के लिए क्लिक करें",
+    "acceptedFormats": "स्वीकृत प्रारूप: केवल XLSX",
+    "limits": "अधिकतम 1 फ़ाइल, {maxSize}",
+    "uploading": "इम्पोर्ट हो रहा है...",
+    "uploadButton": "पोस्ट इम्पोर्ट करें"
   },
   "fileUpload": {
     "sectionTitle": "फ़ाइलें",

@@ -309,6 +309,30 @@ export function useUploadFileDataSource() {
   });
 }
 
+// Facebook Import Data Source
+export function useUploadFacebookImport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      const token = sessionStorage.getItem("sentinel_access_token");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/api/ingestion/facebook-import`, {
+        method: "POST",
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: formData,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dataSources.all });
+    },
+  });
+}
+
 // Reports
 export function useReports() {
   return useQuery({

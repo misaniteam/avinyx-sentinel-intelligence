@@ -33,7 +33,19 @@
     "news_rss": "News RSS",
     "news_api": "News API",
     "reddit": "Reddit",
-    "file_upload": "ফাইল আপলোড"
+    "file_upload": "ফাইল আপলোড",
+    "facebook_import": "ফেসবুক পোস্ট ইম্পোর্ট"
+  },
+  "facebookImport": {
+    "sectionTitle": "ফেসবুক পোস্ট ইম্পোর্ট",
+    "createDescription": "ফেসবুক পোস্ট ডেটা ইম্পোর্ট করতে একটি XLSX ফাইল আপলোড করুন।",
+    "description": "কলাম সহ একটি Excel (.xlsx) ফাইল আপলোড করুন: title, author, datetime, post_link, reaction_count, comments।",
+    "downloadTemplate": "নমুনা টেমপ্লেট ডাউনলোড করুন",
+    "dropzoneLabel": "XLSX ফাইল নির্বাচন করতে ক্লিক করুন",
+    "acceptedFormats": "গৃহীত ফরম্যাট: শুধুমাত্র XLSX",
+    "limits": "সর্বোচ্চ ১টি ফাইল, {maxSize}",
+    "uploading": "ইম্পোর্ট হচ্ছে...",
+    "uploadButton": "পোস্ট ইম্পোর্ট করুন"
   },
   "fileUpload": {
     "sectionTitle": "ফাইল",

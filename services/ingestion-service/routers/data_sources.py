@@ -29,6 +29,7 @@ ALLOWED_PLATFORMS = (
     "news_api",
     "reddit",
     "file_upload",
+    "facebook_import",
 )
 
 SENSITIVE_KEY_PATTERNS = ("key", "secret", "token", "password")
@@ -60,6 +61,10 @@ PLATFORM_CONFIG_SCHEMA: dict[str, dict] = {
         "optional": ["subreddits"],
     },
     "file_upload": {
+        "required": [],
+        "optional": [],
+    },
+    "facebook_import": {
         "required": [],
         "optional": [],
     },
@@ -284,7 +289,7 @@ async def create_data_source(
     await db.refresh(ds)
 
     # Trigger immediate ingestion for active sources (skip file_upload — handled separately)
-    if ds.is_active and ds.platform != "file_upload":
+    if ds.is_active and ds.platform not in ("file_upload", "facebook_import"):
         try:
             sqs = SQSClient()
             settings = get_settings()

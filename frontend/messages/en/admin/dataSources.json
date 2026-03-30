@@ -33,7 +33,19 @@
     "news_rss": "News RSS",
     "news_api": "News API",
     "reddit": "Reddit",
-    "file_upload": "File Upload"
+    "file_upload": "File Upload",
+    "facebook_import": "Import Facebook Posts"
+  },
+  "facebookImport": {
+    "sectionTitle": "Facebook Posts Import",
+    "createDescription": "Upload an XLSX file with Facebook posts data to import.",
+    "description": "Upload an Excel (.xlsx) file with columns: title, author, datetime, post_link, reaction_count, comments.",
+    "downloadTemplate": "Download Sample Template",
+    "dropzoneLabel": "Click to select XLSX file",
+    "acceptedFormats": "Accepted format: XLSX only",
+    "limits": "Max 1 file, {maxSize}",
+    "uploading": "Importing...",
+    "uploadButton": "Import Posts"
   },
   "fileUpload": {
     "sectionTitle": "Files",

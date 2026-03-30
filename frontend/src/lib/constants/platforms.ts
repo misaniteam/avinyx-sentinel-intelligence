@@ -6,6 +6,7 @@ import {
   Newspaper,
   MessageCircle,
   FileUp,
+  Facebook,
 } from "lucide-react";
 
 export const platformConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -16,4 +17,6 @@ export const platformConfig: Record<string, { label: string; icon: React.Element
   news_api: { label: "News API", icon: Newspaper, color: "bg-purple-100 text-purple-800" },
   reddit: { label: "Reddit", icon: MessageCircle, color: "bg-amber-100 text-amber-800" },
   file_upload: { label: "File Upload", icon: FileUp, color: "bg-emerald-100 text-emerald-800" },
+  facebook_import: { label: "Import Facebook Posts", icon: Facebook, color: "bg-blue-100 text-blue-800" },
+  facebook: { label: "Facebook", icon: Facebook, color: "bg-blue-100 text-blue-800" },
 };
