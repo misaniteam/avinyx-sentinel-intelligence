@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   AreaChart,
@@ -9,22 +9,32 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from 'recharts';
-import { format, parseISO } from 'date-fns';
-import type { EngagementPoint } from '@/types';
-import {  getAxisStyle, getTooltipStyle } from './chart-theme';
-import { useTheme } from 'next-themes';
+} from "recharts";
+import { format, parseISO } from "date-fns";
+import type { EngagementPoint } from "@/types";
+import { getAxisStyle, getTooltipStyle, PLATFORM_LABELS } from "./chart-theme";
+import { useTheme } from "next-themes";
+import { formatSentimentLabel } from "@/lib/formatterLegendLabel";
+
+function formatMetricLabel(value: string) {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
 
 interface EngagementAreaChartProps {
   data: EngagementPoint[];
   height?: number;
 }
 
-export function EngagementAreaChart({ data, height = 300 }: EngagementAreaChartProps) {
+export function EngagementAreaChart({
+  data,
+  height = 300,
+}: EngagementAreaChartProps) {
   const sorted = [...data].sort(
-    (a, b) => parseISO(a.period_start).getTime() - parseISO(b.period_start).getTime()
+    (a, b) =>
+      parseISO(a.period_start).getTime() - parseISO(b.period_start).getTime(),
   );
- const { theme } = useTheme();
+  const { theme } = useTheme();
   const isDark = theme === "dark";
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -32,15 +42,16 @@ export function EngagementAreaChart({ data, height = 300 }: EngagementAreaChartP
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
           dataKey="period_start"
-          tickFormatter={(val: string) => format(parseISO(val), 'MMM dd')}
+          tickFormatter={(val: string) => format(parseISO(val), "MMM dd")}
           {...getAxisStyle(isDark)}
         />
         <YAxis {...getAxisStyle(isDark)} />
         <Tooltip
           {...getTooltipStyle(isDark)}
-          labelFormatter={(val: string) => format(parseISO(val), 'MMM dd')}
+          labelFormatter={(val: string) => format(parseISO(val), "MMM dd")}
         />
-        <Legend />
+        <Legend formatter={formatSentimentLabel} />
+
         <Area
           type="monotone"
           dataKey="likes"

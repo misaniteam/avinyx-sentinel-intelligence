@@ -209,10 +209,10 @@ function UploadForm() {
 
         {/* Year & Language */}
         <div className="flex items-end gap-4 justify-between">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-1">
             <label className="text-sm font-medium">{t("year")}</label>
             <Select value={year} onValueChange={setYear}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -225,7 +225,7 @@ function UploadForm() {
             </Select>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-1">
             <label className="text-sm font-medium">{t("language")}</label>
             <Select value={language} onValueChange={setLanguage}>
               <SelectTrigger className="w-36">
@@ -239,29 +239,29 @@ function UploadForm() {
             </Select>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-1">
             <label className="text-sm font-medium">{t("partNo")}</label>
             <Input
               placeholder={t("partNo")}
               value={partNo}
               onChange={(e) => setPartNo(e.target.value)}
               maxLength={50}
-              className="w-32"
+              className="w-full"
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-1">
             <label className="text-sm font-medium">{t("partName")}</label>
             <Input
               placeholder={t("partName")}
               value={partName}
               onChange={(e) => setPartName(e.target.value)}
               maxLength={255}
-              className="w-48"
+              className="w-full"
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-1">
             <label className="text-sm font-medium">{t("location")}</label>
             <MapProvider fallthrough>
               <LocationSearch
@@ -271,6 +271,7 @@ function UploadForm() {
             </MapProvider>
           </div>
         </div>
+        
         <div className="flex justify-center items-center">
           <Button
             onClick={handleUpload}

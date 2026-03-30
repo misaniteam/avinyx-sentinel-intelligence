@@ -1,8 +1,9 @@
 'use client';
 
 import { useDashboardSummary } from '@/lib/api/hooks';
-import { SentimentDistributionPie } from '@/components/charts/sentiment-distribution-pie';
+
 import { Skeleton } from '@/components/ui/skeleton';
+import SentimentDistributionPie from '@/components/charts/sentiment-distribution-pie';
 
 export default function SentimentDistributionWidget() {
   const { data, isLoading } = useDashboardSummary();

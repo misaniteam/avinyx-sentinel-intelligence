@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   PieChart,
   Pie,
@@ -7,9 +8,10 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Sector,
 } from "recharts";
 import type { PlatformBreakdown } from "@/types";
-import { getTooltipStyle, PLATFORM_COLORS, PLATFORM_LABELS, tooltipStyle } from "./chart-theme";
+import { getTooltipStyle, PLATFORM_COLORS, PLATFORM_LABELS } from "./chart-theme";
 import { useTheme } from "next-themes";
 
 interface PlatformPieChartProps {
@@ -46,9 +48,32 @@ function renderCustomLabel({
       textAnchor="middle"
       dominantBaseline="central"
       fontSize={12}
+      fontWeight={600}
     >
       {`${(percent * 100).toFixed(0)}%`}
     </text>
+  );
+}
+
+function renderActiveShape(props: {
+  cx?: number;
+  cy?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  startAngle?: number;
+  endAngle?: number;
+  fill?: string;
+}) {
+  return (
+    <Sector
+      cx={props.cx}
+      cy={props.cy}
+      innerRadius={props.innerRadius}
+      outerRadius={(props.outerRadius ?? 0) + 8}
+      startAngle={props.startAngle}
+      endAngle={props.endAngle}
+      fill={props.fill}
+    />
   );
 }
 
@@ -56,8 +81,10 @@ export function PlatformPieChart({
   data,
   height = 300,
 }: PlatformPieChartProps) {
-   const { theme } = useTheme();
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const { theme } = useTheme();
   const isDark = theme === "dark";
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
@@ -70,6 +97,11 @@ export function PlatformPieChart({
           outerRadius={100}
           label={renderCustomLabel}
           labelLine={false}
+          activeIndex={activeIndex ?? undefined}
+          activeShape={renderActiveShape}
+          onMouseEnter={(_, index) => setActiveIndex(index)}
+          onMouseLeave={() => setActiveIndex(null)}
+          animationDuration={300}
         >
           {data.map((entry, index) => (
             <Cell

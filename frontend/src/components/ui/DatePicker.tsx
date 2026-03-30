@@ -23,7 +23,7 @@ export function DatePicker() {
           className="w-[220px] justify-between text-left font-normal"
         >
           {date ? (
-            format(date, "dd/MM/yyyy")
+            format(date, "MM/yyyy")
           ) : (
             <span className="text-muted-foreground">Select date</span>
           )}
@@ -37,7 +37,6 @@ export function DatePicker() {
           selected={date}
           onSelect={setDate}
           captionLayout="dropdown"
-          numberOfMonths={1} // ✅ Explicit here too for clarity
         />
       </PopoverContent>
     </Popover>

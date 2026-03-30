@@ -15,9 +15,10 @@ function Calendar({
   className,
   classNames,
   showOutsideDays = true,
-  captionLayout = "dropdown",
+  captionLayout = "label",
   locale,
   components,
+  numberOfMonths = 1,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   locale?: Partial<Locale>;
@@ -34,10 +35,10 @@ function Calendar({
         nav: "flex items-center justify-between",
         month_caption: "flex justify-center font-medium text-sm",
         dropdowns: "flex items-center gap-1",
-        weekdays: "flex justify-between",
+        weekdays: "flex justify-between gap-1",
         weekday: "w-9 text-center text-xs text-muted-foreground",
-        week: "flex justify-between",
-        day: "h-9 w-9 flex items-center justify-center",
+        week: "flex justify-between my-1",
+        day: "h-9 w-9 flex items-center justify-center bg-secondary-foreground text-primary rounded-md",
         today: "bg-muted rounded-md",
         selected: "bg-primary text-primary-foreground rounded-md",
         outside: "text-muted-foreground opacity-50",
@@ -56,7 +57,7 @@ function Calendar({
         ...components,
       }}
       {...props}
-      numberOfMonths={1} // ✅ After {...props} so it always wins
+      numberOfMonths={numberOfMonths}
     />
   );
 }
@@ -73,8 +74,8 @@ function CalendarDayButton({
       size="icon"
       className={cn(
         "h-9 w-9 p-0",
-        modifiers.selected && "bg-primary text-primary-foreground",
-        modifiers.today && "bg-muted",
+        modifiers.selected && "bg-[#ec5901] text-primary-foreground",
+        modifiers.today && "bg-muted text-primary-foreground",
         className,
       )}
       {...props}
