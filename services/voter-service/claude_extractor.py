@@ -133,7 +133,7 @@ class ClaudeVoterClient:
             try:
                 async with self.client.messages.stream(
                     model=self.model,
-                    max_tokens=65536,
+                    max_tokens=64000,
                     temperature=0,
                     system=SYSTEM_PROMPT,
                     messages=[
@@ -201,7 +201,7 @@ class ClaudeVoterClient:
             try:
                 async with self.client.messages.stream(
                     model=self.model,
-                    max_tokens=65536,
+                    max_tokens=64000,
                     temperature=0,
                     system=VISION_SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": content}],

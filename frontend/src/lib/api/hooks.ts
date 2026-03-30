@@ -11,10 +11,15 @@ export function useDashboardSummary() {
   });
 }
 
-export function useSentimentTrends(period: string = "daily") {
+export function useSentimentTrends(period: string = "daily", dateFrom?: string, dateTo?: string) {
   return useQuery({
-    queryKey: queryKeys.dashboard.trends(period),
-    queryFn: () => api.get(`api/analytics/dashboard/trends?period=${period}`).json<SentimentTrend[]>(),
+    queryKey: queryKeys.dashboard.trends(period, dateFrom, dateTo),
+    queryFn: () => {
+      const params = new URLSearchParams({ period });
+      if (dateFrom) params.set('date_from', dateFrom);
+      if (dateTo) params.set('date_to', dateTo);
+      return api.get(`api/analytics/dashboard/trends?${params.toString()}`).json<SentimentTrend[]>();
+    },
   });
 }
 

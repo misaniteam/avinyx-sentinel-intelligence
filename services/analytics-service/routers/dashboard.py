@@ -97,29 +97,62 @@ async def dashboard_summary(
 @router.get("/trends")
 async def sentiment_trends(
     period: str = Query("daily", regex="^(hourly|daily|weekly)$"),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     tenant_id: str = Depends(get_current_tenant),
     user: dict = Depends(require_permissions("dashboard:view")),
 ):
-    result = await db.execute(
-        select(SentimentAggregate)
-        .where(
-            SentimentAggregate.tenant_id == tenant_id,
-            SentimentAggregate.period == period,
+    """Aggregate sentiment trends from media_feeds grouped by period and platform."""
+    from datetime import datetime, timedelta
+
+    period_trunc = {
+        "hourly": "hour",
+        "daily": "day",
+        "weekly": "week",
+    }[period]
+
+    filters = [
+        MediaFeed.tenant_id == tenant_id,
+        MediaFeed.published_at.isnot(None),
+        MediaFeed.sentiment_score.isnot(None),
+    ]
+
+    if date_from:
+        filters.append(MediaFeed.published_at >= datetime.fromisoformat(date_from))
+    if date_to:
+        # Include the entire end date
+        filters.append(
+            MediaFeed.published_at < datetime.fromisoformat(date_to) + timedelta(days=1)
         )
-        .order_by(SentimentAggregate.period_start.desc())
-        .limit(30)
+
+    period_start_col = func.date_trunc(period_trunc, MediaFeed.published_at).label(
+        "period_start"
     )
-    aggregates = result.scalars().all()
+
+    result = await db.execute(
+        select(
+            period_start_col,
+            MediaFeed.platform,
+            func.avg(MediaFeed.sentiment_score).label("avg_sentiment"),
+            func.count().label("total_count"),
+        )
+        .where(*filters)
+        .group_by(period_start_col, MediaFeed.platform)
+        .order_by(period_start_col.desc())
+        .limit(200)
+    )
+    rows = result.all()
+
     return [
         {
-            "period_start": str(a.period_start),
-            "platform": a.platform,
-            "region": a.region,
-            "avg_sentiment": a.avg_sentiment,
-            "total_count": a.total_count,
+            "period_start": str(row.period_start),
+            "platform": row.platform,
+            "region": None,
+            "avg_sentiment": round(float(row.avg_sentiment), 4),
+            "total_count": row.total_count,
         }
-        for a in aggregates
+        for row in rows
     ]
 
 
