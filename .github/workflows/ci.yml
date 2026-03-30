@@ -13,7 +13,7 @@ concurrency:
 jobs:
   lint-backend:
     name: Lint Backend (ruff)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +32,7 @@ jobs:
 
   lint-frontend:
     name: Lint Frontend (eslint)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     defaults:
       run:
         working-directory: frontend
@@ -50,7 +50,7 @@ jobs:
 
   test-backend:
     name: Test Backend (pytest)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     services:
       postgres:
         image: postgres:16
@@ -112,7 +112,7 @@ jobs:
 
   test-frontend:
     name: Test Frontend (vitest)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     defaults:
       run:
         working-directory: frontend
@@ -130,7 +130,7 @@ jobs:
 
   build-frontend:
     name: Build Frontend
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     defaults:
       run:
         working-directory: frontend
@@ -148,7 +148,7 @@ jobs:
 
   build-backend-images:
     name: Build Docker Images
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     strategy:
       fail-fast: false
@@ -175,7 +175,7 @@ jobs:
 
   build-frontend-image:
     name: Build Frontend Docker Image
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
