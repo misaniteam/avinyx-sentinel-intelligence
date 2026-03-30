@@ -36,16 +36,31 @@ function PlacesAutocompleteInput({ onChange }: LocationSearchProps) {
     const autocomplete = new PlaceAutocomplete({});
 
     autocomplete.addEventListener("gmp-placeselect", async (event: any) => {
-      const place = event.place;
-      if (place) {
-        await place.fetchFields({ fields: ["displayName", "formattedAddress", "location"] });
-        const location = place.location;
-        if (location) {
-          onChangeRef.current({
-            name: place.formattedAddress || place.displayName || "",
-            lat: location.lat(),
-            lng: location.lng(),
-          });
+      try {
+        const place = event.place;
+        if (place) {
+          await place.fetchFields({ fields: ["displayName", "formattedAddress", "location"] });
+          const location = place.location;
+          if (location) {
+            onChangeRef.current({
+              name: place.formattedAddress || place.displayName || "",
+              lat: location.lat(),
+              lng: location.lng(),
+            });
+          } else {
+            // Place selected but no coordinates — still save the name
+            const name = place.formattedAddress || place.displayName || "";
+            if (name) {
+              onChangeRef.current({ name, lat: 0, lng: 0 });
+            }
+          }
+        }
+      } catch {
+        // fetchFields failed — try to use whatever is available
+        const place = event.place;
+        const name = place?.formattedAddress || place?.displayName || "";
+        if (name) {
+          onChangeRef.current({ name, lat: 0, lng: 0 });
         }
       }
     });

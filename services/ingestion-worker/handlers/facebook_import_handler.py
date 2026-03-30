@@ -148,12 +148,17 @@ class FacebookImportHandler(BaseConnectorHandler):
                         )
                         break
 
-                    title = _safe_str(row[col_map["title"]])
-                    author = _safe_str(row[col_map["author"]])
-                    dt_val = row[col_map["datetime"]]
-                    post_link = _safe_str(row[col_map["post_link"]])
-                    reaction_count = _safe_int(row[col_map["reaction_count"]])
-                    comments = _safe_str(row[col_map["comments"]])
+                    # Safely access cells — rows may have fewer columns than header
+                    def _cell(col_name: str):
+                        idx = col_map[col_name]
+                        return row[idx] if idx < len(row) else None
+
+                    title = _safe_str(_cell("title"))
+                    author = _safe_str(_cell("author"))
+                    dt_val = _cell("datetime")
+                    post_link = _safe_str(_cell("post_link"))
+                    reaction_count = _safe_int(_cell("reaction_count"))
+                    comments = _safe_str(_cell("comments"))
 
                     # Skip empty rows
                     if not title and not author and not post_link:

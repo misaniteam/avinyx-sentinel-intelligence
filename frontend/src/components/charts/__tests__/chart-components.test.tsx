@@ -42,7 +42,7 @@ import { SentimentLineChart } from '../sentiment-line-chart';
 import { PlatformPieChart } from '../platform-pie-chart';
 import { TopTopicsBarChart } from '../top-topics-bar-chart';
 import { EngagementAreaChart } from '../engagement-area-chart';
-import { SentimentDistributionPie } from '../sentiment-distribution-pie';
+import SentimentDistributionPie from '../sentiment-distribution-pie';
 
 import type { SentimentTrend, PlatformBreakdown, TopicCount, EngagementPoint } from '@/types';
 
