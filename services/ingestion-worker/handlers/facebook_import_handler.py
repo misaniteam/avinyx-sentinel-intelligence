@@ -14,7 +14,14 @@ logger = structlog.get_logger()
 
 MAX_ROWS = 100_000
 
-EXPECTED_COLUMNS = {"title", "author", "datetime", "post_link", "reaction_count", "comments"}
+EXPECTED_COLUMNS = {
+    "title",
+    "author",
+    "datetime",
+    "post_link",
+    "reaction_count",
+    "comments",
+}
 
 
 def _normalize_header(value: str | None) -> str:

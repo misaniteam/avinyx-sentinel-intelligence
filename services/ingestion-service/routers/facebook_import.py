@@ -55,9 +55,9 @@ async def download_template(
 
     # Auto-size columns for readability
     for col_idx, col_name in enumerate(TEMPLATE_COLUMNS, 1):
-        ws.column_dimensions[
-            ws.cell(row=1, column=col_idx).column_letter
-        ].width = max(len(col_name) + 4, 20)
+        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = max(
+            len(col_name) + 4, 20
+        )
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -133,9 +133,7 @@ async def upload_facebook_posts(
 
     sanitized_name = _sanitize_filename(filename)
     s3_key = f"{tenant_id}/{ds.id}/{uuid.uuid4()}_{sanitized_name}"
-    content_type = (
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
     try:
         await s3.upload_file(settings.s3_uploads_bucket, s3_key, data, content_type)
