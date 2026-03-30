@@ -2,4 +2,5 @@ fastapi>=0.115
 uvicorn[standard]>=0.32
 apscheduler>=3.10
 python-multipart>=0.0.9
+openpyxl>=3.1
 sentinel-shared @ file:///${PWD}/../../packages/shared
