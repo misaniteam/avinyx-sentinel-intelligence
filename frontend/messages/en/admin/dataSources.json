@@ -27,7 +27,6 @@
   "deleteTitle": "Delete Data Source",
   "deleteConfirm": "Are you sure you want to delete the \"{name}\" data source? All ingested data and media feeds from this source will also be permanently deleted. This action cannot be undone.",
   "platforms": {
-    "brand24": "Brand24",
     "youtube": "YouTube",
     "twitter": "Twitter / X",
     "news_rss": "News RSS",

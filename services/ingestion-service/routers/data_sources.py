@@ -22,7 +22,6 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 ALLOWED_PLATFORMS = (
-    "brand24",
     "youtube",
     "twitter",
     "news_rss",
@@ -36,10 +35,6 @@ SENSITIVE_KEY_PATTERNS = ("key", "secret", "token", "password")
 
 # Per-platform required and optional config keys
 PLATFORM_CONFIG_SCHEMA: dict[str, dict] = {
-    "brand24": {
-        "required": ["api_key", "project_id"],
-        "optional": ["search_queries"],
-    },
     "youtube": {
         "required": ["api_key"],
         "optional": ["channel_ids", "search_queries"],

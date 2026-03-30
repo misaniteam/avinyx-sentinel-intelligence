@@ -27,6 +27,7 @@ vi.mock('@/lib/api/hooks', () => ({
   useCreateDataSource: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateDataSource: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUploadFileDataSource: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUploadFacebookImport: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 // Mock sonner toast

@@ -1,5 +1,4 @@
 from handlers.base import BaseConnectorHandler
-from handlers.brand24 import Brand24Handler
 from handlers.youtube import YouTubeHandler
 from handlers.twitter import TwitterHandler
 from handlers.news_rss import NewsRSSHandler
@@ -9,7 +8,6 @@ from handlers.file_upload_handler import FileUploadHandler
 from handlers.facebook_import_handler import FacebookImportHandler
 
 _registry: dict[str, BaseConnectorHandler] = {
-    "brand24": Brand24Handler(),
     "youtube": YouTubeHandler(),
     "twitter": TwitterHandler(),
     "news_rss": NewsRSSHandler(),

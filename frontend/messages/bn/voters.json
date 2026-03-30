@@ -70,5 +70,6 @@
   "exportSuccess": "রপ্তানি সফলভাবে সম্পন্ন হয়েছে",
   "exportFailed": "রপ্তানি ব্যর্থ হয়েছে",
   "location": "অবস্থান",
-  "searchLocation": "মানচিত্রে অবস্থান অনুসন্ধান করুন..."
+  "searchLocation": "মানচিত্রে অবস্থান অনুসন্ধান করুন...",
+  "openInMaps": "Google Maps-এ খুলুন"
 }

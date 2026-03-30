@@ -33,7 +33,7 @@ import { TagInput } from "@/components/ui/tag-input";
 import { useCreateDataSource, useUpdateDataSource, useUploadFileDataSource, useUploadFacebookImport } from "@/lib/api/hooks";
 import type { DataSource } from "@/types";
 
-const PLATFORM_VALUES = ["brand24", "youtube", "twitter", "news_rss", "news_api", "reddit", "file_upload", "facebook_import"] as const;
+const PLATFORM_VALUES = ["youtube", "twitter", "news_rss", "news_api", "reddit", "file_upload", "facebook_import"] as const;
 
 const FILE_UPLOAD_PLATFORMS = new Set(["file_upload", "facebook_import"]);
 function isFileUploadType(platform: string): boolean {
@@ -75,12 +75,6 @@ const baseSchema = z.object({
 });
 
 // Platform-specific config schemas
-const brand24ConfigSchema = z.object({
-  api_key: z.string().min(1, "API key is required"),
-  project_id: z.string().min(1, "Project ID is required"),
-  search_queries: z.union([z.string(), z.array(z.string())]).optional(),
-});
-
 const youtubeConfigSchema = z.object({
   api_key: z.string().min(1, "API key is required"),
   channel_ids: z.string().optional(),
@@ -116,7 +110,6 @@ type FormData = z.infer<typeof baseSchema> & Record<string, string | boolean | n
 
 function getConfigSchema(platform: string) {
   switch (platform) {
-    case "brand24": return brand24ConfigSchema;
     case "youtube": return youtubeConfigSchema;
     case "twitter": return twitterConfigSchema;
     case "news_rss": return newsRssConfigSchema;
@@ -171,11 +164,6 @@ interface ConfigFieldDef {
 }
 
 const PLATFORM_CONFIG_FIELDS: Record<string, ConfigFieldDef[]> = {
-  brand24: [
-    { name: "api_key", labelKey: "fields.apiKey", type: "password", required: true },
-    { name: "project_id", labelKey: "fields.projectId", type: "text", required: true },
-    { name: "search_queries", labelKey: "fields.hashtagsTopics", type: "tags", placeholderKey: "placeholders.hashtagsTopics" },
-  ],
   youtube: [
     { name: "api_key", labelKey: "fields.apiKey", type: "password", required: true },
     { name: "channel_ids", labelKey: "fields.channelIds", type: "textarea", placeholderKey: "placeholders.channelIds" },

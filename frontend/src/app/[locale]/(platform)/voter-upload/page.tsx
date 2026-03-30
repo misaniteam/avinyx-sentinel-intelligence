@@ -32,6 +32,7 @@ import {
   X,
   Users,
   Trash2,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PermissionGate } from "@/components/shared/permission-gate";
@@ -368,7 +369,20 @@ function GroupDetailView({
                 {group.location_name && (
                   <div>
                     <p className="text-muted-foreground">{t("location")}</p>
-                    <p className="font-medium">{group.location_name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <p className="font-medium">{group.location_name}</p>
+                    </div>
+                    {group.location_lat && group.location_lng && (
+                      <a
+                        href={`https://www.google.com/maps?q=${group.location_lat},${group.location_lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline mt-0.5 inline-block"
+                      >
+                        {t("openInMaps")}
+                      </a>
+                    )}
                   </div>
                 )}
               </div>

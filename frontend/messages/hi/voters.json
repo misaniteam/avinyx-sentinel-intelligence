@@ -70,5 +70,6 @@
   "exportSuccess": "निर्यात सफलतापूर्वक पूरा हुआ",
   "exportFailed": "निर्यात विफल रहा",
   "location": "स्थान",
-  "searchLocation": "मानचित्र पर स्थान खोजें..."
+  "searchLocation": "मानचित्र पर स्थान खोजें...",
+  "openInMaps": "Google Maps में खोलें"
 }

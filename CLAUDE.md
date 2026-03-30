@@ -33,7 +33,7 @@ Multi-tenant SaaS platform for political parties to track social media/news sent
 │   ├── auth-service/         # Port 8001 — Login, JWT, setup wizard, user/role CRUD, tenant settings
 │   ├── tenant-service/       # Port 8002 — Tenant CRUD, onboarding
 │   ├── ingestion-service/    # Port 8003 — Data source CRUD, scheduler, file upload, voter list upload
-│   ├── ingestion-worker/     # SQS consumer — connector plugin pattern (7 handlers)
+│   ├── ingestion-worker/     # SQS consumer — connector plugin pattern (8 handlers)
 │   ├── ai-pipeline-service/  # SQS consumer — sentiment/topic/entity analysis
 │   ├── analytics-service/    # Port 8005 — Dashboard, heatmap, reports, platforms, topics
 │   ├── voter-service/        # SQS consumer — PDF voter list extraction via Textract + Bedrock
@@ -161,7 +161,7 @@ All frontend requests go through `api-gateway` at `/api/*`:
 |---------|-----------------|
 | auth-service | `auth.py` `/auth`, `users.py` `/auth/users`, `roles.py` `/auth/roles`, `settings.py` `/auth/tenant-settings` |
 | tenant-service | `tenants.py` `/tenants/tenants` |
-| ingestion-service | `data_sources.py` `/ingestion/data-sources`, `ingested_data.py` `/ingestion/ingested-data`, `file_upload.py` `/ingestion/file-upload`, `voter_list_upload.py` `/ingestion/voter-list-upload`, `voter_list_data.py` `/ingestion/voter-lists` |
+| ingestion-service | `data_sources.py` `/ingestion/data-sources`, `ingested_data.py` `/ingestion/ingested-data`, `file_upload.py` `/ingestion/file-upload`, `facebook_import.py` `/ingestion/facebook-import`, `voter_list_upload.py` `/ingestion/voter-list-upload`, `voter_list_data.py` `/ingestion/voter-lists` |
 | analytics-service | `dashboard.py` `/analytics/dashboard` (summary, trends, negative-analysis), `heatmap.py` `/analytics/heatmap` (data, voter-location-stats), `platforms.py`, `reports.py`, `topics.py` — all `/analytics/*` |
 | campaign-service | `campaigns.py` `/campaigns/campaigns`, `voters.py` `/campaigns/voters`, `media_feeds.py` `/campaigns/media-feeds`, `topic_keywords.py` `/campaigns/topic-keywords` |
 | notification-service | Inline in `main.py` — 4 endpoints under `/notifications/*` |
@@ -182,13 +182,13 @@ All queues have dead-letter queues with `maxReceiveCount: 3`.
 ## Data Source Connectors
 
 ### Existing connectors (registered in `handlers/__init__.py`):
-- `brand24` — Brand24 API for Facebook/Instagram (config: `api_key`, `project_id`, `search_queries`)
 - `youtube` — YouTube Data API v3 (config: `api_key`, `channel_ids`, `search_queries`)
 - `twitter` — Twitter/X API v2 (config: `api_key`, `api_secret`, `bearer_token`, `search_queries`)
 - `news_rss` — RSS feed ingestion (config: `feed_urls`)
 - `news_api` — News API (config: `api_key`, `keywords`, `sources`, `language`)
 - `reddit` — Reddit API with OAuth2 client credentials (config: `client_id`, `client_secret`, `subreddits`)
 - `file_upload` — PDF/Excel file upload with S3 storage and text extraction (one-shot, no polling)
+- `facebook_import` — XLSX upload of Facebook posts; each row → one RawMediaItem with `platform="facebook"` (one-shot, no polling)
 
 ### Adding a new connector:
 1. Create `services/ingestion-worker/handlers/{platform}_handler.py`
@@ -211,6 +211,17 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 - **One-shot:** DataSource created with `is_active=False`, `poll_interval_minutes=0`
 - **Security:** Magic byte validation, filename sanitization, S3 SSE-AES256, cross-tenant S3 key validation, PDF page limit (2000), Excel row limit (500K)
 
+## Facebook Import Data Source
+
+- **Upload endpoint:** `POST /api/ingestion/facebook-import` (multipart/form-data — single XLSX file + name)
+- **Template endpoint:** `GET /api/ingestion/facebook-import/template` — Downloads sample XLSX with required columns
+- **Required XLSX columns:** `title`, `author`, `datetime`, `post_link`, `reaction_count`, `comments`
+- **Processing:** Each row → one `RawMediaItem` with `platform="facebook"` (not `facebook_import`) for analytics grouping
+- **Mapping:** content = title + comments, url = post_link, engagement = {reactions, comments_text}, external_id = post_link
+- **One-shot:** DataSource created with `is_active=False`, `poll_interval_minutes=0` (same as file_upload)
+- **Limits:** XLSX only, 50MB max, 100K row limit, flexible datetime parsing via `dateutil`
+- **Frontend:** "Import Facebook Posts" option in data source dialog with template download button, XLSX-only dropzone
+
 ## Voter System
 
 ### Upload & List Endpoints
@@ -227,7 +238,7 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 - **Async generator pattern:** `extract_voters_from_pdf()` yields `list[dict]` per chunk; DB inserts per chunk (not all-or-nothing)
 - **Deduplication:** By EPIC + serial_no within chunks; cross-upload EPIC dedup via tenant DB lookup
 - **Safety:** Phantom entry filter (no serial_no/voter_no), field truncation, gender normalization (Bengali/Hindi → English), truncated JSON recovery
-- **Config:** `BEDROCK_VOTER_MODEL_ID` (default: Claude Sonnet), `AWS_TEXTRACT_*` env vars, SQS visibility 600s
+- **Config:** `BEDROCK_VOTER_MODEL_ID` (default: Claude Sonnet), `AWS_TEXTRACT_*` env vars, SQS visibility 600s, `max_tokens=64000` (Claude Sonnet limit)
 
 ### Models
 - `VoterListGroup` — tenant_id, year, constituency, file_id, status, part_no, part_name, location_name/lat/lng
@@ -310,6 +321,8 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 ### Dashboard Widgets (8)
 `react-grid-layout` (`<ResponsiveGridLayout>`) — drag-drop/resize, layout persisted to `localStorage`
 Widgets: summary-stats, sentiment-trend, platform-breakdown, top-topics, engagement, sentiment-distribution, top-feeds, negative-analysis
+
+**Sentiment Trends & Engagement widgets** include date range filter (presets: 7/30/90 days + calendar range picker) and period selector (hourly/daily/weekly). Sentiment trends aggregates directly from `MediaFeed` table via `date_trunc()` grouping (not from `SentimentAggregate`).
 
 ### Charts (`components/charts/`)
 Pure presentational — accept typed data props, never call hooks internally:

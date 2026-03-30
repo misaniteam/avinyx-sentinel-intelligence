@@ -30,7 +30,6 @@ import type { IngestedDataItem } from "@/types";
 const PAGE_SIZE = 50;
 
 const PLATFORM_OPTIONS = [
-  { value: "brand24", label: "Brand24" },
   { value: "youtube", label: "YouTube" },
   { value: "twitter", label: "Twitter / X" },
   { value: "news_rss", label: "News RSS" },

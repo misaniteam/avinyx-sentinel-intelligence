@@ -70,5 +70,6 @@
   "exportSuccess": "Export completed successfully",
   "exportFailed": "Export failed",
   "location": "Location",
-  "searchLocation": "Search location on map..."
+  "searchLocation": "Search location on map...",
+  "openInMaps": "Open in Google Maps"
 }
