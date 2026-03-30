@@ -108,7 +108,7 @@ function ActionableCard({ action }: { action: Actionable }) {
           {action.addresses_themes.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {action.addresses_themes.map((theme) => (
-                <span key={theme} className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                <span key={theme} className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-primary-foreground">
                   {theme}
                 </span>
               ))}

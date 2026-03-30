@@ -11,9 +11,14 @@ export const PLATFORM_LABELS: Record<string, string> = {
 // chart-theme.ts
 export const getTooltipStyle = (isDark: boolean) => ({
   contentStyle: {
-    backgroundColor: "transparent",
-    border: `0px`,
+    backgroundColor: isDark ? "#111827" : "#ffffff",
+    border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
     borderRadius: "8px",
+    boxShadow: isDark
+      ? "0 10px 30px rgba(0, 0, 0, 0.35)"
+      : "0 10px 30px rgba(15, 23, 42, 0.12)",
+    fontSize: "12px",
+    padding: "8px 10px",
     color: isDark ? "#f1f1f1" : "#0d0d0d",
   },
   itemStyle: {
@@ -29,7 +34,7 @@ export const CHART_COLORS = {
   positive: "#22c55e",
   negative: "#ef4444",
   neutral: "#a1a1aa",
-  platforms: {
+  platforms: {  
     facebook: "#1877F2",
     instagram: "#E4405F",
     youtube: "#FF0000",
@@ -44,7 +49,7 @@ export const PLATFORM_COLORS: Record<string, string> = {
   facebook: "#1877F2",
   instagram: "#E4405F",
   youtube: "#FF0000",
-  twitter: "#1DA1F2",
+  twitter: "#1DA1F2",  
 };
 
 export const tooltipStyle = {

@@ -1,9 +1,13 @@
 'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 import {
-  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
-} from "recharts";
+  PieChart, Pie, Cell, Legend, ResponsiveContainer,
+} from 'recharts';
+import { CHART_COLORS, PLATFORM_LABELS } from './chart-theme';
+import { formatSentimentLabel } from '@/lib/formatterLegendLabel';
+
+
 
 interface DataItem {
   name: string;
@@ -16,7 +20,12 @@ interface SentimentDistributionPieProps {
   height?: number;
 }
 
-const COLORS = ["#3266ad", "#1D9E75", "#D85A30", "#BA7517", "#7F77DD", "#D4537E"];
+
+const SENTIMENT_COLORS: Record<string, string> = {
+  positive: CHART_COLORS.positive,
+  negative: CHART_COLORS.negative,
+  neutral: CHART_COLORS.neutral,
+};
 
 export default function SentimentDistributionPie({
   distribution,
@@ -25,10 +34,10 @@ export default function SentimentDistributionPie({
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const chartData: DataItem[] = Object.entries(distribution).map(
-    ([name, value], i) => ({
+    ([name, value]) => ({
       name,
       value,
-      color: COLORS[i % COLORS.length],
+      color: SENTIMENT_COLORS[name.toLowerCase()] ?? CHART_COLORS.primary,
     })
   );
 
@@ -38,23 +47,23 @@ export default function SentimentDistributionPie({
   const pct = Math.round((active.value / total) * 100);
 
   return (
-    <div style={{ position: "relative", width: "100%", height }}>
+    <div style={{ position: 'relative', width: '100%', height }}>
       {/* Center label overlay */}
       <div
         style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          textAlign: "center",
-          pointerEvents: "none",
+          position: 'absolute',
+          top: '48%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          textAlign: 'center',
+          pointerEvents: 'none',
           zIndex: 10,
         }}
       >
         <div style={{ fontSize: 18, fontWeight: 500, lineHeight: 1.1 }}>
           {pct}%
         </div>
-        <div style={{ fontSize: 12, color: "#888", marginTop: 2, maxWidth: 80 }}>
+        <div style={{ fontSize: 12, color: '#888', marginTop: 2, maxWidth: 80 }}>
           {active.name}
         </div>
       </div>
@@ -81,7 +90,7 @@ export default function SentimentDistributionPie({
               `${Math.round((value / total) * 100)}% (${value})`
             }
           /> */}
-          <Legend />
+          <Legend formatter={formatSentimentLabel} />
         </PieChart>
       </ResponsiveContainer>
     </div>

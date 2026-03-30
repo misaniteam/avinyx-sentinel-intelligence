@@ -60,7 +60,10 @@ export default function EngagementWidget() {
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-3" align="start">
+          <PopoverContent
+            className="w-auto border-slate-200/70 bg-slate-50/95 p-3 shadow-lg dark:border-slate-800 dark:bg-slate-950/95"
+            align="start"
+          >
             <div className="mb-2 flex gap-1">
               {PRESETS.map((p) => (
                 <Button
@@ -81,6 +84,8 @@ export default function EngagementWidget() {
               selected={range}
               onSelect={setRange}
               disabled={{ after: new Date() }}
+              showOutsideDays={false}
+              className="rounded-md bg-transparent"
             />
           </PopoverContent>
         </Popover>

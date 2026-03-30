@@ -15,6 +15,7 @@ import type { SentimentTrend } from "@/types";
 import {
   CHART_COLORS,
   PLATFORM_COLORS,  
+  PLATFORM_LABELS,
   getAxisStyle,  
   getTooltipStyle,
 } from "./chart-theme";
@@ -70,7 +71,7 @@ export function SentimentLineChart({
           {...getTooltipStyle(isDark)}
           labelFormatter={(val: number) => format(new Date(val), "MMM dd")}
         />
-        <Legend />
+        <Legend formatter={(value) => PLATFORM_LABELS[value] || value} />
         {lineKeys.map((key) => (
           <Line
             key={key}
