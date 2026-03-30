@@ -20,7 +20,9 @@ class DataSource(Base, TimestampMixin, TenantMixin):
         nullable=False,
         index=True,
     )
-    platform = Column(String(50), nullable=False)  # youtube, twitter, news, reddit, etc.
+    platform = Column(
+        String(50), nullable=False
+    )  # youtube, twitter, news, reddit, etc.
     name = Column(String(255), nullable=False)
     config = Column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
     poll_interval_minutes = Column(Integer, default=60, nullable=False)
