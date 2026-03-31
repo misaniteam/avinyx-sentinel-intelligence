@@ -145,7 +145,7 @@ export default function NegativeAnalysisWidget() {
     });
   };
 
-  if (isLoading) return <AnalysisSkeleton />;
+  if (isLoading || (isFetching && !data)) return <AnalysisSkeleton />;
 
   if (!data || data.negative_points.length === 0) {
     return (

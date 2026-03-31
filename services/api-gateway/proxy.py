@@ -101,6 +101,8 @@ async def gateway_proxy(request: Request, path: str):
             "/file-upload" in full_path
             or "/voter-list-upload" in full_path
             or "/facebook-import" in full_path
+            or "/generate-insights" in full_path
+            or "/negative-analysis" in full_path
         )
         else 30.0
     )

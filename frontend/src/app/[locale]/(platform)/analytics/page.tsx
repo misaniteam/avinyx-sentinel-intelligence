@@ -28,7 +28,7 @@ import {
 } from "@/components/charts";
 import { ExportableContainer } from "@/components/shared/exportable-container";
 import { useTranslations } from "next-intl";
-import { useSentimentTrends, useDashboardSummary } from "@/lib/api/hooks";
+import { useSentimentTrends } from "@/lib/api/hooks";
 import {
   usePlatformBreakdown,
   useTopTopics,
@@ -52,6 +52,7 @@ import {
   ChevronDown,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { AnalyticsInsights } from "@/types";
 
 // --- Date Presets ---
@@ -338,7 +339,6 @@ export default function AnalyticsPage() {
   const apiDateTo = effectiveDates.to || undefined;
 
   // Data hooks - all respect date filters
-  const { data: summaryData } = useDashboardSummary();
   const { data: platformData, isLoading: platformLoading } = usePlatformBreakdown(apiDateFrom, apiDateTo);
   const { data: sentimentData, isLoading: sentimentLoading } = useSentimentTrends(period, apiDateFrom, apiDateTo);
   const { data: topicsData, isLoading: topicsLoading } = useTopTopics(topicLimit, apiDateFrom, apiDateTo);
@@ -360,12 +360,48 @@ export default function AnalyticsPage() {
     );
   }, [sentimentData, selectedPlatforms]);
 
-  // Compute stats
+  // Compute stats from filtered data
   const totalItems = filteredPlatformData.reduce((s, d) => s + d.count, 0);
-  const dist = summaryData?.sentiment_distribution;
-  const distTotal = dist ? dist.positive + dist.negative + dist.neutral : 0;
-  const posRate = distTotal > 0 ? ((dist!.positive / distTotal) * 100).toFixed(1) : "0";
-  const negRate = distTotal > 0 ? ((dist!.negative / distTotal) * 100).toFixed(1) : "0";
+
+  const filteredStats = useMemo(() => {
+    const data = filteredSentimentData;
+    if (!data || data.length === 0) return { avg: 0, posRate: "0", negRate: "0" };
+
+    let totalSentiment = 0;
+    let totalCount = 0;
+    let posCount = 0;
+    let negCount = 0;
+
+    for (const item of data) {
+      totalSentiment += item.avg_sentiment * item.total_count;
+      totalCount += item.total_count;
+      if (item.avg_sentiment > 0.1) posCount += item.total_count;
+      else if (item.avg_sentiment < -0.1) negCount += item.total_count;
+    }
+
+    const avg = totalCount > 0 ? totalSentiment / totalCount : 0;
+    const posRate = totalCount > 0 ? ((posCount / totalCount) * 100).toFixed(1) : "0";
+    const negRate = totalCount > 0 ? ((negCount / totalCount) * 100).toFixed(1) : "0";
+    return { avg, posRate, negRate };
+  }, [filteredSentimentData]);
+
+  // Compute sentiment distribution from filtered data
+  const dist = useMemo(() => {
+    const data = filteredSentimentData;
+    if (!data || data.length === 0) return null;
+
+    let positive = 0;
+    let negative = 0;
+    let neutral = 0;
+
+    for (const item of data) {
+      if (item.avg_sentiment > 0.1) positive += item.total_count;
+      else if (item.avg_sentiment < -0.1) negative += item.total_count;
+      else neutral += item.total_count;
+    }
+
+    return { positive, negative, neutral };
+  }, [filteredSentimentData]);
 
   // Active filter count
   const activeFilterCount =
@@ -395,6 +431,7 @@ export default function AnalyticsPage() {
       setInsights(result);
     } catch {
       setInsights(null);
+      toast.error(t("insightsError"));
     }
   };
 
@@ -546,27 +583,27 @@ export default function AnalyticsPage() {
         />
         <StatCard
           label={t("avgSentiment")}
-          value={summaryData ? summaryData.avg_sentiment.toFixed(3) : "—"}
+          value={filteredStats.avg.toFixed(3)}
           icon={
-            (summaryData?.avg_sentiment ?? 0) >= 0 ? (
+            filteredStats.avg >= 0 ? (
               <TrendingUp className="h-5 w-5 text-green-600" />
             ) : (
               <TrendingDown className="h-5 w-5 text-red-600" />
             )
           }
-          color={(summaryData?.avg_sentiment ?? 0) >= 0 ? "bg-green-100 dark:bg-green-900/30" : "bg-red-100 dark:bg-red-900/30"}
+          color={filteredStats.avg >= 0 ? "bg-green-100 dark:bg-green-900/30" : "bg-red-100 dark:bg-red-900/30"}
           delay={100}
         />
         <StatCard
           label={t("positiveRate")}
-          value={`${posRate}%`}
+          value={`${filteredStats.posRate}%`}
           icon={<TrendingUp className="h-5 w-5 text-green-600" />}
           color="bg-green-100 dark:bg-green-900/30"
           delay={200}
         />
         <StatCard
           label={t("negativeRate")}
-          value={`${negRate}%`}
+          value={`${filteredStats.negRate}%`}
           icon={<TrendingDown className="h-5 w-5 text-red-600" />}
           color="bg-red-100 dark:bg-red-900/30"
           delay={300}
@@ -613,7 +650,9 @@ export default function AnalyticsPage() {
               {topicsLoading ? (
                 <ChartSkeleton />
               ) : (
-                <TopTopicsBarChart data={topicsData ?? []} limit={topicLimit} />
+                <div className="h-[300px]">
+                  <TopTopicsBarChart data={topicsData ?? []} limit={topicLimit} />
+                </div>
               )}
             </CardContent>
           </Card>
@@ -633,7 +672,7 @@ export default function AnalyticsPage() {
           </Card>
 
           {/* Sentiment Distribution */}
-          {dist && distTotal > 0 && (
+          {dist && (dist.positive + dist.negative + dist.neutral) > 0 && (
             <Card className="md:col-span-2 transition-all duration-300 hover:shadow-md">
               <CardHeader>
                 <CardTitle className="text-base">{t("sentimentDistribution")}</CardTitle>

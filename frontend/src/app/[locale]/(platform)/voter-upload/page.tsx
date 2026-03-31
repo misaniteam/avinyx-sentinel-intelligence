@@ -52,6 +52,11 @@ import {
   LocationSearch,
   type LocationResult,
 } from "@/components/shared/location-search";
+import {
+  PlacesAutocompleteInput,
+  PlainLocationInput,
+  type PlaceResult,
+} from "@/components/shared/places-autocomplete-input";
 import MapProvider from "@/components/heatmap/map-provider";
 import type { VoterListGroupItem } from "@/types";
 
@@ -306,6 +311,30 @@ function UploadForm() {
   );
 }
 
+// --- Places Input for Dialog (uses AutocompleteService, works inside portals) ---
+function DialogPlacesInput(props: {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  onPlaceSelect: (place: PlaceResult) => void;
+  placeholder?: string;
+  maxLength?: number;
+}) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    return (
+      <PlainLocationInput
+        id={props.id}
+        value={props.value}
+        onChange={props.onChange}
+        placeholder={props.placeholder}
+        maxLength={props.maxLength}
+      />
+    );
+  }
+  return <PlacesAutocompleteInput {...props} />;
+}
+
 // --- Edit Group Dialog ---
 function EditGroupDialog({
   group,
@@ -387,13 +416,20 @@ function EditGroupDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="edit-location-name">{t("location")}</Label>
-            <Input
-              id="edit-location-name"
-              placeholder={t("locationName")}
-              value={locationName}
-              onChange={(e) => setLocationName(e.target.value)}
-              maxLength={500}
-            />
+            <MapProvider fallthrough>
+              <DialogPlacesInput
+                id="edit-location-name"
+                value={locationName}
+                onChange={setLocationName}
+                onPlaceSelect={(place) => {
+                  setLocationName(place.name);
+                  setLocationLat(String(place.lat));
+                  setLocationLng(String(place.lng));
+                }}
+                placeholder={t("searchLocation")}
+                maxLength={500}
+              />
+            </MapProvider>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

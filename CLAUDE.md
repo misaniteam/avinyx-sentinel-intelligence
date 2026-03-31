@@ -153,6 +153,8 @@ All frontend requests go through `api-gateway` at `/api/*`:
 
 **Proxy path formula:** Strip `/api` prefix, concatenate `{service_prefix}{remaining_path}`. Example: `/api/analytics/dashboard/summary` → `http://analytics-service:8005/analytics/dashboard/summary`. Each service's router prefixes must include the service namespace.
 
+**Extended timeout (300s):** `/file-upload`, `/voter-list-upload`, `/facebook-import`, `/generate-insights`, `/negative-analysis` — all other routes use 30s default
+
 **Public (no auth):** `/api/auth/login`, `/api/auth/setup`, `/api/auth/setup-status`, `/api/auth/refresh`
 
 ## Service Routers
@@ -162,7 +164,7 @@ All frontend requests go through `api-gateway` at `/api/*`:
 | auth-service | `auth.py` `/auth`, `users.py` `/auth/users`, `roles.py` `/auth/roles`, `settings.py` `/auth/tenant-settings` |
 | tenant-service | `tenants.py` `/tenants/tenants` |
 | ingestion-service | `data_sources.py` `/ingestion/data-sources`, `ingested_data.py` `/ingestion/ingested-data`, `file_upload.py` `/ingestion/file-upload`, `facebook_import.py` `/ingestion/facebook-import`, `voter_list_upload.py` `/ingestion/voter-list-upload`, `voter_list_data.py` `/ingestion/voter-lists` |
-| analytics-service | `dashboard.py` `/analytics/dashboard` (summary, trends, negative-analysis), `heatmap.py` `/analytics/heatmap` (data, voter-location-stats), `platforms.py`, `reports.py`, `topics.py` — all `/analytics/*` |
+| analytics-service | `dashboard.py` `/analytics/dashboard` (summary, trends, negative-analysis, generate-insights), `heatmap.py` `/analytics/heatmap` (data, voter-location-stats), `platforms.py`, `reports.py`, `topics.py` — all `/analytics/*` |
 | campaign-service | `campaigns.py` `/campaigns/campaigns`, `voters.py` `/campaigns/voters`, `media_feeds.py` `/campaigns/media-feeds`, `topic_keywords.py` `/campaigns/topic-keywords` |
 | notification-service | Inline in `main.py` — 4 endpoints under `/notifications/*` |
 | logging-service | `ingest.py`, `query.py` — all `/logs/*` |
@@ -217,7 +219,8 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 - **Template endpoint:** `GET /api/ingestion/facebook-import/template` — Downloads sample XLSX with required columns
 - **Required XLSX columns:** `title`, `author`, `datetime`, `post_link`, `reaction_count`, `comments`
 - **Processing:** Each row → one `RawMediaItem` with `platform="facebook"` (not `facebook_import`) for analytics grouping
-- **Mapping:** content = title + comments, url = post_link, engagement = {reactions, comments_text}, external_id = post_link
+- **Mapping:** content = title only (comments passed separately via raw_payload for independent sentiment analysis), url = post_link, engagement = {reactions, comments_text}, external_id = post_link
+- **Comment Sentiment:** AI pipeline analyzes comments separately from post content; comment sentiment stored in `MediaFeed.engagement["comment_sentiment"]` with score/label/summary
 - **One-shot:** DataSource created with `is_active=False`, `poll_interval_minutes=0` (same as file_upload)
 - **Limits:** XLSX only, 50MB max, 100K row limit, flexible datetime parsing via `dateutil`
 - **Frontend:** "Import Facebook Posts" option in data source dialog with template download button, XLSX-only dropzone
@@ -229,6 +232,7 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 - `GET /api/ingestion/voter-lists` — Paginated list of VoterListGroup records
 - `GET /api/ingestion/voter-lists/{group_id}` — Group info + paginated voter entries
 - `GET /api/ingestion/voter-lists/entries/all` — All entries across groups, filters: search, gender, status, section, group_id, age_min/max, limit up to 10000
+- `PATCH /api/ingestion/voter-lists/{group_id}` — Update group metadata (part_no, part_name, location_name, location_lat, location_lng); requires `voters:write`
 - `DELETE /api/ingestion/voter-lists/{group_id}` — Cascade deletes group + entries
 
 ### Voter Service (Textract + Bedrock Vision)
@@ -258,7 +262,8 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 - **Claude:** `ClaudeProvider` — `claude-sonnet-4-20250514`, Anthropic messaging API
 - **OpenAI:** `OpenAIProvider` — `gpt-4o`, JSON response format
 - **Bedrock:** `BedrockProvider` — aiobotocore async, 5 retries with aggressive backoff for throttles, 3s inter-request delay, per-item error handling with 30s throttle cooldown, batch mode (up to 5 items per API call with individual fallback)
-- **Result models:** `SentimentResult` (score -1.0→1.0, label, topics, entities, summary), `ContentExtractionResult` (title, description, image_url, source_link, external_links)
+- **Result models:** `SentimentResult` (score -1.0→1.0, label, topics, entities, summary, comment_sentiment), `CommentSentimentResult` (score, label, summary), `ContentExtractionResult` (title, description, image_url, source_link, external_links)
+- **Comment Sentiment:** All providers instruct AI to analyze comments separately when raw_payload contains `comments`/`comments_text` fields. Comment sentiment stored in `SentimentResult.comment_sentiment` (optional), then merged into `MediaFeed.engagement["comment_sentiment"]` by the pipeline
 
 ### Topic Keywords (Sentiment Guidance)
 - Tenants define topics with keywords + sentiment direction (positive/negative/neutral) to guide AI classification
@@ -274,7 +279,7 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 
 - **Model:** `MediaFeed` in `sentinel_shared/models/media.py` — AI-enriched content with sentiment, topics, extracted metadata
 - **Backend:** `GET /api/campaigns/media-feeds` — filters: platform, sentiment, topic, date_from, date_to; sort: published_at/sentiment_score/platform/author (asc/desc); pagination; permission: `media:read`
-- **Frontend:** `/media-feeds` — Card-based view with sentiment badges, topic pills, images, external links, date range filter, sort dropdown
+- **Frontend:** `/media-feeds` — Card-based view with sentiment badges, comment sentiment badges (MessageSquare icon), topic pills, images, external links, date range filter, sort dropdown
 - **Hook:** `useMediaFeeds()` in `lib/api/hooks.ts`
 
 ## Heatmap Voter Stats
@@ -289,14 +294,25 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 - **Backend:** `GET /api/analytics/dashboard/negative-analysis` — fetches top 10 negative `MediaFeed` items, deduplicates by title, sends to AI for thematic analysis
 - **AI output:** negative themes (with severity, summary, source counts), actionable recommendations (with priority, type, addressed themes), overall threat level, executive summary
 - **Caching:** 15-minute in-memory cache per tenant; `?refresh=true` to bypass
-- **Frontend:** Dashboard widget (`negative-analysis`) showing threat level badge, negative theme cards, recommended action cards with expand/collapse
+- **Frontend:** Dashboard widget (`negative-analysis`) showing threat level badge, negative theme cards, recommended action cards with expand/collapse; shows skeleton during `isFetching && !data` to prevent flash of "no data" state
 - **Hook:** `useNegativeAnalysis()` in `lib/api/hooks-analytics.ts`
 - **Action types:** public_statement, policy_response, social_media, community_outreach, legal, internal
+
+## Analytics Page (Advanced)
+
+- **Page:** `/analytics` — Comprehensive analytics with advanced filtering, 5 charts, summary stats, and AI insights
+- **Filters:** Multi-select platforms (checkbox popover), multi-select sentiments, date range presets (7d/30d/90d/all/custom), period selector (hourly/daily/weekly), topic limit (5-25)
+- **Summary Stats:** 4 animated stat cards (total items, avg sentiment, positive rate, negative rate) — all computed from filtered sentiment trend data, not from the global dashboard summary
+- **Charts:** Platform pie, Sentiment trends line, Top topics bar, Engagement area, Sentiment distribution donut — all respect date and platform filters
+- **Generate Insights:** `POST /api/analytics/dashboard/generate-insights` — accepts filter params (date_from, date_to, platforms[], sentiments[]), gathers aggregated stats + sample items, sends to tenant AI provider, returns structured key_points (title, description, severity) + recommendations (action, priority, category, rationale) + executive summary
+- **Hook:** `useGenerateInsights()` mutation in `lib/api/hooks-analytics.ts`
+- **Types:** `AnalyticsInsights`, `InsightKeyPoint`, `InsightRecommendation` in `types/index.ts`
+- **Frontend components:** `MultiSelectFilter` (checkbox popover), `StatCard` (animated), `InsightsPanel` (severity-colored key findings + priority-badged recommendations)
 
 ## Frontend Architecture
 
 ### State Management
-- **Server state:** TanStack Query v5 via `lib/api/hooks.ts` (42 hooks) and `hooks-analytics.ts` (6 hooks)
+- **Server state:** TanStack Query v5 via `lib/api/hooks.ts` (43 hooks) and `hooks-analytics.ts` (7 hooks)
 - **Client state:** AuthProvider → TenantProvider → RBACProvider (composed contexts)
 - **Real-time:** Firebase RTDB hooks for worker status and notifications
 - **HTTP client:** `ky` with auto Bearer token and 401 redirect (`lib/api/client.ts`)
@@ -315,7 +331,8 @@ Worker resolves tenant's `constituency_code` → constituency data → `location
 - `<ExportableContainer>` — Wraps content with PDF/PNG export buttons
 - `<DeleteConfirmDialog>` — Reusable confirmation dialog
 - `<TagInput>` — Pill-style tag input (Enter/comma to add, Backspace/X to remove)
-- `<LocationSearch>` — Google Places Autocomplete, falls back to text input without API key
+- `<LocationSearch>` — Google Places Autocomplete (PlaceAutocompleteElement), falls back to text input without API key
+- `<PlacesAutocompleteInput>` — Google Places search using AutocompleteService API with custom dropdown (works inside Radix Dialog portals unlike PlaceAutocompleteElement); used in voter list edit dialog
 - Sidebar: Main navigation + Administration section (auto-filtered by permissions)
 
 ### Dashboard Widgets (8)
