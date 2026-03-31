@@ -100,6 +100,7 @@ export default function LoginPage() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
+                  placeholder="*************"
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="pr-10 focus-visible:ring-0 focus-visible:outline-none"

@@ -42,7 +42,6 @@ import {
   BarChart3,
   TrendingUp,
   TrendingDown,
-  Hash,
   Sparkles,
   Loader2,
   AlertTriangle,
@@ -325,7 +324,7 @@ export default function AnalyticsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [period, setPeriod] = useState("daily");
-  const [topicLimit, setTopicLimit] = useState(10);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [insights, setInsights] = useState<AnalyticsInsights | null>(null);
 
   // Computed date range
@@ -341,7 +340,7 @@ export default function AnalyticsPage() {
   // Data hooks - all respect date filters
   const { data: platformData, isLoading: platformLoading } = usePlatformBreakdown(apiDateFrom, apiDateTo);
   const { data: sentimentData, isLoading: sentimentLoading } = useSentimentTrends(period, apiDateFrom, apiDateTo);
-  const { data: topicsData, isLoading: topicsLoading } = useTopTopics(topicLimit, apiDateFrom, apiDateTo);
+  const { data: topicsData, isLoading: topicsLoading } = useTopTopics(50, apiDateFrom, apiDateTo);
   const { data: engagementData, isLoading: engagementLoading } = useEngagementOverTime(period, apiDateFrom, apiDateTo);
   const generateInsights = useGenerateInsights();
 
@@ -359,6 +358,19 @@ export default function AnalyticsPage() {
       (d) => !d.platform || selectedPlatforms.includes(d.platform)
     );
   }, [sentimentData, selectedPlatforms]);
+
+  // Available topic names for the multi-select filter
+  const availableTopics = useMemo(() => {
+    if (!topicsData) return [];
+    return topicsData.map((t) => t.topic);
+  }, [topicsData]);
+
+  // Filter topics by selection
+  const filteredTopicsData = useMemo(() => {
+    if (!topicsData) return [];
+    if (selectedTopics.length === 0) return topicsData;
+    return topicsData.filter((d) => selectedTopics.includes(d.topic));
+  }, [topicsData, selectedTopics]);
 
   // Compute stats from filtered data
   const totalItems = filteredPlatformData.reduce((s, d) => s + d.count, 0);
@@ -407,16 +419,17 @@ export default function AnalyticsPage() {
   const activeFilterCount =
     (selectedPlatforms.length > 0 ? 1 : 0) +
     (selectedSentiments.length > 0 ? 1 : 0) +
+    (selectedTopics.length > 0 ? 1 : 0) +
     (datePreset !== "all" ? 1 : 0);
 
   const clearAllFilters = () => {
     setSelectedPlatforms([]);
     setSelectedSentiments([]);
+    setSelectedTopics([]);
     setDatePreset("all");
     setDateFrom("");
     setDateTo("");
     setPeriod("daily");
-    setTopicLimit(10);
     setInsights(null);
   };
 
@@ -438,26 +451,7 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
-        <Button
-          onClick={handleGenerateInsights}
-          disabled={generateInsights.isPending}
-          className="gap-2 transition-all duration-300 hover:shadow-lg"
-        >
-          {generateInsights.isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t("generating")}
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4" />
-              {t("generateInsights")}
-            </>
-          )}
-        </Button>
-      </div>
+      <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
 
       {/* Filter Bar */}
       <Card className="transition-all duration-300">
@@ -543,20 +537,15 @@ export default function AnalyticsPage() {
               </SelectContent>
             </Select>
 
-            {/* Topic Limit */}
-            <Select value={String(topicLimit)} onValueChange={(v) => setTopicLimit(Number(v))}>
-              <SelectTrigger className="w-[100px] h-9">
-                <Hash className="h-3.5 w-3.5 mr-1 opacity-50" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[5, 10, 15, 20, 25].map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    Top {n}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Topics Multi-Select */}
+            {availableTopics.length > 0 && (
+              <MultiSelectFilter
+                label={t("topTopics")}
+                options={availableTopics}
+                selected={selectedTopics}
+                onChange={setSelectedTopics}
+              />
+            )}
 
             {/* Clear button */}
             {activeFilterCount > 0 && (
@@ -571,6 +560,10 @@ export default function AnalyticsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Exportable Content: Stats + Charts + Insights */}
+      <ExportableContainer title={t("analyticsReport")}>
+      <div className="space-y-6">
 
       {/* Summary Stats */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
@@ -611,7 +604,6 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Charts */}
-      <ExportableContainer title={t("analyticsReport")}>
         <div className="grid gap-4 md:grid-cols-2">
           {/* Platform Breakdown */}
           <Card className="transition-all duration-300 hover:shadow-md">
@@ -651,7 +643,7 @@ export default function AnalyticsPage() {
                 <ChartSkeleton />
               ) : (
                 <div className="h-[300px]">
-                  <TopTopicsBarChart data={topicsData ?? []} limit={topicLimit} />
+                  <TopTopicsBarChart data={filteredTopicsData} />
                 </div>
               )}
             </CardContent>
@@ -683,7 +675,28 @@ export default function AnalyticsPage() {
             </Card>
           )}
         </div>
-      </ExportableContainer>
+
+      {/* Generate Insights Button */}
+      <div className="flex justify-center">
+        <Button
+          onClick={handleGenerateInsights}
+          disabled={generateInsights.isPending}
+          size="lg"
+          className="gap-2 transition-all duration-300 hover:shadow-lg"
+        >
+          {generateInsights.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("generating")}
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              {t("generateInsights")}
+            </>
+          )}
+        </Button>
+      </div>
 
       {/* AI Insights Section */}
       {generateInsights.isPending && (
@@ -717,6 +730,9 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       )}
+
+      </div>
+      </ExportableContainer>
     </div>
   );
 }
