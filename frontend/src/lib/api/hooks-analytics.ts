@@ -73,7 +73,7 @@ export function useReportDownloadUrl() {
 export function useGenerateInsights() {
   return useMutation({
     mutationFn: (params: { date_from?: string; date_to?: string; platforms?: string[]; sentiments?: string[] }) =>
-      api.post('api/analytics/dashboard/generate-insights', { json: params }).json<AnalyticsInsights>(),
+      api.post('api/analytics/dashboard/generate-insights', { json: params, timeout: 300000 }).json<AnalyticsInsights>(),
   });
 }
 
