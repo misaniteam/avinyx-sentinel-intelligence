@@ -49,10 +49,6 @@ import { toast } from "sonner";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import {
-  LocationSearch,
-  type LocationResult,
-} from "@/components/shared/location-search";
-import {
   PlacesAutocompleteInput,
   PlainLocationInput,
   type PlaceResult,
@@ -104,7 +100,9 @@ function UploadForm() {
   const [language, setLanguage] = useState("en");
   const [partNo, setPartNo] = useState("");
   const [partName, setPartName] = useState("");
-  const [location, setLocation] = useState<LocationResult | null>(null);
+  const [locationName, setLocationName] = useState("");
+  const [locationLat, setLocationLat] = useState("");
+  const [locationLng, setLocationLng] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const uploadMutation = useUploadVoterList();
 
@@ -138,10 +136,12 @@ function UploadForm() {
     formData.append("language", language);
     if (partNo.trim()) formData.append("part_no", partNo.trim());
     if (partName.trim()) formData.append("part_name", partName.trim());
-    if (location) {
-      formData.append("location_name", location.name);
-      formData.append("location_lat", String(location.lat));
-      formData.append("location_lng", String(location.lng));
+    if (locationName.trim()) {
+      formData.append("location_name", locationName.trim());
+      const lat = parseFloat(locationLat);
+      const lng = parseFloat(locationLng);
+      if (!isNaN(lat)) formData.append("location_lat", String(lat));
+      if (!isNaN(lng)) formData.append("location_lng", String(lng));
     }
 
     try {
@@ -150,7 +150,9 @@ function UploadForm() {
       setSelectedFile(null);
       setPartNo("");
       setPartName("");
-      setLocation(null);
+      setLocationName("");
+      setLocationLat("");
+      setLocationLng("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch {
       toast.error(t("uploadError"));
@@ -280,11 +282,42 @@ function UploadForm() {
           <div className="space-y-1.5 flex-1">
             <label className="text-sm font-medium">{t("location")}</label>
             <MapProvider fallthrough>
-              <LocationSearch
+              <DialogPlacesInput
+                value={locationName}
+                onChange={setLocationName}
+                onPlaceSelect={(place) => {
+                  setLocationName(place.name);
+                  setLocationLat(String(place.lat));
+                  setLocationLng(String(place.lng));
+                }}
                 placeholder={t("searchLocation")}
-                onChange={setLocation}
+                maxLength={500}
               />
             </MapProvider>
+          </div>
+        </div>
+
+        {/* Lat/Lng (auto-filled from place search, also manually editable) */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("latitude")}</label>
+            <Input
+              type="number"
+              step="any"
+              placeholder="e.g. 22.5726"
+              value={locationLat}
+              onChange={(e) => setLocationLat(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("longitude")}</label>
+            <Input
+              type="number"
+              step="any"
+              placeholder="e.g. 88.3639"
+              value={locationLng}
+              onChange={(e) => setLocationLng(e.target.value)}
+            />
           </div>
         </div>
         
