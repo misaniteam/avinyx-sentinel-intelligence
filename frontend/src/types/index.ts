@@ -151,6 +151,26 @@ export interface EngagementPoint {
   comments: number;
 }
 
+export interface InsightKeyPoint {
+  title: string;
+  description: string;
+  severity: 'positive' | 'warning' | 'critical' | 'info';
+}
+
+export interface InsightRecommendation {
+  action: string;
+  priority: 'high' | 'medium' | 'low';
+  category: string;
+  rationale: string;
+}
+
+export interface AnalyticsInsights {
+  key_points: InsightKeyPoint[];
+  recommendations: InsightRecommendation[];
+  summary: string;
+  analyzed_count: number;
+}
+
 export interface HeatmapPoint {
   lat: number;
   lng: number;

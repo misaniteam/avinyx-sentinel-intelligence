@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import { queryKeys } from './query-keys';
-import type { PlatformBreakdown, TopicCount, EngagementPoint, Report, ReportGenerateResponse, ReportDownloadResponse, NegativeAnalysis } from '@/types';
+import type { PlatformBreakdown, TopicCount, EngagementPoint, Report, ReportGenerateResponse, ReportDownloadResponse, NegativeAnalysis, AnalyticsInsights } from '@/types';
 
 export function usePlatformBreakdown(dateFrom?: string, dateTo?: string) {
   return useQuery({
@@ -67,6 +67,13 @@ export function useReportDownloadUrl() {
   return useMutation({
     mutationFn: (reportId: string) =>
       api.get(`api/analytics/reports/${reportId}/download`).json<ReportDownloadResponse>(),
+  });
+}
+
+export function useGenerateInsights() {
+  return useMutation({
+    mutationFn: (params: { date_from?: string; date_to?: string; platforms?: string[]; sentiments?: string[] }) =>
+      api.post('api/analytics/dashboard/generate-insights', { json: params }).json<AnalyticsInsights>(),
   });
 }
 

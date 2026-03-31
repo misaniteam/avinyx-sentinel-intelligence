@@ -77,5 +77,8 @@
   "editGroupDescription": "Update part number, part name, and location information for this voter list.",
   "updateSuccess": "Voter list details updated successfully",
   "updateFailed": "Failed to update voter list details",
-  "clearLocation": "Clear location"
+  "clearLocation": "Clear location",
+  "locationName": "Location name",
+  "latitude": "Latitude",
+  "longitude": "Longitude"
 }

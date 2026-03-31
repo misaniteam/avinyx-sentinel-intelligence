@@ -4,7 +4,9 @@ import structlog
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
+from typing import Optional
+from datetime import datetime, timedelta
 from sentinel_shared.database.session import get_db
 from sentinel_shared.models.media import (
     SentimentAnalysis,
@@ -103,8 +105,6 @@ async def sentiment_trends(
     user: dict = Depends(require_permissions("dashboard:view")),
 ):
     """Aggregate sentiment trends from media_feeds grouped by period and platform."""
-    from datetime import datetime, timedelta
-
     period_trunc = {
         "hourly": "hour",
         "daily": "day",
@@ -318,4 +318,171 @@ async def negative_analysis(
         return NegativeAnalysisResponse(
             summary=f"Analysis temporarily unavailable. {len(unique_feeds)} negative articles found.",
             analyzed_count=len(unique_feeds),
+        )
+
+
+# -------------------------
+# GENERATE INSIGHTS
+# -------------------------
+
+INSIGHTS_SYSTEM = """You are a political media intelligence analyst. You will receive aggregated analytics data from a media monitoring platform.
+
+Analyze the data and return a JSON object with exactly these keys:
+1. "key_points": An array of objects (3-6 items), each representing a key finding. Each object has:
+   - "title": string (short headline, e.g., "Negative sentiment spike on YouTube")
+   - "description": string (2-3 sentence explanation with data backing)
+   - "severity": "positive" | "warning" | "critical" | "info" (nature of the finding)
+
+2. "recommendations": An array of objects (3-5 items), each a recommended action. Each object has:
+   - "action": string (specific, actionable recommendation)
+   - "priority": "high" | "medium" | "low"
+   - "category": "content_strategy" | "platform_focus" | "crisis_response" | "engagement" | "monitoring"
+   - "rationale": string (1 sentence explaining why)
+
+3. "summary": string (3-4 sentence executive summary of the overall media landscape based on the filtered data)
+
+Be specific and data-driven. Reference actual numbers and platforms from the data. Return only valid JSON."""
+
+
+class InsightKeyPoint(BaseModel):
+    title: str
+    description: str
+    severity: str = "info"
+
+
+class InsightRecommendation(BaseModel):
+    action: str
+    priority: str = "medium"
+    category: str = "monitoring"
+    rationale: str = ""
+
+
+class InsightsResponse(BaseModel):
+    key_points: list[InsightKeyPoint] = []
+    recommendations: list[InsightRecommendation] = []
+    summary: str = ""
+    analyzed_count: int = 0
+
+
+class InsightsRequest(BaseModel):
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
+    platforms: Optional[list[str]] = None
+    sentiments: Optional[list[str]] = None
+
+
+@router.post("/generate-insights", response_model=InsightsResponse)
+async def generate_insights(
+    body: InsightsRequest,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant),
+    user: dict = Depends(require_permissions("analytics:read")),
+):
+    """Generate AI-powered key points and recommendations from filtered analytics data."""
+
+    filters = [
+        MediaFeed.tenant_id == tenant_id,
+        MediaFeed.published_at.isnot(None),
+    ]
+
+    if body.date_from:
+        filters.append(MediaFeed.published_at >= datetime.fromisoformat(body.date_from))
+    if body.date_to:
+        filters.append(
+            MediaFeed.published_at < datetime.fromisoformat(body.date_to) + timedelta(days=1)
+        )
+    if body.platforms:
+        filters.append(MediaFeed.platform.in_(body.platforms))
+    if body.sentiments:
+        filters.append(MediaFeed.sentiment_label.in_(body.sentiments))
+
+    # Gather aggregated stats
+    stats_result = await db.execute(
+        select(
+            func.count().label("total"),
+            func.avg(MediaFeed.sentiment_score).label("avg_sentiment"),
+            func.count(case((MediaFeed.sentiment_label == "positive", 1))).label("positive_count"),
+            func.count(case((MediaFeed.sentiment_label == "negative", 1))).label("negative_count"),
+            func.count(case((MediaFeed.sentiment_label == "neutral", 1))).label("neutral_count"),
+        ).where(*filters)
+    )
+    stats = stats_result.one()
+
+    if stats.total == 0:
+        return InsightsResponse(summary="No data found matching the selected filters.")
+
+    # Platform breakdown
+    platform_result = await db.execute(
+        select(MediaFeed.platform, func.count().label("count"))
+        .where(*filters)
+        .group_by(MediaFeed.platform)
+        .order_by(func.count().desc())
+    )
+    platform_rows = platform_result.all()
+
+    # Top topics from sentiment analyses within filters
+    topic_filters = [
+        SentimentAnalysis.tenant_id == tenant_id,
+        SentimentAnalysis.topics.isnot(None),
+    ]
+    if body.platforms or body.date_from or body.date_to or body.sentiments:
+        topic_filters.append(SentimentAnalysis.media_item_id == MediaFeed.media_item_id)
+        topic_filters.extend(filters[1:])  # skip tenant_id duplicate
+
+    # Sample recent items for context
+    sample_result = await db.execute(
+        select(MediaFeed.title, MediaFeed.summary, MediaFeed.platform, MediaFeed.sentiment_label, MediaFeed.sentiment_score)
+        .where(*filters)
+        .order_by(MediaFeed.published_at.desc())
+        .limit(15)
+    )
+    sample_items = sample_result.all()
+
+    # Build AI input
+    data_text_parts = [
+        "AGGREGATED STATS (filtered data):",
+        f"- Total items: {stats.total}",
+        f"- Average sentiment: {round(float(stats.avg_sentiment or 0), 3)}",
+        f"- Positive: {stats.positive_count}, Negative: {stats.negative_count}, Neutral: {stats.neutral_count}",
+        "\nPLATFORM BREAKDOWN:",
+    ]
+    for row in platform_rows:
+        data_text_parts.append(f"- {row.platform}: {row.count} items")
+
+    if body.date_from or body.date_to:
+        data_text_parts.append(f"\nDATE RANGE: {body.date_from or 'start'} to {body.date_to or 'now'}")
+
+    if body.platforms:
+        data_text_parts.append(f"FILTERED PLATFORMS: {', '.join(body.platforms)}")
+
+    if body.sentiments:
+        data_text_parts.append(f"FILTERED SENTIMENTS: {', '.join(body.sentiments)}")
+
+    data_text_parts.append("\nSAMPLE RECENT ITEMS:")
+    for i, item in enumerate(sample_items):
+        data_text_parts.append(
+            f"{i + 1}. [{item.platform}] [{item.sentiment_label} ({item.sentiment_score:.2f})] "
+            f"{item.title or 'Untitled'}"
+            f"{f' — {item.summary[:150]}' if item.summary else ''}"
+        )
+
+    user_content = "\n".join(data_text_parts)
+
+    # Get tenant AI provider
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_result.scalar_one_or_none()
+    ai_provider_name = (tenant.settings or {}).get("ai_provider", "bedrock") if tenant else "bedrock"
+    ai_config = (tenant.settings or {}).get("ai_config", {}) if tenant else {}
+
+    try:
+        provider = AIProviderFactory.get_provider(ai_provider_name, ai_config)
+        response_text = await provider._invoke(INSIGHTS_SYSTEM, user_content, max_tokens=4096)
+        data = json.loads(response_text)
+        data["analyzed_count"] = stats.total
+        return InsightsResponse(**data)
+    except Exception as e:
+        logger.error("generate_insights_failed", tenant_id=tenant_id, error=str(e))
+        return InsightsResponse(
+            summary=f"Insights generation temporarily unavailable. {stats.total} items matched your filters.",
+            analyzed_count=stats.total,
         )

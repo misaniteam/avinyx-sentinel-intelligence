@@ -322,34 +322,33 @@ function EditGroupDialog({
 
   const [partNo, setPartNo] = useState(group.part_no || "");
   const [partName, setPartName] = useState(group.part_name || "");
-  const [location, setLocation] = useState<LocationResult | null>(
-    group.location_name
-      ? { name: group.location_name, lat: group.location_lat || 0, lng: group.location_lng || 0 }
-      : null,
-  );
+  const [locationName, setLocationName] = useState(group.location_name || "");
+  const [locationLat, setLocationLat] = useState(group.location_lat != null ? String(group.location_lat) : "");
+  const [locationLng, setLocationLng] = useState(group.location_lng != null ? String(group.location_lng) : "");
 
   // Sync form state when dialog opens with new group data
   useEffect(() => {
     if (open) {
       setPartNo(group.part_no || "");
       setPartName(group.part_name || "");
-      setLocation(
-        group.location_name
-          ? { name: group.location_name, lat: group.location_lat || 0, lng: group.location_lng || 0 }
-          : null,
-      );
+      setLocationName(group.location_name || "");
+      setLocationLat(group.location_lat != null ? String(group.location_lat) : "");
+      setLocationLng(group.location_lng != null ? String(group.location_lng) : "");
     }
   }, [open, group]);
 
   const handleSave = async () => {
+    const latNum = locationLat ? parseFloat(locationLat) : null;
+    const lngNum = locationLng ? parseFloat(locationLng) : null;
+
     try {
       await updateGroup.mutateAsync({
         id: group.id,
         part_no: partNo.trim() || null,
         part_name: partName.trim() || null,
-        location_name: location?.name || null,
-        location_lat: location?.lat || null,
-        location_lng: location?.lng || null,
+        location_name: locationName.trim() || null,
+        location_lat: latNum != null && !isNaN(latNum) ? latNum : null,
+        location_lng: lngNum != null && !isNaN(lngNum) ? lngNum : null,
       });
       toast.success(t("updateSuccess"));
       onOpenChange(false);
@@ -387,28 +386,38 @@ function EditGroupDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>{t("location")}</Label>
-            {location && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1.5">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{location.name}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-1.5"
-                  onClick={() => setLocation(null)}
-                >
-                  <X className="h-3.5 w-3.5" />
-                  <span className="sr-only">{t("clearLocation")}</span>
-                </Button>
-              </div>
-            )}
-            <MapProvider fallthrough>
-              <LocationSearch
-                placeholder={t("searchLocation")}
-                onChange={setLocation}
+            <Label htmlFor="edit-location-name">{t("location")}</Label>
+            <Input
+              id="edit-location-name"
+              placeholder={t("locationName")}
+              value={locationName}
+              onChange={(e) => setLocationName(e.target.value)}
+              maxLength={500}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-location-lat">{t("latitude")}</Label>
+              <Input
+                id="edit-location-lat"
+                type="number"
+                step="any"
+                placeholder="e.g. 22.5726"
+                value={locationLat}
+                onChange={(e) => setLocationLat(e.target.value)}
               />
-            </MapProvider>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-location-lng">{t("longitude")}</Label>
+              <Input
+                id="edit-location-lng"
+                type="number"
+                step="any"
+                placeholder="e.g. 88.3639"
+                value={locationLng}
+                onChange={(e) => setLocationLng(e.target.value)}
+              />
+            </div>
           </div>
         </div>
         <DialogFooter>
