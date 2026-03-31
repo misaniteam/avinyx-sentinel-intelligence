@@ -71,5 +71,11 @@
   "exportFailed": "রপ্তানি ব্যর্থ হয়েছে",
   "location": "অবস্থান",
   "searchLocation": "মানচিত্রে অবস্থান অনুসন্ধান করুন...",
-  "openInMaps": "Google Maps-এ খুলুন"
+  "openInMaps": "Google Maps-এ খুলুন",
+  "editDetails": "বিবরণ সম্পাদনা",
+  "editGroupDetails": "ভোটার তালিকার বিবরণ সম্পাদনা",
+  "editGroupDescription": "এই ভোটার তালিকার পার্ট নম্বর, পার্ট নাম এবং অবস্থান তথ্য আপডেট করুন।",
+  "updateSuccess": "ভোটার তালিকার বিবরণ সফলভাবে আপডেট হয়েছে",
+  "updateFailed": "ভোটার তালিকার বিবরণ আপডেট করতে ব্যর্থ",
+  "clearLocation": "অবস্থান মুছুন"
 }

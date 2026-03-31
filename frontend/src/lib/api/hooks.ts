@@ -177,6 +177,18 @@ export function useAllVoterEntries(params?: {
   });
 }
 
+export function useUpdateVoterListGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; part_no?: string | null; part_name?: string | null; location_name?: string | null; location_lat?: number | null; location_lng?: number | null }) =>
+      api.patch(`api/ingestion/voter-lists/${id}`, { json: data }).json(),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.voterLists.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.voterLists.detail(variables.id) });
+    },
+  });
+}
+
 export function useDeleteVoterListGroup() {
   const queryClient = useQueryClient();
   return useMutation({

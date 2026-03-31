@@ -9,8 +9,10 @@ from sentinel_shared.ai.base import (
 from sentinel_shared.config import get_settings
 
 ANALYZE_AND_EXTRACT_SYSTEM = """You analyze content and extract structured information. Return JSON with exactly two keys:
-1. "sentiment": {"sentiment_score": float -1.0 to 1.0, "sentiment_label": "positive"/"negative"/"neutral", "topics": [strings], "entities": [{"name": string, "type": string}], "summary": string}
-2. "extraction": {"title": string (concise title, generate if not obvious), "description": string (cleaned plain text, max ~500 chars), "image_url": string (most relevant image URL or ""), "source_link": string (canonical URL or ""), "external_links": [URLs found in content]}"""
+1. "sentiment": {"sentiment_score": float -1.0 to 1.0, "sentiment_label": "positive"/"negative"/"neutral", "topics": [strings], "entities": [{"name": string, "type": string}], "summary": string, "comment_sentiment": object or null}
+2. "extraction": {"title": string (concise title, generate if not obvious), "description": string (cleaned plain text, max ~500 chars), "image_url": string (most relevant image URL or ""), "source_link": string (canonical URL or ""), "external_links": [URLs found in content]}
+
+IMPORTANT — Comment Sentiment: If the raw platform data contains a "comments" or "comments_text" field with user comments, you MUST analyze the sentiment of those comments SEPARATELY from the main post. Set "comment_sentiment" to: {"sentiment_score": float -1.0 to 1.0, "sentiment_label": "positive"/"negative"/"neutral", "summary": "brief summary of comment sentiment"}. The main "sentiment_score" and "sentiment_label" should reflect the overall post content only. If there are no comments, set "comment_sentiment" to null."""
 
 
 class OpenAIProvider(BaseAIProvider):

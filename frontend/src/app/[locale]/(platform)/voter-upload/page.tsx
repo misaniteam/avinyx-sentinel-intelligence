@@ -7,6 +7,7 @@ import {
   useVoterListGroupDetail,
   useUploadVoterList,
   useDeleteVoterListGroup,
+  useUpdateVoterListGroup,
 } from "@/lib/api/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Upload,
   FileText,
   Search,
@@ -33,6 +43,7 @@ import {
   Users,
   Trash2,
   MapPin,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PermissionGate } from "@/components/shared/permission-gate";
@@ -295,6 +306,131 @@ function UploadForm() {
   );
 }
 
+// --- Edit Group Dialog ---
+function EditGroupDialog({
+  group,
+  open,
+  onOpenChange,
+}: {
+  group: { id: string; part_no: string | null; part_name: string | null; location_name: string | null; location_lat: number | null; location_lng: number | null };
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const t = useTranslations("voters");
+  const tc = useTranslations("common");
+  const updateGroup = useUpdateVoterListGroup();
+
+  const [partNo, setPartNo] = useState(group.part_no || "");
+  const [partName, setPartName] = useState(group.part_name || "");
+  const [location, setLocation] = useState<LocationResult | null>(
+    group.location_name
+      ? { name: group.location_name, lat: group.location_lat || 0, lng: group.location_lng || 0 }
+      : null,
+  );
+
+  // Sync form state when dialog opens with new group data
+  useEffect(() => {
+    if (open) {
+      setPartNo(group.part_no || "");
+      setPartName(group.part_name || "");
+      setLocation(
+        group.location_name
+          ? { name: group.location_name, lat: group.location_lat || 0, lng: group.location_lng || 0 }
+          : null,
+      );
+    }
+  }, [open, group]);
+
+  const handleSave = async () => {
+    try {
+      await updateGroup.mutateAsync({
+        id: group.id,
+        part_no: partNo.trim() || null,
+        part_name: partName.trim() || null,
+        location_name: location?.name || null,
+        location_lat: location?.lat || null,
+        location_lng: location?.lng || null,
+      });
+      toast.success(t("updateSuccess"));
+      onOpenChange(false);
+    } catch {
+      toast.error(t("updateFailed"));
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("editGroupDetails")}</DialogTitle>
+          <DialogDescription>{t("editGroupDescription")}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-part-no">{t("partNo")}</Label>
+            <Input
+              id="edit-part-no"
+              placeholder={t("partNo")}
+              value={partNo}
+              onChange={(e) => setPartNo(e.target.value)}
+              maxLength={50}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-part-name">{t("partName")}</Label>
+            <Input
+              id="edit-part-name"
+              placeholder={t("partName")}
+              value={partName}
+              onChange={(e) => setPartName(e.target.value)}
+              maxLength={255}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("location")}</Label>
+            {location && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1.5">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{location.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5"
+                  onClick={() => setLocation(null)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  <span className="sr-only">{t("clearLocation")}</span>
+                </Button>
+              </div>
+            )}
+            <MapProvider fallthrough>
+              <LocationSearch
+                placeholder={t("searchLocation")}
+                onChange={setLocation}
+              />
+            </MapProvider>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {tc("cancel")}
+          </Button>
+          <Button onClick={handleSave} disabled={updateGroup.isPending}>
+            {updateGroup.isPending ? (
+              <>
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                {tc("saving")}
+              </>
+            ) : (
+              tc("save")
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // --- Group Detail View ---
 function GroupDetailView({
   groupId,
@@ -310,6 +446,7 @@ function GroupDetailView({
   const [searchQuery, setSearchQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
   const [page, setPage] = useState(0);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const { data, isLoading } = useVoterListGroupDetail(groupId, {
     search: searchQuery || undefined,
@@ -342,53 +479,72 @@ function GroupDetailView({
           {/* Group info card */}
           <Card>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">{t("constituency")}</p>
-                  <p className="font-medium">{group.constituency}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{t("partNo")}</p>
-                  <p className="font-medium">{group.part_no || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{t("partName")}</p>
-                  <p className="font-medium">{group.part_name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{t("year")}</p>
-                  <p className="font-medium">{group.year}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{t("status")}</p>
-                  <StatusBadge status={group.status} />
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{t("createdAt")}</p>
-                  <p className="font-medium">{formatDate(group.created_at)}</p>
-                </div>
-                {group.location_name && (
+              <div className="flex items-start justify-between">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm flex-1">
                   <div>
-                    <p className="text-muted-foreground">{t("location")}</p>
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <p className="font-medium">{group.location_name}</p>
-                    </div>
-                    {group.location_lat && group.location_lng && (
-                      <a
-                        href={`https://www.google.com/maps?q=${group.location_lat},${group.location_lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline mt-0.5 inline-block"
-                      >
-                        {t("openInMaps")}
-                      </a>
-                    )}
+                    <p className="text-muted-foreground">{t("constituency")}</p>
+                    <p className="font-medium">{group.constituency}</p>
                   </div>
-                )}
+                  <div>
+                    <p className="text-muted-foreground">{t("partNo")}</p>
+                    <p className="font-medium">{group.part_no || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">{t("partName")}</p>
+                    <p className="font-medium">{group.part_name || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">{t("year")}</p>
+                    <p className="font-medium">{group.year}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">{t("status")}</p>
+                    <StatusBadge status={group.status} />
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">{t("createdAt")}</p>
+                    <p className="font-medium">{formatDate(group.created_at)}</p>
+                  </div>
+                  {group.location_name && (
+                    <div>
+                      <p className="text-muted-foreground">{t("location")}</p>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <p className="font-medium">{group.location_name}</p>
+                      </div>
+                      {group.location_lat && group.location_lng && (
+                        <a
+                          href={`https://www.google.com/maps?q=${group.location_lat},${group.location_lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline mt-0.5 inline-block"
+                        >
+                          {t("openInMaps")}
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <PermissionGate permission="voters:write">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditDialogOpen(true)}
+                  >
+                    <Pencil className="mr-1 h-3.5 w-3.5" />
+                    {t("editDetails")}
+                  </Button>
+                </PermissionGate>
               </div>
             </CardContent>
           </Card>
+
+          {/* Edit Dialog */}
+          <EditGroupDialog
+            group={group}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+          />
 
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3">

@@ -15,7 +15,8 @@ ANALYZE_AND_EXTRACT_PROMPT = """Analyze this content and extract structured info
   "sentiment_label": "positive", "negative", or "neutral",
   "topics": list of topic strings,
   "entities": list of {{"name": string, "type": string}} objects,
-  "summary": brief one-sentence summary
+  "summary": brief one-sentence summary,
+  "comment_sentiment": object or null (see below)
 }}
 
 2. "extraction": {{
@@ -25,6 +26,8 @@ ANALYZE_AND_EXTRACT_PROMPT = """Analyze this content and extract structured info
   "source_link": the canonical URL to the original content (empty string if none),
   "external_links": list of any other URLs found (YouTube links, article links, etc.)
 }}
+
+IMPORTANT — Comment Sentiment: If the raw platform data contains a "comments" or "comments_text" field with user comments, you MUST analyze the sentiment of those comments SEPARATELY from the main post. Set "comment_sentiment" to: {{"sentiment_score": float -1.0 to 1.0, "sentiment_label": "positive"/"negative"/"neutral", "summary": "brief summary of comment sentiment"}}. The main "sentiment_score" and "sentiment_label" should reflect the overall post content only. If there are no comments, set "comment_sentiment" to null.
 
 Content text:
 {text}

@@ -54,6 +54,12 @@ export interface Voter {
   created_at: string;
 }
 
+export interface CommentSentiment {
+  sentiment_score: number;
+  sentiment_label: string;
+  summary: string;
+}
+
 export interface MediaFeedItem {
   id: string;
   platform: string;
@@ -64,7 +70,7 @@ export interface MediaFeedItem {
   external_links: string[];
   author: string | null;
   published_at: string | null;
-  engagement: Record<string, number>;
+  engagement: Record<string, unknown> & { comment_sentiment?: CommentSentiment };
   sentiment_score: number | null;
   sentiment_label: string | null;
   priority_score: number | null;

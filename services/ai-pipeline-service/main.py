@@ -112,13 +112,22 @@ async def process_batch(
             )
             session.add(analysis)
 
+            # Merge comment sentiment into engagement JSONB if present
+            feed_engagement = dict(item.engagement or {})
+            if sentiment.comment_sentiment:
+                feed_engagement["comment_sentiment"] = {
+                    "sentiment_score": sentiment.comment_sentiment.sentiment_score,
+                    "sentiment_label": sentiment.comment_sentiment.sentiment_label,
+                    "summary": sentiment.comment_sentiment.summary,
+                }
+
             feed_values = dict(
                 tenant_id=tenant_id,
                 media_item_id=item.id,
                 platform=item.platform,
                 author=item.author,
                 published_at=item.published_at,
-                engagement=item.engagement or {},
+                engagement=feed_engagement,
                 title=extraction.title or None,
                 description=extraction.description or None,
                 image_url=extraction.image_url or None,

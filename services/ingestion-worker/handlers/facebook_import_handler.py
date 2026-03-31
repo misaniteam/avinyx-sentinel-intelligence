@@ -166,13 +166,10 @@ class FacebookImportHandler(BaseConnectorHandler):
 
                     published_at = _parse_datetime(dt_val)
 
-                    # Build content from title and comments
-                    content_parts = []
-                    if title:
-                        content_parts.append(title)
-                    if comments:
-                        content_parts.append(comments)
-                    content = "\n\n".join(content_parts) if content_parts else ""
+                    # Build content: post title is the main content,
+                    # comments are passed separately via raw_payload for
+                    # independent sentiment analysis by the AI pipeline
+                    content = title
 
                     # Use post_link as external_id if available, otherwise generate
                     if post_link:

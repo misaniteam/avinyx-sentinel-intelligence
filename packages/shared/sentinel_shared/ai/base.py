@@ -2,12 +2,19 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel
 
 
+class CommentSentimentResult(BaseModel):
+    sentiment_score: float  # -1.0 to 1.0
+    sentiment_label: str  # positive, negative, neutral
+    summary: str = ""
+
+
 class SentimentResult(BaseModel):
     sentiment_score: float  # -1.0 to 1.0
     sentiment_label: str  # positive, negative, neutral
     topics: list[str] = []
     entities: list[dict] = []
     summary: str = ""
+    comment_sentiment: CommentSentimentResult | None = None
 
 
 class ContentExtractionResult(BaseModel):

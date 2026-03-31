@@ -71,5 +71,11 @@
   "exportFailed": "Export failed",
   "location": "Location",
   "searchLocation": "Search location on map...",
-  "openInMaps": "Open in Google Maps"
+  "openInMaps": "Open in Google Maps",
+  "editDetails": "Edit Details",
+  "editGroupDetails": "Edit Voter List Details",
+  "editGroupDescription": "Update part number, part name, and location information for this voter list.",
+  "updateSuccess": "Voter list details updated successfully",
+  "updateFailed": "Failed to update voter list details",
+  "clearLocation": "Clear location"
 }

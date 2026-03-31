@@ -71,5 +71,11 @@
   "exportFailed": "निर्यात विफल रहा",
   "location": "स्थान",
   "searchLocation": "मानचित्र पर स्थान खोजें...",
-  "openInMaps": "Google Maps में खोलें"
+  "openInMaps": "Google Maps में खोलें",
+  "editDetails": "विवरण संपादित करें",
+  "editGroupDetails": "मतदाता सूची विवरण संपादित करें",
+  "editGroupDescription": "इस मतदाता सूची के पार्ट नंबर, पार्ट नाम और स्थान की जानकारी अपडेट करें।",
+  "updateSuccess": "मतदाता सूची विवरण सफलतापूर्वक अपडेट हो गया",
+  "updateFailed": "मतदाता सूची विवरण अपडेट करने में विफल",
+  "clearLocation": "स्थान साफ़ करें"
 }

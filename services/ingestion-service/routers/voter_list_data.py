@@ -343,6 +343,63 @@ async def get_voter_list_group(
 
 
 # -------------------------
+# UPDATE GROUP
+# -------------------------
+
+
+class VoterListGroupUpdate(BaseModel):
+    part_no: Optional[str] = None
+    part_name: Optional[str] = None
+    location_name: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
+
+    class Config:
+        extra = "forbid"
+
+
+@router.patch("/{group_id}", response_model=VoterListGroupDetail)
+async def update_voter_list_group(
+    group_id: UUID,
+    body: VoterListGroupUpdate,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant_required),
+    user: dict = Depends(require_permissions("voters:write")),
+):
+    group = await db.scalar(
+        select(VoterListGroup).where(
+            VoterListGroup.id == group_id,
+            VoterListGroup.tenant_id == tenant_id,
+        )
+    )
+
+    if not group:
+        raise HTTPException(status_code=404, detail="Voter list group not found")
+
+    update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(group, key, value)
+
+    await db.commit()
+    await db.refresh(group)
+
+    return VoterListGroupDetail(
+        id=group.id,
+        year=group.year,
+        constituency=group.constituency,
+        file_id=group.file_id,
+        status=group.status,
+        part_no=group.part_no,
+        part_name=group.part_name,
+        location_name=group.location_name,
+        location_lat=group.location_lat,
+        location_lng=group.location_lng,
+        created_at=group.created_at,
+        updated_at=group.updated_at,
+    )
+
+
+# -------------------------
 # DELETE GROUP
 # -------------------------
 

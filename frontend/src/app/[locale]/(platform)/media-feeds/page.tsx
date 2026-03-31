@@ -25,6 +25,7 @@ import {
   ChevronRight,
   ArrowUpDown,
   Trash2,
+  MessageSquare,
 } from "lucide-react";
 import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog";
 import { YouTubeCarousel } from "@/components/media/youtube-carousel";
@@ -58,6 +59,7 @@ function FeedCard({ item, highlighted = false, onDelete }: { item: MediaFeedItem
   const platform = platformConfig[item.platform];
   const sentimentCategory = getSentimentCategory(item);
   const isYouTube = item.platform === "youtube";
+  const commentSentiment = item.engagement?.comment_sentiment;
 
   return (
     <Card className={`relative group ${highlighted ? "border-2 border-primary/40 shadow-md" : ""}`}>
@@ -84,7 +86,7 @@ function FeedCard({ item, highlighted = false, onDelete }: { item: MediaFeedItem
           </div>
         )}
         <div className="flex-1 min-w-0 space-y-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${platform?.color || "bg-gray-100 text-gray-800"}`}>
               {platform?.label || item.platform}
             </span>
@@ -97,6 +99,19 @@ function FeedCard({ item, highlighted = false, onDelete }: { item: MediaFeedItem
                 {sentimentCategory === "positive" && <TrendingUp className="h-3 w-3" />}
                 {sentimentCategory === "negative" && <TrendingDown className="h-3 w-3" />}
                 {item.sentiment_label} ({item.sentiment_score?.toFixed(2)})
+              </span>
+            )}
+            {commentSentiment && (
+              <span
+                className={`text-xs font-medium flex items-center gap-1 ${
+                  commentSentiment.sentiment_label === "positive" ? "text-green-600 dark:text-green-400" :
+                  commentSentiment.sentiment_label === "negative" ? "text-red-600 dark:text-red-400" :
+                  "text-muted-foreground"
+                }`}
+                title={commentSentiment.summary}
+              >
+                <MessageSquare className="h-3 w-3" />
+                {tc("comments")} {commentSentiment.sentiment_label} ({commentSentiment.sentiment_score.toFixed(2)})
               </span>
             )}
             {highlighted && (
@@ -126,6 +141,13 @@ function FeedCard({ item, highlighted = false, onDelete }: { item: MediaFeedItem
           {item.summary && highlighted && (
             <p className="text-xs text-muted-foreground italic line-clamp-2">
               {item.summary}
+            </p>
+          )}
+
+          {commentSentiment?.summary && highlighted && (
+            <p className="text-xs text-muted-foreground italic line-clamp-2 flex items-start gap-1">
+              <MessageSquare className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              {commentSentiment.summary}
             </p>
           )}
 
