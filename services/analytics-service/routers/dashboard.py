@@ -389,7 +389,8 @@ async def generate_insights(
         filters.append(MediaFeed.published_at >= datetime.fromisoformat(body.date_from))
     if body.date_to:
         filters.append(
-            MediaFeed.published_at < datetime.fromisoformat(body.date_to) + timedelta(days=1)
+            MediaFeed.published_at
+            < datetime.fromisoformat(body.date_to) + timedelta(days=1)
         )
     if body.platforms:
         filters.append(MediaFeed.platform.in_(body.platforms))
@@ -401,9 +402,15 @@ async def generate_insights(
         select(
             func.count().label("total"),
             func.avg(MediaFeed.sentiment_score).label("avg_sentiment"),
-            func.count(case((MediaFeed.sentiment_label == "positive", 1))).label("positive_count"),
-            func.count(case((MediaFeed.sentiment_label == "negative", 1))).label("negative_count"),
-            func.count(case((MediaFeed.sentiment_label == "neutral", 1))).label("neutral_count"),
+            func.count(case((MediaFeed.sentiment_label == "positive", 1))).label(
+                "positive_count"
+            ),
+            func.count(case((MediaFeed.sentiment_label == "negative", 1))).label(
+                "negative_count"
+            ),
+            func.count(case((MediaFeed.sentiment_label == "neutral", 1))).label(
+                "neutral_count"
+            ),
         ).where(*filters)
     )
     stats = stats_result.one()
@@ -431,7 +438,13 @@ async def generate_insights(
 
     # Sample recent items for context
     sample_result = await db.execute(
-        select(MediaFeed.title, MediaFeed.summary, MediaFeed.platform, MediaFeed.sentiment_label, MediaFeed.sentiment_score)
+        select(
+            MediaFeed.title,
+            MediaFeed.summary,
+            MediaFeed.platform,
+            MediaFeed.sentiment_label,
+            MediaFeed.sentiment_score,
+        )
         .where(*filters)
         .order_by(MediaFeed.published_at.desc())
         .limit(15)
@@ -450,7 +463,9 @@ async def generate_insights(
         data_text_parts.append(f"- {row.platform}: {row.count} items")
 
     if body.date_from or body.date_to:
-        data_text_parts.append(f"\nDATE RANGE: {body.date_from or 'start'} to {body.date_to or 'now'}")
+        data_text_parts.append(
+            f"\nDATE RANGE: {body.date_from or 'start'} to {body.date_to or 'now'}"
+        )
 
     if body.platforms:
         data_text_parts.append(f"FILTERED PLATFORMS: {', '.join(body.platforms)}")
@@ -471,12 +486,16 @@ async def generate_insights(
     # Get tenant AI provider
     tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = tenant_result.scalar_one_or_none()
-    ai_provider_name = (tenant.settings or {}).get("ai_provider", "bedrock") if tenant else "bedrock"
+    ai_provider_name = (
+        (tenant.settings or {}).get("ai_provider", "bedrock") if tenant else "bedrock"
+    )
     ai_config = (tenant.settings or {}).get("ai_config", {}) if tenant else {}
 
     try:
         provider = AIProviderFactory.get_provider(ai_provider_name, ai_config)
-        response_text = await provider._invoke(INSIGHTS_SYSTEM, user_content, max_tokens=4096)
+        response_text = await provider._invoke(
+            INSIGHTS_SYSTEM, user_content, max_tokens=4096
+        )
         data = json.loads(response_text)
         data["analyzed_count"] = stats.total
         return InsightsResponse(**data)
